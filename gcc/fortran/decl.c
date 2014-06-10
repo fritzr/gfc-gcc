@@ -5166,6 +5166,7 @@ gfc_match_procedure (void)
     case COMP_INTERFACE:
       m = match_procedure_in_interface ();
       break;
+    case COMP_STRUCTURE:
     case COMP_DERIVED:
       m = match_ppc_decl ();
       break;
@@ -5413,6 +5414,10 @@ gfc_match_entry (void)
 	    gfc_error ("ENTRY statement at %C cannot appear within "
 		       "an INTERFACE");
 	    break;
+          case COMP_STRUCTURE:
+            gfc_error ("ENTRY statement at %C cannot appear within "
+                       "a STRUCTURE block");
+            break;
 	  case COMP_DERIVED:
 	    gfc_error ("ENTRY statement at %C cannot appear within "
 		       "a DERIVED TYPE block");
@@ -5995,6 +6000,12 @@ gfc_match_end (gfc_statement *st)
     case COMP_INTERFACE:
       *st = ST_END_INTERFACE;
       target = " interface";
+      eos_ok = 0;
+      break;
+
+    case COMP_STRUCTURE:
+      *st = ST_END_STRUCTURE;
+      target = " structure";
       eos_ok = 0;
       break;
 
@@ -7470,6 +7481,94 @@ gfc_get_type_attr_spec (symbol_attribute *attr, char *name)
   return MATCH_YES;
 }
 
+/* Match the beginning of a structure declaration. This is similar to
+   matching the beginning of a derived type declaration, but the resulting
+   symbol has no access control or other interesting attributes. */
+
+match
+gfc_match_structure_decl(void)
+{
+    char name[GFC_MAX_SYMBOL_LEN + 1];
+    gfc_symbol *sym, *gensym;
+    match m;
+    gfc_interface *intr = NULL, *head;
+
+    gfc_warning("matching derived declaration at %C");
+    if (gfc_is_derived (gfc_current_state ()))
+        return MATCH_NO;
+
+    name[0] = '\0';
+
+    m = gfc_match (" /%n/%t", name);
+    if(m != MATCH_YES)
+        return m;
+
+    gfc_warning("name of structure is %s", name);
+
+    /* Make sure the name is not the name of an intrinsic type.  */
+    if (gfc_is_intrinsic_typename (name))
+    {
+      gfc_error ("Structure name '%s' at %C cannot be the same as an intrinsic "
+                 "type", name);
+      return MATCH_ERROR;
+    }
+
+    if (gfc_get_symbol (name, NULL, &gensym))
+    return MATCH_ERROR;
+
+    if (!gensym->attr.generic && gensym->ts.type != BT_UNKNOWN)
+    {
+      gfc_error ("Structure name '%s' at %C already has a basic type "
+                 "of %s", gensym->name, gfc_typename (&gensym->ts));
+      return MATCH_ERROR;
+    }
+
+    if (!gensym->attr.generic
+      && gfc_add_generic (&gensym->attr, gensym->name, NULL) == FAILURE)
+    return MATCH_ERROR;
+
+    if (!gensym->attr.function
+      && gfc_add_function (&gensym->attr, gensym->name, NULL) == FAILURE)
+    return MATCH_ERROR;
+
+    sym = gfc_find_dt_in_generic (gensym);
+
+    if (sym && (sym->components != NULL || sym->attr.zero_comp))
+    {
+      gfc_error ("Structure definition of '%s' at %C has already been "
+                 "defined", sym->name);
+      return MATCH_ERROR;
+    }
+
+    if (!sym)
+    {
+      /* Use upper case to save the actual derived-type symbol.  */
+      gfc_get_symbol (gfc_get_string ("%c%s",
+                        (char) TOUPPER ((unsigned char) gensym->name[0]),
+                        &gensym->name[1]), NULL, &sym);
+      sym->name = gfc_get_string (gensym->name);
+      head = gensym->generic;
+      intr = gfc_get_interface ();
+      intr->sym = sym;
+      intr->where = gfc_current_locus;
+      intr->sym->declared_at = gfc_current_locus;
+      intr->next = head;
+      gensym->generic = intr;
+      gensym->attr.if_source = IFSRC_DECL;
+    }
+
+    /* Construct the f2k_derived namespace if it is not yet there.  */
+    if (!sym->f2k_derived)
+        sym->f2k_derived = gfc_get_namespace (NULL, 0);
+
+    if (!sym->hash_value)
+        /* Set the hash for the compound name for this type.  */
+        sym->hash_value = gfc_hash_value (sym);
+
+    gfc_new_block = sym;
+
+    return MATCH_YES;
+}
 
 /* Match the beginning of a derived type declaration.  If a type name
    was the result of a function, then it is possible to have a symbol
