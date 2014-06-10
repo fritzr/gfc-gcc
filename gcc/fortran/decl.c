@@ -7572,9 +7572,6 @@ gfc_match_structure_decl(void)
         && gfc_add_flavor (&sym->attr, FL_DERIVED, sym->name, NULL) == FAILURE)
       return MATCH_ERROR;
 
-    /* Structs have no access control. */
-    gensym->attr.access = sym->attr.access = ACCESS_PUBLIC;
-
     /* TODO: Allow bind(c) attribute. */
 
     /* Construct the f2k_derived namespace if it is not yet there.  */
