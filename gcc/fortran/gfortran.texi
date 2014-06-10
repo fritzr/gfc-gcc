@@ -1358,7 +1358,7 @@ without warning.
 * CONVERT specifier::
 * OpenMP::
 * Argument list functions::
-* STRUCTUREs::
+* STRUCTURE and RECORD::
 @end menu
 
 @node Old-style kind specifications
@@ -1966,83 +1966,16 @@ For details refer to the g77 manual
 Also, @code{c_by_val.f} and its partner @code{c_by_val.c} of the
 GNU Fortran testsuite are worth a look.
 
-@node STRUCTUREs
-@subsection @code{STRUCTUREs}
-@cindex @code{STRUCTUREs}
-
-Support for old Digital Equipment Corporation's STRUCTURE and RECORD
-extension is coming soon.
-
-@smallexample
-      ! Declaring a structure named ``item'' and containing three fields:
-      ! an integer ID, an description string and a floating-point price.
-      STRUCTURE /item/
-        INTEGER id
-        CHARACTER(LEN=200) description
-        REAL price
-      ENDSTRUCTURE
-      
-      ! Define two variables, an single record of type ``item''
-      ! named ``pear'', and an array of items named ``store_catalog''
-      RECORD /item/ pear, store_catalog(100)
-      
-      ! We can directly access the fields of both variables
-      pear.id = 92316
-      pear.description = "juicy D'Anjou pear"
-      pear.price = 0.15
-      store_catalog(7).id = 7831
-      store_catalog(7).description = "milk bottle"
-      store_catalog(7).price = 1.2
-      
-      ! We can also manipulate the whole structure
-      store_catalog(12) = pear
-      print *, store_catalog(12)
-@end smallexample
-
-
-@node Extensions not implemented in GNU Fortran
-@section Extensions not implemented in GNU Fortran
-@cindex extensions, not implemented
-
-The long history of the Fortran language, its wide use and broad
-userbase, the large number of different compiler vendors and the lack of
-some features crucial to users in the first standards have lead to the
-existence of a number of important extensions to the language.  While
-some of the most useful or popular extensions are supported by the GNU
-Fortran compiler, not all existing extensions are supported.  This section
-aims at listing these extensions and offering advice on how best make
-code that uses them running with the GNU Fortran compiler.
-
-@c More can be found here:
-@c   -- http://gcc.gnu.org/onlinedocs/gcc-3.4.6/g77/Missing-Features.html
-@c   -- the list of Fortran and libgfortran bugs closed as WONTFIX:
-@c      http://tinyurl.com/2u4h5y
-
-@menu
-* STRUCTURE and RECORD::
-@c * UNION and MAP::
-* ENCODE and DECODE statements::
-* Variable FORMAT expressions::
-@c * Q edit descriptor::
-@c * AUTOMATIC statement::
-@c * TYPE and ACCEPT I/O Statements::
-@c * .XOR. operator::
-@c * CARRIAGECONTROL, DEFAULTFILE, DISPOSE and RECORDTYPE I/O specifiers::
-@c * Omitted arguments in procedure call::
-* Alternate complex function syntax::
-@end menu
-
-
 @node STRUCTURE and RECORD
 @subsection @code{STRUCTURE} and @code{RECORD}
 @cindex @code{STRUCTURE}
 @cindex @code{RECORD}
 
-Record structures are a pre-Fortran-90 vendor extension to create
+Record structures are a pre-Fortran-90 DEC extension to create
 user-defined aggregate data types. Support for record structures in GNU
-Fortran is experimental and can be enabled with the @code{-fdec-structure}
-compile option. Until this extension is fully supported, you should instead
-use Fortran 90's ``derived types'', which have a different syntax.
+Fortran can be enabled with the @code{-fdec-structure} compile option.
+If you have a choice, you should instead use Fortran 90's ``derived types'',
+which have a different syntax.
 
 In many cases, record structures can easily be converted to derived types.
 To convert, replace @code{STRUCTURE /}@var{structure-name}@code{/}
@@ -2107,6 +2040,40 @@ store_catalog(7)%price = 1.2
 store_catalog(12) = pear
 print *, store_catalog(12)
 @end example
+
+
+
+
+@node Extensions not implemented in GNU Fortran
+@section Extensions not implemented in GNU Fortran
+@cindex extensions, not implemented
+
+The long history of the Fortran language, its wide use and broad
+userbase, the large number of different compiler vendors and the lack of
+some features crucial to users in the first standards have lead to the
+existence of a number of important extensions to the language.  While
+some of the most useful or popular extensions are supported by the GNU
+Fortran compiler, not all existing extensions are supported.  This section
+aims at listing these extensions and offering advice on how best make
+code that uses them running with the GNU Fortran compiler.
+
+@c More can be found here:
+@c   -- http://gcc.gnu.org/onlinedocs/gcc-3.4.6/g77/Missing-Features.html
+@c   -- the list of Fortran and libgfortran bugs closed as WONTFIX:
+@c      http://tinyurl.com/2u4h5y
+
+@menu
+@c * UNION and MAP::
+* ENCODE and DECODE statements::
+* Variable FORMAT expressions::
+@c * Q edit descriptor::
+@c * AUTOMATIC statement::
+@c * TYPE and ACCEPT I/O Statements::
+@c * .XOR. operator::
+@c * CARRIAGECONTROL, DEFAULTFILE, DISPOSE and RECORDTYPE I/O specifiers::
+@c * Omitted arguments in procedure call::
+* Alternate complex function syntax::
+@end menu
 
 
 @c @node UNION and MAP
