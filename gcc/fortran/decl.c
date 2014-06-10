@@ -7497,12 +7497,10 @@ gfc_match_structure_decl(void)
 
     if(!gfc_option.flag_dec_structure)
     {
-        gfc_error ("STRUCTURE at %C is a DEC extension; re-run with "
+        gfc_error ("STRUCTURE at %C is a DEC extension; re-compile with "
                    "-fdec-structure to enable");
         return MATCH_ERROR;
     }
-
-    gfc_warning("matching structure declaration at %C");
 
     /* Can't declare a structure within another structure. */
     if (gfc_is_derived (gfc_current_state ()))
@@ -7513,8 +7511,6 @@ gfc_match_structure_decl(void)
     m = gfc_match (" /%n/%t", name);
     if(m != MATCH_YES)
         return m;
-
-    gfc_warning("name of structure is %s", name);
 
     /* Make sure the name is not the name of an intrinsic type.  */
     if (gfc_is_intrinsic_typename (name))
@@ -7604,7 +7600,6 @@ gfc_match_derived_decl (void)
   bool seen_attr = false;
   gfc_interface *intr = NULL, *head;
 
-  gfc_warning("matching derived declaration at %C");
   if (gfc_is_derived (gfc_current_state ()))
     return MATCH_NO;
 
