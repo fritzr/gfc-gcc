@@ -378,6 +378,7 @@ Fortran
 Enable all DEC/Intel language extensions.
 
 fdec-structure
+Fortran
 Enable DEC STRUCTURE extension.
 
 fdefault-double-8
