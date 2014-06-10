@@ -2520,6 +2520,21 @@ done:
   return MATCH_YES;
 }
 
+/* Matches a RECORD declaration (DEC extension). */
+
+static match
+gfc_match_decl_record(char *name)
+{
+    match m;
+
+    m = gfc_match(" record /%n/", name);
+    if(m == MATCH_YES && !gfc_option.flag_dec_structure) {
+        gfc_error ("RECORD at %C is a DEC extension; re-compile with "
+                   "-fdec-structure to enable");
+        m = MATCH_ERROR;
+    }
+    return m;
+}
 
 /* Matches a declaration-type-spec (F03:R502).  If successful, sets the ts
    structure to the matched specification.  This is necessary for FUNCTION and
@@ -2691,10 +2706,17 @@ gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
   if (matched_type)
     m = gfc_match_char (')');
 
-  if (m == MATCH_YES)
-    ts->type = BT_DERIVED;
+  if(m == MATCH_YES)
+      ts->type = BT_DERIVED;
   else
     {
+      /* Match RECORD declarations. */
+      m = gfc_match_decl_record(name);
+      if(m == MATCH_YES) {
+          ts->type = BT_DERIVED;
+          goto derived;
+      }
+
       /* Match CLASS declarations.  */
       m = gfc_match (" class ( * )");
       if (m == MATCH_ERROR)
@@ -2743,6 +2765,7 @@ gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
 	return MATCH_ERROR;
     }
 
+derived:
   /* Defer association of the derived type until the end of the
      specification block.  However, if the derived type can be
      found, add it to the typespec.  */
