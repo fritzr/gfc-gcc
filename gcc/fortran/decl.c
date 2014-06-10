@@ -1683,7 +1683,7 @@ match_pointer_init (gfc_expr **init, int procptr)
 {
   match m;
 
-  if (gfc_pure (NULL) && gfc_state_stack->state != COMP_DERIVED)
+  if (gfc_pure (NULL) && !gfc_is_derived(gfc_state_stack->state))
     {
       gfc_error ("Initialization of pointer at %C is not allowed in "
 		 "a PURE procedure");
@@ -1925,7 +1925,7 @@ variable_decl (int elem)
      For components of derived types, it is not true, so we don't
      create a symbol for those yet.  If we fail to create the symbol,
      bail out.  */
-  if (gfc_current_state () != COMP_DERIVED
+  if (!gfc_is_derived (gfc_current_state ())
       && build_sym (name, cl, cl_deferred, &as, &var_locus) == FAILURE)
     {
       m = MATCH_ERROR;
@@ -1998,7 +1998,7 @@ variable_decl (int elem)
 	    }
 
 	  if (current_attr.flavor != FL_PARAMETER && gfc_pure (NULL)
-	      && gfc_state_stack->state != COMP_DERIVED)
+	      && !gfc_is_derived (gfc_state_stack->state))
 	    {
 	      gfc_error ("Initialization of variable at %C is not allowed in "
 			 "a PURE procedure");
@@ -2006,7 +2006,7 @@ variable_decl (int elem)
 	    }
 
 	  if (current_attr.flavor != FL_PARAMETER
-	      && gfc_state_stack->state != COMP_DERIVED)
+	      && !gfc_is_derived(gfc_state_stack->state))
 	    gfc_unset_implicit_pure (gfc_current_ns->proc_name);
 
 	  if (m != MATCH_YES)
@@ -2015,7 +2015,7 @@ variable_decl (int elem)
     }
 
   if (initializer != NULL && current_attr.allocatable
-	&& gfc_current_state () == COMP_DERIVED)
+	&& gfc_is_derived (gfc_current_state ()))
     {
       gfc_error ("Initialization of allocatable component at %C is not "
 		 "allowed");
@@ -2026,7 +2026,7 @@ variable_decl (int elem)
   /* Add the initializer.  Note that it is fine if initializer is
      NULL here, because we sometimes also need to check if a
      declaration *must* have an initialization expression.  */
-  if (gfc_current_state () != COMP_DERIVED)
+  if (!gfc_is_derived (gfc_current_state ()))
     t = add_init_expr_to_sym (name, &initializer, &var_locus);
   else
     {
@@ -2579,7 +2579,7 @@ gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
 	{
 	  if ((m = gfc_match ("*)")) != MATCH_YES)
 	    return m;
-	  if (gfc_current_state () == COMP_DERIVED)
+	  if (gfc_is_derived (gfc_current_state ()))
 	    {
 	      gfc_error ("Assumed type at %C is not allowed for components");
 	      return MATCH_ERROR;
@@ -3624,7 +3624,7 @@ match_attr_spec (void)
       if (seen[d] == 0)
 	continue;
 
-      if (gfc_current_state () == COMP_DERIVED
+      if (gfc_is_derived (gfc_current_state ())
 	  && d != DECL_DIMENSION && d != DECL_CODIMENSION
 	  && d != DECL_POINTER   && d != DECL_PRIVATE
 	  && d != DECL_PUBLIC && d != DECL_CONTIGUOUS && d != DECL_NONE)
@@ -3632,7 +3632,8 @@ match_attr_spec (void)
 	  if (d == DECL_ALLOCATABLE)
 	    {
 	      if (gfc_notify_std (GFC_STD_F2003, "ALLOCATABLE "
-				  "attribute at %C in a TYPE definition")
+				  "attribute at %C in a %s definition",
+                                  gfc_ascii_comp_state(gfc_current_state()))
 		  == FAILURE)
 		{
 		  m = MATCH_ERROR;
@@ -3641,8 +3642,8 @@ match_attr_spec (void)
 	    }
 	  else
 	    {
-	      gfc_error ("Attribute at %L is not allowed in a TYPE definition",
-			 &seen_at[d]);
+	      gfc_error ("Attribute at %L is not allowed in a %s definition",
+			&seen_at[d], gfc_ascii_comp_state(gfc_current_state()));
 	      m = MATCH_ERROR;
 	      goto cleanup;
 	    }
@@ -3655,13 +3656,14 @@ match_attr_spec (void)
 	    attr = "PRIVATE";
 	  else
 	    attr = "PUBLIC";
-	  if (gfc_current_state () == COMP_DERIVED
+	  if (gfc_is_derived (gfc_current_state ())
 	      && gfc_state_stack->previous
 	      && gfc_state_stack->previous->state == COMP_MODULE)
 	    {
 	      if (gfc_notify_std (GFC_STD_F2003, "Attribute %s "
-				  "at %L in a TYPE definition", attr,
-				  &seen_at[d])
+				  "at %L in a %s definition", attr,
+				  &seen_at[d],
+                                  gfc_ascii_comp_state(gfc_current_state()))
 		  == FAILURE)
 		{
 		  m = MATCH_ERROR;
@@ -4225,7 +4227,7 @@ gfc_match_data_decl (void)
     return m;
 
   if ((current_ts.type == BT_DERIVED || current_ts.type == BT_CLASS)
-	&& gfc_current_state () != COMP_DERIVED)
+	&& !gfc_is_derived(gfc_current_state ()))
     {
       sym = gfc_use_derived (current_ts.u.derived);
 
@@ -4254,7 +4256,7 @@ gfc_match_data_decl (void)
       && !current_ts.u.derived->attr.zero_comp)
     {
 
-      if (current_attr.pointer && gfc_current_state () == COMP_DERIVED)
+      if (current_attr.pointer && gfc_is_derived (gfc_current_state ()))
 	goto ok;
 
       gfc_find_symbol (current_ts.u.derived->name,
@@ -7587,7 +7589,8 @@ gfc_match_derived_decl (void)
   bool seen_attr = false;
   gfc_interface *intr = NULL, *head;
 
-  if (gfc_current_state () == COMP_DERIVED)
+  gfc_warning("matching derived declaration at %C");
+  if (gfc_is_derived (gfc_current_state ()))
     return MATCH_NO;
 
   name[0] = '\0';
@@ -7622,6 +7625,8 @@ gfc_match_derived_decl (void)
   m = gfc_match (" %n%t", name);
   if (m != MATCH_YES)
     return m;
+
+  gfc_warning("type name is %s at %C", name);
 
   /* Make sure the name is not the name of an intrinsic type.  */
   if (gfc_is_intrinsic_typename (name))
