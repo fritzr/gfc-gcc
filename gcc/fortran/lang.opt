@@ -377,6 +377,10 @@ fdec
 Fortran
 Enable all DEC/Intel language extensions.
 
+fdec-member-dot
+Fortran
+Enable dot (`.`) as a member separator (in addition to the usual `%`).
+
 fdec-structure
 Fortran
 Enable DEC STRUCTURE extension.

@@ -111,6 +111,38 @@ gfc_op2string (gfc_intrinsic_op op)
 
 /******************** Generic matching subroutines ************************/
 
+/* Matches a member separator. With F90+ this is '%', but ancient DEC
+   extensions use '.' as well. */
+match
+gfc_match_member_sep(void)
+{
+    match m;
+    m = gfc_match_char('%');
+    if(m != MATCH_YES) {
+        m = gfc_match_char('.');
+        if(m == MATCH_YES && !gfc_option.flag_dec_member_dot) {
+            gfc_error("'.' as a member separator at %C is a DEC extension; "
+                      "re-compile with -fdec-member-dot to enable");
+            m = MATCH_ERROR;
+        }
+    }
+    return m;
+}
+
+/* Peek ahead to see if a member separator is next. With F90+, this is '%',
+   but old DEC extensions use '.' as well. */
+
+int
+gfc_peek_member_sep(void)
+{
+    gfc_char_t c = gfc_peek_ascii_char ();
+    if(c == '.' && !gfc_option.flag_dec_member_dot) {
+        gfc_error("'.' as a member separator at %C is a DEC extension; "
+                  "re-compile with -fdec-member-dot to enable");
+    }
+    return (c == '%' || c == '.');
+}
+
 /* This function scans the current statement counting the opened and closed
    parenthesis to make sure they are balanced.  */
 

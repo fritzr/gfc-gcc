@@ -1907,17 +1907,17 @@ gfc_match_varspec (gfc_expr *primary, int equiv_flag, bool sub_flag,
   if (equiv_flag)
     return MATCH_YES;
 
-  if (sym->ts.type == BT_UNKNOWN && gfc_peek_ascii_char () == '%'
+  if (sym->ts.type == BT_UNKNOWN && gfc_peek_member_sep()
       && gfc_get_default_type (sym->name, sym->ns)->type == BT_DERIVED)
     gfc_set_default_type (sym, 0, sym->ns);
 
-  if (sym->ts.type == BT_UNKNOWN && gfc_match_char ('%') == MATCH_YES)
+  if (sym->ts.type == BT_UNKNOWN && gfc_match_member_sep() == MATCH_YES)
     {
       gfc_error ("Symbol '%s' at %C has no IMPLICIT type", sym->name);
       return MATCH_ERROR;
     }
   else if ((sym->ts.type != BT_DERIVED && sym->ts.type != BT_CLASS)
-	   && gfc_match_char ('%') == MATCH_YES)
+	   && gfc_match_member_sep () == MATCH_YES)
     {
       gfc_error ("Unexpected '%%' for nonderived-type variable '%s' at %C",
 		 sym->name);
@@ -1925,7 +1925,7 @@ gfc_match_varspec (gfc_expr *primary, int equiv_flag, bool sub_flag,
     }
 
   if ((sym->ts.type != BT_DERIVED && sym->ts.type != BT_CLASS)
-      || gfc_match_char ('%') != MATCH_YES)
+      || gfc_match_member_sep () != MATCH_YES)
     goto check_substring;
 
   sym = sym->ts.u.derived;
@@ -2053,7 +2053,7 @@ gfc_match_varspec (gfc_expr *primary, int equiv_flag, bool sub_flag,
 	}
 
       if ((component->ts.type != BT_DERIVED && component->ts.type != BT_CLASS)
-	  || gfc_match_char ('%') != MATCH_YES)
+	  || gfc_match_member_sep () != MATCH_YES)
 	break;
 
       sym = component->ts.u.derived;
@@ -2964,7 +2964,7 @@ gfc_match_rvalue (gfc_expr **result)
 	 via an IMPLICIT statement.  This can't wait for the
 	 resolution phase.  */
 
-      if (gfc_peek_ascii_char () == '%'
+      if (gfc_peek_member_sep ()
 	  && sym->ts.type == BT_UNKNOWN
 	  && gfc_get_default_type (sym->name, sym->ns)->type == BT_DERIVED)
 	gfc_set_default_type (sym, 0, sym->ns);
@@ -3288,7 +3288,7 @@ match_variable (gfc_expr **result, int equiv_flag, int host_flag)
       else
 	implicit_ns = sym->ns;
 	
-      if (gfc_peek_ascii_char () == '%'
+      if (gfc_peek_member_sep ()
 	  && sym->ts.type == BT_UNKNOWN
 	  && gfc_get_default_type (sym->name, implicit_ns)->type == BT_DERIVED)
 	gfc_set_default_type (sym, 0, implicit_ns);

@@ -1142,6 +1142,10 @@ gfc_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_fdec_structure:
       gfc_option.flag_dec_structure = 1;
+      /* Fall-through: -fdec-structure implies -fdec-member-dot. */
+
+    case OPT_fdec_member_dot:
+      gfc_option.flag_dec_member_dot = 1;
       break;
     }
 
