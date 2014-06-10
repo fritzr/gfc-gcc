@@ -373,6 +373,13 @@ fd-lines-as-comments
 Fortran RejectNegative
 Treat lines with 'D' in column one as comments
 
+fdec
+Fortran
+Enable all DEC/Intel language extensions.
+
+fdec-structure
+Enable DEC STRUCTURE extension.
+
 fdefault-double-8
 Fortran
 Set the default double precision kind to an 8 byte wide type

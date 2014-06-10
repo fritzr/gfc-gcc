@@ -473,9 +473,9 @@ The GNU Fortran compiler is able to compile nearly all
 standard-compliant Fortran 95, Fortran 90, and Fortran 77 programs,
 including a number of standard and non-standard extensions, and can be
 used on real-world programs.  In particular, the supported extensions
-include OpenMP, Cray-style pointers, and several Fortran 2003 and Fortran
-2008 features, including TR 15581.  However, it is still under
-development and has a few remaining rough edges.
+include OpenMP, Cray-style pointers, several Fortran 2003 and Fortran
+2008 features, including TR 15581, and some of the Intel/DEC extensions.
+However, it is still under development and has a few remaining rough edges.
 
 At present, the GNU Fortran compiler passes the
 @uref{http://www.fortran-2000.com/ArnaudRecipes/fcvs21_f95.html, 
@@ -1358,6 +1358,7 @@ without warning.
 * CONVERT specifier::
 * OpenMP::
 * Argument list functions::
+* STRUCTUREs::
 @end menu
 
 @node Old-style kind specifications
@@ -1965,6 +1966,39 @@ For details refer to the g77 manual
 Also, @code{c_by_val.f} and its partner @code{c_by_val.c} of the
 GNU Fortran testsuite are worth a look.
 
+@node STRUCTUREs
+@subsection @code{STRUCTUREs}
+@cindex @code{STRUCTUREs}
+
+Support for old Digital Equipment Corporation's STRUCTURE and RECORD
+extension is coming soon.
+
+@smallexample
+      ! Declaring a structure named ``item'' and containing three fields:
+      ! an integer ID, an description string and a floating-point price.
+      STRUCTURE /item/
+        INTEGER id
+        CHARACTER(LEN=200) description
+        REAL price
+      ENDSTRUCTURE
+      
+      ! Define two variables, an single record of type ``item''
+      ! named ``pear'', and an array of items named ``store_catalog''
+      RECORD /item/ pear, store_catalog(100)
+      
+      ! We can directly access the fields of both variables
+      pear.id = 92316
+      pear.description = "juicy D'Anjou pear"
+      pear.price = 0.15
+      store_catalog(7).id = 7831
+      store_catalog(7).description = "milk bottle"
+      store_catalog(7).price = 1.2
+      
+      ! We can also manipulate the whole structure
+      store_catalog(12) = pear
+      print *, store_catalog(12)
+@end smallexample
+
 
 @node Extensions not implemented in GNU Fortran
 @section Extensions not implemented in GNU Fortran
@@ -2005,9 +2039,10 @@ code that uses them running with the GNU Fortran compiler.
 @cindex @code{RECORD}
 
 Record structures are a pre-Fortran-90 vendor extension to create
-user-defined aggregate data types.  GNU Fortran does not support
-record structures, only Fortran 90's ``derived types'', which have
-a different syntax.
+user-defined aggregate data types. Support for record structures in GNU
+Fortran is experimental and can be enabled with the @code{-fdec-structure}
+compile option. Until this extension is fully supported, you should instead
+use Fortran 90's ``derived types'', which have a different syntax.
 
 In many cases, record structures can easily be converted to derived types.
 To convert, replace @code{STRUCTURE /}@var{structure-name}@code{/}

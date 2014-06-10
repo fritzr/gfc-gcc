@@ -7495,7 +7495,16 @@ gfc_match_structure_decl(void)
     match m;
     gfc_interface *intr = NULL, *head;
 
-    gfc_warning("matching derived declaration at %C");
+    if(!gfc_option.flag_dec_structure)
+    {
+        gfc_error ("STRUCTURE at %C is a DEC extension; re-run with "
+                   "-fdec-structure to enable");
+        return MATCH_ERROR;
+    }
+
+    gfc_warning("matching structure declaration at %C");
+
+    /* Can't declare a structure within another structure. */
     if (gfc_is_derived (gfc_current_state ()))
         return MATCH_NO;
 

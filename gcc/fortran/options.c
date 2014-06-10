@@ -51,6 +51,21 @@ set_default_std_flags (void)
   gfc_option.warn_std = GFC_STD_F95_DEL | GFC_STD_LEGACY;
 }
 
+/* Zero all the DEC extension flags. */
+
+static void
+zero_dec_flags (void)
+{
+    gfc_option.flag_dec_structure = 0;
+}
+
+/* Set all the DEC extension flags. */
+
+static void
+set_dec_flags (void)
+{
+    gfc_option.flag_dec_structure = 1;
+}
 
 /* Return language mask for Fortran options.  */
 
@@ -165,6 +180,8 @@ gfc_init_options (unsigned int decoded_options_count,
   gfc_option.fpe = 0;
   gfc_option.rtcheck = 0;
   gfc_option.coarray = GFC_FCOARRAY_NONE;
+
+  zero_dec_flags ();
 
   set_default_std_flags ();
 
@@ -1123,6 +1140,14 @@ gfc_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_fcoarray_:
       gfc_handle_coarray_option (arg);
+      break;
+
+    case OPT_fdec:
+      set_dec_flags ();
+      break;
+
+    case OPT_fdec_structure:
+      gfc_option.flag_dec_structure = 1;
       break;
     }
 

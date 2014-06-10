@@ -2312,6 +2312,7 @@ typedef struct
   int flag_realloc_lhs;
   int flag_aggressive_function_elimination;
   int flag_frontend_optimize;
+  int flag_dec_structure;
 
   int fpe;
   int rtcheck;
