@@ -7568,6 +7568,15 @@ gfc_match_structure_decl(void)
       gensym->attr.if_source = IFSRC_DECL;
     }
 
+    if (sym->attr.flavor != FL_DERIVED
+        && gfc_add_flavor (&sym->attr, FL_DERIVED, sym->name, NULL) == FAILURE)
+      return MATCH_ERROR;
+
+    /* Structs have no access control. */
+    gensym->attr.access = sym->attr.access = ACCESS_PUBLIC;
+
+    /* TODO: Allow bind(c) attribute. */
+
     /* Construct the f2k_derived namespace if it is not yet there.  */
     if (!sym->f2k_derived)
         sym->f2k_derived = gfc_get_namespace (NULL, 0);
@@ -7634,8 +7643,6 @@ gfc_match_derived_decl (void)
   m = gfc_match (" %n%t", name);
   if (m != MATCH_YES)
     return m;
-
-  gfc_warning("type name is %s at %C", name);
 
   /* Make sure the name is not the name of an intrinsic type.  */
   if (gfc_is_intrinsic_typename (name))
