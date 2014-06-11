@@ -112,35 +112,55 @@ gfc_op2string (gfc_intrinsic_op op)
 /******************** Generic matching subroutines ************************/
 
 /* Matches a member separator. With F90+ this is '%', but ancient DEC
-   extensions use '.' as well. */
+   extensions use '.' as well. If -fdec-member-dot is enabled, we have to
+   be careful to distinguish between tokens such as '.eq.', '.true.', '.and.',
+   etc... */
 match
-gfc_match_member_sep(void)
+gfc_match_member_sep(/*gfc_symbol *sym*/)
 {
-    match m;
-    m = gfc_match_char('%');
-    if(m != MATCH_YES) {
-        m = gfc_match_char('.');
-        if(m == MATCH_YES && !gfc_option.flag_dec_member_dot) {
-            gfc_error("'.' as a member separator at %C is a DEC extension; "
-                      "re-compile with -fdec-member-dot to enable");
-            m = MATCH_ERROR;
+    /* Tokens which are potentially ambiguous when looking for dot as a
+       member separator. * /
+    static const char *ambig[] = { 
+        ".and.", ".or.", ".eq.", ".xor.", ".true.", ".false."
+    };
+    const char *tok;
+    int toki;
+    locus old_loc;
+    */
+
+    if(gfc_match_char ('%') == MATCH_YES)
+        return MATCH_YES;
+
+    /* Only continue if the previous symbol is in fact a derived type, we
+       see a dot, and dot member separators are enabled. */
+    if(gfc_option.flag_dec_member_dot && gfc_match_char('.') == MATCH_YES)
+            //&& sym && sym->ts.u.derived != NULL)
+            /* Though we may not know the type yet?
+            || (sym->ts.type != BT_DERIVED && sym->ts.type != BT_CLASS)
+            || !sym->ts.u.derived)
+            */
+        return MATCH_YES;
+
+    // maybe: gfc_find_component(sym->ts.u.derived, name, false, false)
+    return MATCH_NO;
+
+    /*
+    old_loc = gfc_current_locus;
+    / * We have to be careful if an identifier beginning with a dot is next. * /
+    for(toki = 0; toki < sizeof(ambig)/sizeof(ambig[0]); ++toki)
+    {
+        tok = ambig[toki];
+        / * Dot takes precedence as a member separator, but only if the
+           referenced member exists in the symbol. * /
+        if(gfc_match (tok) == MATCH_YES)
+        {
+
         }
     }
-    return m;
-}
 
-/* Peek ahead to see if a member separator is next. With F90+, this is '%',
-   but old DEC extensions use '.' as well. */
-
-int
-gfc_peek_member_sep(void)
-{
-    gfc_char_t c = gfc_peek_ascii_char ();
-    if(c == '.' && !gfc_option.flag_dec_member_dot) {
-        gfc_error("'.' as a member separator at %C is a DEC extension; "
-                  "re-compile with -fdec-member-dot to enable");
-    }
-    return (c == '%' || c == '.');
+    gfc_assert (gfc_match_char ('.') == MATCH_YES);
+    return MATCH_YES;
+    */
 }
 
 /* This function scans the current statement counting the opened and closed
