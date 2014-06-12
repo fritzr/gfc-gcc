@@ -1907,7 +1907,9 @@ gfc_match_varspec (gfc_expr *primary, int equiv_flag, bool sub_flag,
   if (equiv_flag)
     return MATCH_YES;
 
-  m = gfc_match_member_sep ();
+  m = gfc_match_member_sep (sym);
+  if(m == MATCH_ERROR)
+      return MATCH_ERROR;
 
   if (sym->ts.type == BT_UNKNOWN && m == MATCH_YES
       && gfc_get_default_type (sym->name, sym->ns)->type == BT_DERIVED)
@@ -1919,10 +1921,10 @@ gfc_match_varspec (gfc_expr *primary, int equiv_flag, bool sub_flag,
       return MATCH_ERROR;
     }
   else if ((sym->ts.type != BT_DERIVED && sym->ts.type != BT_CLASS)
-	   && m == MATCH_YES)
+          && m == MATCH_YES)
     {
-      gfc_error ("Unexpected '%%' for nonderived-type variable '%s' at %C",
-		 sym->name);
+      gfc_error ("Unexpected member separator for nonderived-type variable "
+                 "'%s' at %C", sym->name);
       return MATCH_ERROR;
     }
 
@@ -2055,7 +2057,7 @@ gfc_match_varspec (gfc_expr *primary, int equiv_flag, bool sub_flag,
 	}
 
       if ((component->ts.type != BT_DERIVED && component->ts.type != BT_CLASS)
-	  || gfc_match_member_sep () != MATCH_YES)
+	  || gfc_match_member_sep (component->ts.u.derived) != MATCH_YES)
 	break;
 
       sym = component->ts.u.derived;
@@ -2967,7 +2969,7 @@ gfc_match_rvalue (gfc_expr **result)
 	 resolution phase.  */
 
       old_loc = gfc_current_locus;
-      if (gfc_match_member_sep () == MATCH_YES
+      if (gfc_match_member_sep (sym) == MATCH_YES
 	  && sym->ts.type == BT_UNKNOWN
 	  && gfc_get_default_type (sym->name, sym->ns)->type == BT_DERIVED)
 	gfc_set_default_type (sym, 0, sym->ns);
@@ -3293,7 +3295,7 @@ match_variable (gfc_expr **result, int equiv_flag, int host_flag)
 	implicit_ns = sym->ns;
 	
       old_loc = gfc_current_locus;
-      if (gfc_match_member_sep () == MATCH_YES
+      if (gfc_match_member_sep (sym) == MATCH_YES
 	  && sym->ts.type == BT_UNKNOWN
 	  && gfc_get_default_type (sym->name, implicit_ns)->type == BT_DERIVED)
 	gfc_set_default_type (sym, 0, implicit_ns);

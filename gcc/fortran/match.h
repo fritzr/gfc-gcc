@@ -59,7 +59,7 @@ match gfc_match_char (char);
 match gfc_match (const char *, ...);
 match gfc_match_iterator (gfc_iterator *, int);
 match gfc_match_parens (void);
-match gfc_match_member_sep(void);
+match gfc_match_member_sep(gfc_symbol *);
 
 /* Statement matchers.  */
 match gfc_match_program (void);

@@ -111,56 +111,116 @@ gfc_op2string (gfc_intrinsic_op op)
 
 /******************** Generic matching subroutines ************************/
 
-/* Matches a member separator. With F90+ this is '%', but ancient DEC
-   extensions use '.' as well. If -fdec-member-dot is enabled, we have to
-   be careful to distinguish between tokens such as '.eq.', '.true.', '.and.',
-   etc... */
+/* Matches a member separator. With F90+ this is '%', but with
+   -fdec-member-dot we must carefully match dot ('.').
+   Because operators are spelled ".op.", "x.y.z" can be either a component
+   access (x->y)->z or a binary operation y(x,z). Here we choose to deal with
+   the "x.y.z" ambiguity in a manner consistent with Intel:
+     (1) If any user defined operator ".y." exists, this is always y(x,z)
+         (even if ".y." is the wrong type and/or x has a member y).
+     (2) Otherwise if x has a member y, and y is itself a derived type,
+         this is (x->y)->z, even if an intrinsic operator exists which 
+         can handle (x,z). 
+     (3) If x has no member y or (x->y) is not a derived type but ".y." 
+         is an intrinsic operator (such as ".eq."), this is y(x,z).
+     (4) Lastly if there is no operator ".y." and x has no member "y", it is an
+         error.  
+   It is worth noting that [fortunately] Intel does not support mixed use of
+   member accessors within a single string, nor does it support parenthesised
+   member accesses (therefore neither do we).
+   That is, even if x has component y and y has component z, the following
+   are all syntax errors:  "x%y.z"  "x.y%z"  "(x.y).z"  "(x%y)%z"
+ */
+
 match
-gfc_match_member_sep(/*gfc_symbol *sym*/)
+gfc_match_member_sep(gfc_symbol *sym)
 {
-    /* Tokens which are potentially ambiguous when looking for dot as a
-       member separator. * /
-    static const char *ambig[] = { 
-        ".and.", ".or.", ".eq.", ".xor.", ".true.", ".false."
-    };
-    const char *tok;
-    int toki;
-    locus old_loc;
-    */
+    char name[GFC_MAX_SYMBOL_LEN + 1];
+    locus dot_loc, start_loc;
+    gfc_intrinsic_op iop;
+    match m;
+    gfc_symbol *tsym;
+    gfc_component *c;
 
-    if(gfc_match_char ('%') == MATCH_YES)
+    /* Thank god; '%' is an unambiguous member separator. */
+    if (gfc_match_char ('%') == MATCH_YES)
         return MATCH_YES;
 
-    /* Only continue if the previous symbol is in fact a derived type, we
-       see a dot, and dot member separators are enabled. */
-    if(gfc_option.flag_dec_member_dot && gfc_match_char('.') == MATCH_YES)
-            //&& sym && sym->ts.u.derived != NULL)
-            /* Though we may not know the type yet?
-            || (sym->ts.type != BT_DERIVED && sym->ts.type != BT_CLASS)
-            || !sym->ts.u.derived)
-            */
-        return MATCH_YES;
+    /* Only continue if dot member separators are enabled. */
+    if (!gfc_option.flag_dec_member_dot || !sym)
+        return MATCH_NO;
 
-    // maybe: gfc_find_component(sym->ts.u.derived, name, false, false)
-    return MATCH_NO;
+    tsym = NULL;
 
-    /*
-    old_loc = gfc_current_locus;
-    / * We have to be careful if an identifier beginning with a dot is next. * /
-    for(toki = 0; toki < sizeof(ambig)/sizeof(ambig[0]); ++toki)
+    /* We may be given either a derived type variable or the derived type
+       declaration itself (which actually contains the components); 
+       if this is a member access we need the latter to check components. */
+    if(sym->attr.flavor == FL_DERIVED)
+        tsym = sym;
+    else if(sym->ts.u.derived)
+        tsym = sym->ts.u.derived;
+
+    iop = INTRINSIC_NONE;
+    name[0] = '\0';
+    m = MATCH_NO;
+
+    /* If we have to reject, come back here later. */
+    start_loc = gfc_current_locus;
+
+    /* Look for a component access next. */
+    if (gfc_match_char ('.') != MATCH_YES)
+        return MATCH_NO;
+
+    /* If we accept, come back here. */
+    dot_loc = gfc_current_locus;
+
+    /* Try to match a symbol name following '.' */
+    if (gfc_match_name (name) != MATCH_YES)
     {
-        tok = ambig[toki];
-        / * Dot takes precedence as a member separator, but only if the
-           referenced member exists in the symbol. * /
-        if(gfc_match (tok) == MATCH_YES)
-        {
-
-        }
+        gfc_error ("Expected structure component or operator name "
+                   "after '.' at %C");
+        goto error;
     }
 
-    gfc_assert (gfc_match_char ('.') == MATCH_YES);
+    /* If no dot follows we have "x.y" which must be a component access.
+       Ensure the leading symbol is a derived type variable. */
+    if (gfc_match_char ('.') != MATCH_YES)
+        goto yes;
+
+    /* Now we have a string "x.y.z" which could be a nested member access
+       (x->y)->z or a binary operation y on x and z. */
+
+    /* First use any user-defined operators ".y." */
+    if (gfc_find_uop (name, sym->ns) != NULL)
+        goto no;
+
+    /* Match accesses to existing derived-type components for 
+       derived-type vars. */
+    c = gfc_find_component(tsym, name, false, true);
+    if (c && (c->ts.type == BT_DERIVED || c->ts.type == BT_CLASS))
+        goto yes;
+
+    /* If no such component, intrinsic operators ".y." are the last hope. */
+    gfc_current_locus = start_loc;
+    if (gfc_match_intrinsic_op (&iop) != MATCH_YES
+        || iop == INTRINSIC_NONE)
+    {
+        gfc_error ("'%s' is neither a defined operator nor a "
+                   "structure component in dotted string at %C", name);
+        goto error;
+    }
+    /* .y. is an intrinsic operator, decidedly not a member access. */
+    goto no;
+
+    /* Return keeping the current locus consistent with the match result. */
+error:
+    m = MATCH_ERROR;
+no:
+    gfc_current_locus = start_loc;
+    return m;
+yes:
+    gfc_current_locus = dot_loc;
     return MATCH_YES;
-    */
 }
 
 /* This function scans the current statement counting the opened and closed
