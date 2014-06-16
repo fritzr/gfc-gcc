@@ -377,6 +377,10 @@ fdec
 Fortran
 Enable all DEC/Intel language extensions.
 
+fdec-extended-int
+Fortran
+Enable extended base#value integer constants
+
 fdec-member-dot
 Fortran
 Enable dot (`.`) as a member separator (in addition to the usual `%`).

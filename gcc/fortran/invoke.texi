@@ -115,8 +115,9 @@ by type.  Explanations are in the following sections.
 @item Fortran Language Options
 @xref{Fortran Dialect Options,,Options controlling Fortran dialect}.
 @gccoptlist{-fall-intrinsics -fbackslash -fcray-pointer -fd-lines-as-code @gol
--fd-lines-as-comments -fdec -fdec-member-dot -fdec-structure @gol
--fdefault-double-8 -fdefault-integer-8 -fdefault-real-8 -fdollar-ok @gol
+-fd-lines-as-comments -fdec -fdec-extended-int -fdec-member-dot @gol
+-fdec-structure -fdefault-double-8 -fdefault-integer-8 -fdefault-real-8 @gol
+-fdollar-ok @gol
 -ffixed-line-length-@var{n} -ffixed-line-length-none -ffree-form @gol
 -ffree-line-length-@var{n} -ffree-line-length-none -fimplicit-none @gol
 -finteger-4-integer-8 -fmax-identifier-length -fmodule-private @gol
@@ -235,7 +236,13 @@ Enable all supported Intel / Digital Equipment Corporation (DEC) extensions.
 These extensions are non-standard and typically ancient.
 
 The options enabled by this switch are: @option{-fdec-structure}
-@option{-fdec-member-dot}
+@option{-fdec-member-dot} @option{-fdec-extended-int}
+
+@item -fdec-extended-int
+@opindex @code{fdec-extended-int}
+Enable the DEC extended integer constant format. This format allows integer
+constants with bases between 2 and 36 to be specified in the "base#value"
+format.
 
 @item -fmember-dot
 @opindex @code{fdec-member-dot}
