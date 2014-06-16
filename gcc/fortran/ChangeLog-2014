@@ -1,0 +1,25 @@
+2014-06-16  Fritz Reese  <Reese-Fritz@zai.com>
+
+	* resolve.c (build_default_init_expr): Move core to public function
+	in expr.c.
+	* expr.c (gfc_build_default_init_expr): New public version of
+	build_default_init_expr from resolve.c. Takes only a typespec and
+	locus instead of a symbol.
+	* gfortran.h: Declare gfc_build_default_init_expr.
+	* decl.c: Use gfc_build_default_init_expr in conjunction with
+	-finit-struct and other -finit-* to initialize structure members
+	automatically.
+
+2014-06-11  Fritz Reese  <Reese-Fritz@zai.com>
+
+	* gfortran.h: Add flag_init_derived for -finit-derived.
+	* invoke.texi: Describe -finit-derived.
+	* lang.opt: Add -finit-derived option.
+	* options.c: Set gfc_option.flag_init_derived when switched on.
+
+
+Copyright (C) 2012 Free Software Foundation, Inc.
+
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.
