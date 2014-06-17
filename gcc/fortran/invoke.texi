@@ -246,7 +246,7 @@ format.
 
 @item -fmember-dot
 @opindex @code{fdec-member-dot}
-Enable dot (`.`) as a member separator (in additino to the usual `%`).
+Enable dot (`.`) as a member separator (in addition to the usual `%`).
 
 @item -fdec-structure
 @opindex @code{fdec-structure}
