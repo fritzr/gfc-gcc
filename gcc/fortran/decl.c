@@ -2525,15 +2525,29 @@ done:
 static match
 gfc_match_decl_record(char *name)
 {
-    match m;
+    locus old_loc;
+    old_loc = gfc_current_locus;
 
-    m = gfc_match(" record /%n/", name);
-    if(m == MATCH_YES && !gfc_option.flag_dec_structure) {
-        gfc_error ("RECORD at %C is a DEC extension; re-compile with "
-                   "-fdec-structure to enable");
-        m = MATCH_ERROR;
+    if (gfc_match (" record") == MATCH_YES)
+    {
+        if (!gfc_option.flag_dec_structure)
+        {
+            gfc_current_locus = old_loc;
+            gfc_error ("RECORD at %C is a DEC extension, enable with "
+                       "-fdec-structure");
+            return MATCH_ERROR;
+        }
+        if (gfc_match (" /%n/", name) != MATCH_YES)
+        {
+            gfc_error ("Expected \"/field-name/\" after RECORD at %C");
+            gfc_current_locus = old_loc;
+            return MATCH_ERROR;
+        }
+        return MATCH_YES;
     }
-    return m;
+
+    gfc_current_locus = old_loc;
+    return MATCH_NO;
 }
 
 /* Matches a declaration-type-spec (F03:R502).  If successful, sets the ts
