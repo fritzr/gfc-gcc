@@ -1230,49 +1230,49 @@ gfc_ascii_comp_state(gfc_compile_state c)
     const char *p = "NONE";
     switch(c) {
     case COMP_PROGRAM:
-        p = "PROGRAM";
+        p = "PROGRAM"; break;
     case COMP_MODULE:
-        p = "MODULE";
+        p = "MODULE"; break;
     case COMP_SUBROUTINE:
-        p = "SUBROUTINE";
+        p = "SUBROUTINE"; break;
     case COMP_FUNCTION:
-        p = "FUNCTION";
+        p = "FUNCTION"; break;
     case COMP_BLOCK_DATA:
-        p = "BLOCK DATA";
+        p = "BLOCK DATA"; break;
     case COMP_INTERFACE:
-        p = "INTERFACE";
+        p = "INTERFACE"; break;
     case COMP_DERIVED:
-        p = "DERIVED";
+        p = "DERIVED"; break;
     case COMP_DERIVED_CONTAINS:
-        p = "DERIVED CONTAINS";
+        p = "DERIVED CONTAINS"; break;
     case COMP_STRUCTURE:
-        p = "STRUCTURE";
+        p = "STRUCTURE"; break;
     case COMP_BLOCK:
-        p = "BLOCK";
+        p = "BLOCK"; break;
     case COMP_ASSOCIATE:
-        p = "ASSOCIATE";
+        p = "ASSOCIATE"; break;
     case COMP_IF:
-        p = "IF";
+        p = "IF"; break;
     case COMP_DO:
-        p = "DO";
+        p = "DO"; break;
     case COMP_SELECT:
-        p = "SELECT";
+        p = "SELECT"; break;
     case COMP_FORALL:
-        p = "FORALL";
+        p = "FORALL"; break;
     case COMP_WHERE:
-        p = "WHERE";
+        p = "WHERE"; break;
     case COMP_CONTAINS:
-        p = "CONTAINS";
+        p = "CONTAINS"; break;
     case COMP_ENUM:
-        p = "ENUM";
+        p = "ENUM"; break;
     case COMP_SELECT_TYPE:
-        p = "SELECT TYPE";
+        p = "SELECT TYPE"; break;
     case COMP_OMP_STRUCTURED_BLOCK:
-        p = "OMP STRUCTURED BLOCK";
+        p = "OMP STRUCTURED BLOCK"; break;
     case COMP_CRITICAL:
-        p = "CRITICAL";
+        p = "CRITICAL"; break;
     case COMP_DO_CONCURRENT:
-        p = "CONCURRENT DO";
+        p = "CONCURRENT DO"; break;
     case COMP_NONE:
     default:
         break;
