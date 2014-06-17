@@ -107,6 +107,22 @@ get_kind (int *is_iso_c)
   return (m == MATCH_YES) ? kind : -1;
 }
 
+/* As with gfc_check_digit, but allow any radix in [2,36]. */
+
+static int
+check_digit_extended (char c, int radix)
+{
+  int r = 0;
+  if (radix < 2 || radix > 36)
+      gfc_internal_error ("check_digit_extended(): bad radix");
+  else if (radix <= 10)
+      r = '0' <= c && c < ('0'+radix);
+  else
+      r =    ('0' <= c && c < ('0' +   radix   ))
+          || ('a' <= c && c < ('a' + (radix-10)));
+
+  return r;
+}
 
 /* Given a character and a radix, see if the character is a valid
    digit in that radix.  */
@@ -115,6 +131,9 @@ int
 gfc_check_digit (char c, int radix)
 {
   int r;
+
+  if (gfc_option.flag_dec_extended_int)
+      return check_digit_extended (c, radix);
 
   switch (radix)
     {
@@ -155,6 +174,7 @@ match_digits (int signflag, int radix, char *buffer)
   char c;
 
   length = 0;
+  old_loc = gfc_current_locus;
   c = gfc_next_ascii_char ();
 
   if (signflag && (c == '+' || c == '-'))
@@ -162,12 +182,16 @@ match_digits (int signflag, int radix, char *buffer)
       if (buffer != NULL)
 	*buffer++ = c;
       gfc_gobble_whitespace ();
+      old_loc = gfc_current_locus;
       c = gfc_next_ascii_char ();
       length++;
     }
 
   if (!gfc_check_digit (c, radix))
-    return -1;
+  {
+    length = -1;
+    goto done;
+  }
 
   length++;
   if (buffer != NULL)
@@ -186,8 +210,12 @@ match_digits (int signflag, int radix, char *buffer)
       length++;
     }
 
+done:
   gfc_current_locus = old_loc;
-
+  /* If digit belongs to another radix, we can give some helpful information */
+  if (gfc_option.flag_dec_extended_int && check_digit_extended (c, 36))
+      gfc_error ("Invalid digit '%c' in base %d integer constant at %C",
+                 c, radix);
   return length;
 }
 
@@ -198,25 +226,96 @@ match_digits (int signflag, int radix, char *buffer)
 static match
 match_integer_constant (gfc_expr **result, int signflag)
 {
+  int rlength, radix, sign, extended;
   int length, kind, is_iso_c;
   locus old_loc;
-  char *buffer;
+  char *buffer, *matchbuf, radixbuf[4];
   gfc_expr *e;
 
+  sign = 0; /* Positive */
+  rlength = -1;
+  extended = 0;
+  radix = 10;
   old_loc = gfc_current_locus;
   gfc_gobble_whitespace ();
 
   length = match_digits (signflag, 10, NULL);
+
+  /* Look for a base between 2 and 36 before # (HP 3.2.1). */
+  if (gfc_peek_ascii_char () == '#')
+  {
+      if(!gfc_option.flag_dec_extended_int)
+      {
+          gfc_error ("Extended integer constant at %C is a DEC extension, "
+                     "enable with -fdec-extended-int");
+          gfc_current_locus = old_loc;
+          return MATCH_ERROR;
+      }
+      /* With no leading radix, assume base 16 */
+      extended = 1;
+      rlength = length < 0 ? 0 : length;
+      radix = 16;
+  }
   gfc_current_locus = old_loc;
-  if (length == -1)
+  if (length == -1 && rlength == -1)
     return MATCH_NO;
+
+  /* Handle DEC extended integer constants of the form [s][[base] #]nnn... */
+  if(extended && gfc_option.flag_dec_extended_int)
+  {
+      /* Base must be single-char sign followed by number in [2,36] */
+      if (rlength > 3)
+      {
+          gfc_error ("Base too large in extended integer constant at %C");
+          return MATCH_ERROR;
+      }
+      /* If radix is not present before '#', defaults to hex */
+      if (rlength > 0)
+      {
+          gcc_assert (match_digits (signflag, 10, radixbuf) != -1);
+          radix = atoi (radixbuf);
+          if (radix < 0)
+          {
+              sign = 1;
+              radix = -radix;
+          }
+      }
+      if (radix < 2 || radix > 36)
+      {
+          gfc_current_locus = old_loc;
+          gfc_error ("Base '%d' out of range in extended integer constant "
+                     "at %C", radix);
+          return MATCH_ERROR;
+      }
+      /* Match actual number after # with the chosen valid radix */
+      gcc_assert (gfc_match_char ('#') == MATCH_YES);
+      old_loc = gfc_current_locus;
+      length = match_digits (0, radix, NULL);
+      gfc_current_locus = old_loc;
+      if (length <= 0)
+      {
+          gfc_error ("Base %d constant expected after '#' in extended "
+                     "integer constant at %C", radix);
+          return MATCH_ERROR;
+      }
+      /* Make room for negative sign if present. */
+      if (sign)
+          ++length;
+  }
 
   buffer = (char *) alloca (length + 1);
   memset (buffer, '\0', length + 1);
 
-  gfc_gobble_whitespace ();
+  /* Handle sign specially */
+  matchbuf = buffer;
+  if (sign)
+  {
+      buffer[0] = '-';
+      ++matchbuf;
+  }
 
-  match_digits (signflag, 10, buffer);
+  gfc_gobble_whitespace ();
+  gcc_assert (match_digits (0, radix, matchbuf) > 0);
 
   kind = get_kind (&is_iso_c);
   if (kind == -2)
@@ -233,7 +332,7 @@ match_integer_constant (gfc_expr **result, int signflag)
       return MATCH_ERROR;
     }
 
-  e = gfc_convert_integer (buffer, kind, 10, &gfc_current_locus);
+  e = gfc_convert_integer (buffer, kind, radix, &gfc_current_locus);
   e->ts.is_c_interop = is_iso_c;
 
   if (gfc_range_check (e) != ARITH_OK)
