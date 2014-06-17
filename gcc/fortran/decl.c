@@ -2523,7 +2523,7 @@ done:
 /* Matches a RECORD declaration (DEC extension). */
 
 static match
-gfc_match_decl_record(char *name)
+gfc_match_record_decl(char *name)
 {
     locus old_loc;
     old_loc = gfc_current_locus;
@@ -2725,7 +2725,7 @@ gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
   else
     {
       /* Match RECORD declarations. */
-      m = gfc_match_decl_record(name);
+      m = gfc_match_record_decl(name);
       if(m == MATCH_YES) {
           ts->type = BT_DERIVED;
           goto derived;
