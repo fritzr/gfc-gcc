@@ -93,6 +93,8 @@ gfc_symbol *gfc_new_block;
 
 bool gfc_matching_function;
 
+/* Counter used to give anonymous [nested] structures unique internal names. */
+int gfc_anon_structure_id = 0;
 
 /********************* DATA statement subroutines *********************/
 
@@ -7570,8 +7572,31 @@ gfc_match_structure_decl (void)
     name[0] = '\0';
 
     m = gfc_match (" /%n/", name);
-    if(m != MATCH_YES)
-        return m;
+    if (m != MATCH_YES)
+    {
+        /* Non-nested structure declarations require a structure name. */
+        if (!gfc_is_derived (gfc_current_state ()))
+        {
+            gfc_error ("Structure name expected in non-nested structure "
+                       "declaration at %C");
+            return MATCH_ERROR;
+        }
+        /* This is an anonymous structure; make up a unique name for it
+           (upper-case letters never make it to symbol names from the source).
+           The important thing is initializing the type declaration variable
+           and setting gfc_new_symbol, which is immediately used by
+           parse_structure () and variable_decl () to add fields of this type
+           and add components. */
+        snprintf (name, GFC_MAX_SYMBOL_LEN + 1, "t_ANON$%d", 
+                  gfc_anon_structure_id++);
+    }
+    /* No field list allowed after non-nested structure declaration. */
+    if (!gfc_is_derived (gfc_current_state ()) && gfc_match_eos () != MATCH_YES)
+    {
+        gfc_error ("Field list at %C illegal in non-nested structure "
+                   "declaration");
+        return MATCH_ERROR;
+    }
 
     /* Make sure the name is not the name of an intrinsic type.  */
     if (gfc_is_intrinsic_typename (name))
