@@ -2172,10 +2172,22 @@ parse_structure (void)
         {
         case ST_NONE:
           unexpected_eof ();
+          break;
+
+        /* Nested structure declarations should be captured as ST_DATA_DECL. */
+        case ST_STRUCTURE_DECL:
+          gfc_error ("Missing field list after nested structure declaration "
+                     "at %C");
+          reject_statement ();
+          break;
 
         case ST_DATA_DECL:
           accept_statement (ST_DATA_DECL);
           seen_field = 1;
+          /* The data declaration was a nested/ad-hoc STRUCTURE field */
+          if (gfc_new_block && gfc_new_block != gfc_current_block ()
+                            && gfc_new_block->attr.flavor == FL_DERIVED)
+              parse_structure ();
           break;
 
         case ST_END_STRUCTURE:
@@ -2335,10 +2347,21 @@ parse_derived (void)
 	case ST_NONE:
 	  unexpected_eof ();
 
+        /* Nested structure declarations should be captured as ST_DATA_DECL. */
+        case ST_STRUCTURE_DECL:
+          gfc_error ("Missing field list after nested structure declaration "
+                     "at %C");
+          reject_statement ();
+          break;
+
 	case ST_DATA_DECL:
 	case ST_PROCEDURE:
 	  accept_statement (st);
 	  seen_component = 1;
+          /* The data declaration was a nested/ad-hoc STRUCTURE field */
+          if (gfc_new_block && gfc_new_block != gfc_current_block ()
+                            && gfc_new_block->attr.flavor == FL_DERIVED)
+              parse_structure ();
 	  break;
 
 	case ST_FINAL:

@@ -2731,6 +2731,23 @@ gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
           goto derived;
       }
 
+      /* Match ad-hoc STRUCTURE declarations; only valid within another
+         derived/structure declaration. */
+      m = gfc_match (" structure");
+      if (m == MATCH_YES && gfc_is_derived (gfc_current_state ()))
+      {
+          m = gfc_match_structure_decl ();
+          if (m == MATCH_YES)
+          {
+              /* gfc_new_block updated by match_structure_decl() */
+              name[0] = '\0';
+              strcpy (name, gfc_new_block->name);
+              ts->type = BT_DERIVED;
+              /* ts->u.derived = gfc_new_block */
+              goto derived;
+          }
+      }
+
       /* Match CLASS declarations.  */
       m = gfc_match (" class ( * )");
       if (m == MATCH_ERROR)
@@ -7522,7 +7539,18 @@ gfc_get_type_attr_spec (symbol_attribute *attr, char *name)
 
 /* Match the beginning of a structure declaration. This is similar to
    matching the beginning of a derived type declaration, but the resulting
-   symbol has no access control or other interesting attributes. */
+   symbol has no access control or other interesting attributes. 
+   
+   If we are inside another structure declaration, we expect a field list
+   after the name of the structure. For example, in the following structure,
+   appointments have members START and END which are of ad-hoc structure type.
+   STRUCTURE /APPOINTMENT/ 
+     STRUCTURE /TIME/ START, END
+       INTEGER*1 HOUR, MINUTE, SECOND
+     END STRUCTURE
+     ...
+   END STRUCTURE
+   */
 
 match
 gfc_match_structure_decl (void)
@@ -7539,13 +7567,9 @@ gfc_match_structure_decl (void)
         return MATCH_ERROR;
     }
 
-    /* Can't declare a structure within another structure. */
-    if (gfc_is_derived (gfc_current_state ()))
-        return MATCH_NO;
-
     name[0] = '\0';
 
-    m = gfc_match (" /%n/%t", name);
+    m = gfc_match (" /%n/", name);
     if(m != MATCH_YES)
         return m;
 
@@ -7614,6 +7638,9 @@ gfc_match_structure_decl (void)
     if (!sym->hash_value)
         /* Set the hash for the compound name for this type.  */
         sym->hash_value = gfc_hash_value (sym);
+
+    /* Zero components to start; may be updated as comp. decl. are found. */
+    sym->attr.zero_comp = 1;
 
     gfc_new_block = sym;
 
