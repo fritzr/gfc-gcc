@@ -2297,12 +2297,6 @@ parse_structure (void)
                    "not have a codimension as %s at %L has a codimension or a "
                    "coarray subcomponent)", lock_comp->name, &lock_comp->loc,
                    sym->name, c->name, &c->loc);
-
-      /* Look for private components.  */
-      if (sym->component_access == ACCESS_PRIVATE
-          || c->attr.access == ACCESS_PRIVATE
-          || (c->ts.type == BT_DERIVED && c->ts.u.derived->attr.private_comp))
-        sym->attr.private_comp = 1;
     }
 
     if (!seen_field)
