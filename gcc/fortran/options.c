@@ -56,6 +56,7 @@ set_default_std_flags (void)
 static void
 set_dec_flags (int value)
 {
+    if (value) gfc_option.flag_dollar_ok = 1;
     gfc_option.flag_dec_extended_int = value;
     gfc_option.flag_dec_structure  = value;
     gfc_option.flag_dec_member_dot = value;

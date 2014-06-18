@@ -235,8 +235,8 @@ comment lines.
 Enable all supported Intel / Digital Equipment Corporation (DEC) extensions.
 These extensions are non-standard and typically ancient.
 
-The options enabled by this switch are: @option{-fdec-structure}
-@option{-fdec-member-dot} @option{-fdec-extended-int}
+The options enabled by this switch are: @option{-fdollar-ok} 
+@option{-fdec-structure} @option{-fdec-member-dot} @option{-fdec-extended-int}
 
 @item -fdec-extended-int
 @opindex @code{fdec-extended-int}
