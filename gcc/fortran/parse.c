@@ -227,6 +227,7 @@ decode_specification_statement (void)
 
     case 's':
       match ("save", gfc_match_save, ST_ATTR_DECL);
+      match ("structure", gfc_match_structure_decl, ST_STRUCTURE_DECL);
       break;
 
     case 't':
