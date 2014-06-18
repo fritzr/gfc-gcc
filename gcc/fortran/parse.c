@@ -2174,7 +2174,6 @@ parse_structure (void)
           unexpected_eof ();
 
         case ST_DATA_DECL:
-        case ST_PROCEDURE:
           accept_statement (st);
           seen_field = 1;
           break;
