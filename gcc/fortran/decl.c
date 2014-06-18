@@ -2720,13 +2720,13 @@ gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
   if (matched_type)
     m = gfc_match_char (')');
 
-  if(m == MATCH_YES)
+  if (m == MATCH_YES)
       ts->type = BT_DERIVED;
   else
     {
       /* Match RECORD declarations. */
-      m = gfc_match_record_decl(name);
-      if(m == MATCH_YES) {
+      m = gfc_match_record_decl (name);
+      if (m == MATCH_YES) {
           ts->type = BT_DERIVED;
           goto derived;
       }
@@ -7525,7 +7525,7 @@ gfc_get_type_attr_spec (symbol_attribute *attr, char *name)
    symbol has no access control or other interesting attributes. */
 
 match
-gfc_match_structure_decl(void)
+gfc_match_structure_decl (void)
 {
     char name[GFC_MAX_SYMBOL_LEN + 1];
     gfc_symbol *sym, *gensym;
@@ -7534,8 +7534,8 @@ gfc_match_structure_decl(void)
 
     if(!gfc_option.flag_dec_structure)
     {
-        gfc_error ("STRUCTURE at %C is a DEC extension; re-compile with "
-                   "-fdec-structure to enable");
+        gfc_error ("STRUCTURE at %C is a DEC extension, enable with "
+                   "-fdec-structure");
         return MATCH_ERROR;
     }
 

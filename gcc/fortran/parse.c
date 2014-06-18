@@ -2155,7 +2155,7 @@ parse_structure (void)
     /* STRUCTURE is a DEC extension. */
     if(gfc_notify_std (GFC_STD_GNU, "STRUCTURE declaration at %C") == FAILURE)
     {
-        reject_statement();
+        reject_statement ();
         return;
     }
 
@@ -2174,7 +2174,7 @@ parse_structure (void)
           unexpected_eof ();
 
         case ST_DATA_DECL:
-          accept_statement (st);
+          accept_statement (ST_DATA_DECL);
           seen_field = 1;
           break;
 
