@@ -7587,7 +7587,7 @@ gfc_match_structure_decl (void)
            and setting gfc_new_symbol, which is immediately used by
            parse_structure () and variable_decl () to add fields of this type
            and add components. */
-        snprintf (name, GFC_MAX_SYMBOL_LEN + 1, "t_ANON$%d", 
+        snprintf (name, GFC_MAX_SYMBOL_LEN + 1, "t_STRUCT$%d", 
                   gfc_anon_structure_id++);
     }
     /* No field list allowed after non-nested structure declaration. */
@@ -7663,6 +7663,9 @@ gfc_match_structure_decl (void)
     if (!sym->hash_value)
         /* Set the hash for the compound name for this type.  */
         sym->hash_value = gfc_hash_value (sym);
+
+    /* Structures always act like derived-types with the SEQUENCE attribute */
+    gfc_add_sequence (&sym->attr, sym->name, NULL);
 
     /* Zero components to start; may be updated as comp. decl. are found. */
     sym->attr.zero_comp = 1;
