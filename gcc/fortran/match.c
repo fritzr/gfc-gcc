@@ -432,6 +432,219 @@ gfc_match_eos (void)
   return (flag) ? MATCH_YES : MATCH_NO;
 }
 
+/* As with gfc_check_digit, but allow any radix in [2,36]. */
+
+static int
+check_digit_extended (char c, int radix)
+{
+  int r = 0;
+  if (radix < 2 || radix > 36)
+      gfc_internal_error ("check_digit_extended(): bad radix");
+  else if (radix <= 10)
+      r = '0' <= c && c < ('0'+radix);
+  else
+      r =    ('0' <= c && c < ('0' +   radix   ))
+          || ('a' <= c && c < ('a' + (radix-10)));
+
+  return r;
+}
+
+/* Given a character and a radix, see if the character is a valid
+   digit in that radix.  */
+
+int
+gfc_check_digit (char c, int radix)
+{
+  int r;
+
+  if (gfc_option.flag_dec_extended_int)
+      return check_digit_extended (c, radix);
+
+  switch (radix)
+    {
+    case 2:
+      r = ('0' <= c && c <= '1');
+      break;
+
+    case 8:
+      r = ('0' <= c && c <= '7');
+      break;
+
+    case 10:
+      r = ('0' <= c && c <= '9');
+      break;
+
+    case 16:
+      r = ISXDIGIT (c);
+      break;
+
+    default:
+      gfc_internal_error ("gfc_check_digit(): bad radix");
+    }
+
+  return r;
+}
+
+/* Matches '+' or '-', and sets sign to 1 or -1 respectively if not NULL. */
+
+match
+gfc_match_sign (int *sign)
+{
+    match m;
+    if ((m = gfc_match_char ('+')) == MATCH_YES && sign)
+        *sign = 1;
+    else if ((m = gfc_match_char ('-')) == MATCH_YES && sign)
+        *sign = -1;
+    return m;
+}
+
+/* Match a radix as a base 10 number between 2 and 36. On MATCH_YES set
+   *radixp to the result if not NULL. (If NULL, still matches a radix.) */
+
+match
+gfc_match_radix (int *radixp)
+{
+    char radixbuf[3] = {'\0', '\0', '\0'};
+    locus old_loc;
+    int length, radix;
+    match m;
+
+    /* Get the length of a potential radix. */
+    old_loc = gfc_current_locus;
+    m = gfc_match_literal_int (NULL, 10, &length);
+    if (m != MATCH_YES)
+        return m;
+    gfc_current_locus = old_loc;
+
+    /* Base can't have more than two digits. */
+    if (length > 2)
+    {
+        gfc_error ("Base too large at %C");
+        return MATCH_ERROR;
+    }
+
+    gcc_assert (gfc_match_literal_int (radixbuf, 10, NULL) == MATCH_YES);
+    radix = atoi(radixbuf);
+
+    if (radix < 2 || radix > 36)
+    {
+        gfc_error ("Base '%d' out of range at %C", radix);
+        return MATCH_ERROR;
+    }
+
+    if (radixp)
+        *radixp = atoi (radixbuf);
+
+    return MATCH_YES;
+}
+
+/* Match the digit string part of an integer. If the buffer 
+   is NULL, we just count characters for the resolution pass returned
+   in *cnt (if not NULL). Returns whether an integer was successfully matched
+   using the given radix. */
+
+match
+gfc_match_literal_int (char *buffer, int radix, int *cnt)
+{
+  locus old_loc;
+  int length;
+  char c;
+  match m;
+
+  length = 0;
+  m = MATCH_YES;
+  old_loc = gfc_current_locus;
+  c = gfc_next_ascii_char ();
+
+  if (!gfc_check_digit (c, radix))
+  {
+    length = -1;
+    m = MATCH_NO;
+    goto done;
+  }
+
+  length++;
+  if (buffer != NULL)
+    *buffer++ = c;
+
+  for (;;)
+    {
+      old_loc = gfc_current_locus;
+      c = gfc_next_ascii_char ();
+
+      if (!gfc_check_digit (c, radix))
+	break;
+
+      if (buffer != NULL)
+	*buffer++ = c;
+      length++;
+    }
+
+
+done:
+  gfc_current_locus = old_loc;
+  if (cnt)
+      *cnt = length;
+  /* If digit belongs to another radix, we can give some helpful information */
+  if (gfc_option.flag_dec_extended_int && check_digit_extended (c, 36))
+      gfc_error ("Invalid digit '%c' in base %d integer constant at %C",
+                 c, radix);
+  return m;
+}
+
+/* Match a DEC extended 'base#value' integer if -fdec-extended-int is
+   enabled. 
+   On MATCH_YES, if not NULL:
+     buffer -> the value string
+     *radix -> the radix of the value
+     *cnt   -> the length of the value string */
+
+match
+gfc_match_extended_integer (char *buffer, int *radix, int *cnt)
+{
+  match m;
+  int base, length;
+  locus old_loc;
+  
+  base = 10;
+  old_loc = gfc_current_locus;
+  m = gfc_match_literal_int (buffer, 10, &length);
+
+  /* If we see a '#' this is an extended base#val int; otherwise the number we
+     just matched is the number. */
+  if (gfc_peek_ascii_char () == '#' && gfc_option.flag_dec_extended_int)
+  {
+      gfc_current_locus = old_loc;
+      base = 16;
+      /* If no radix is found we default to 16. Out-of-range is an error. */
+      if (gfc_match_radix (&base) == MATCH_ERROR)
+          return MATCH_ERROR;
+      gcc_assert (gfc_match_char ('#') == MATCH_YES);
+
+      /* Buffer was set by matching the radix earlier; clear it. */
+      if (buffer)
+          memset (buffer, '\0', length + 1);
+      old_loc = gfc_current_locus;
+      m = gfc_match_literal_int (buffer, base, NULL);
+      if (m != MATCH_YES)
+      {
+          gfc_current_locus = old_loc;
+          gfc_error ("Expected base %d integer after '#' in extended integer "
+                     "constant at %C", base);
+          return MATCH_ERROR;
+      }
+  }
+
+  if (m == MATCH_YES)
+  {
+      if (radix)
+          *radix = base;
+      if (cnt)
+          *cnt = length;
+  }
+
+  return m;
+}
 
 /* Match a literal integer on the input, setting the value on
    MATCH_YES.  Literal ints occur in kind-parameters as well as
@@ -441,53 +654,39 @@ gfc_match_eos (void)
 match
 gfc_match_small_literal_int (int *value, int *cnt)
 {
-  locus old_loc;
-  char c;
-  int i, j;
+    /* Largest number is "99,999,999"; in base 2 is 27 digits */
+    char buffer[28];
+    int v, length, radix;
+    locus old_loc;
+    match m;
 
-  old_loc = gfc_current_locus;
+    v = -1;
+    old_loc = gfc_current_locus;
+    gfc_gobble_whitespace ();
+    m = gfc_match_extended_integer (NULL, &radix, &length);
+    gfc_current_locus = old_loc;
+    if (m != MATCH_YES)
+        return m;
 
-  *value = -1;
-  gfc_gobble_whitespace ();
-  c = gfc_next_ascii_char ();
-  if (cnt)
-    *cnt = 0;
-
-  if (!ISDIGIT (c))
+    if ((unsigned)(length+1) < (sizeof (buffer) / sizeof (buffer[0])))
     {
-      gfc_current_locus = old_loc;
-      return MATCH_NO;
+        memset (buffer, '\0', sizeof (buffer));
+        gcc_assert (gfc_match_extended_integer (buffer, NULL, NULL)
+                     == MATCH_YES);
+        v = strtol (buffer, NULL, radix);
+    }
+    if (v < 0 || v > 99999999)
+    {
+        gfc_error ("Integer too large at %C");
+        return MATCH_ERROR;
     }
 
-  i = c - '0';
-  j = 1;
-
-  for (;;)
-    {
-      old_loc = gfc_current_locus;
-      c = gfc_next_ascii_char ();
-
-      if (!ISDIGIT (c))
-	break;
-
-      i = 10 * i + c - '0';
-      j++;
-
-      if (i > 99999999)
-	{
-	  gfc_error ("Integer too large at %C");
-	  return MATCH_ERROR;
-	}
-    }
-
-  gfc_current_locus = old_loc;
-
-  *value = i;
-  if (cnt)
-    *cnt = j;
-  return MATCH_YES;
+    if (value)
+        *value = v;
+    if (cnt)
+        *cnt = length;
+    return MATCH_YES;
 }
-
 
 /* Match a small, constant integer expression, like in a kind
    statement.  On MATCH_YES, 'value' is set.  */
