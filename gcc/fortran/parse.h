@@ -27,7 +27,7 @@ typedef enum
 {
   COMP_NONE, COMP_PROGRAM, COMP_MODULE, COMP_SUBROUTINE, COMP_FUNCTION,
   COMP_BLOCK_DATA, COMP_INTERFACE, COMP_DERIVED, COMP_DERIVED_CONTAINS,
-  COMP_STRUCTURE,
+  COMP_STRUCTURE, COMP_UNION, COMP_MAP,
   COMP_BLOCK, COMP_ASSOCIATE, COMP_IF,
   COMP_DO, COMP_SELECT, COMP_FORALL, COMP_WHERE, COMP_CONTAINS, COMP_ENUM,
   COMP_SELECT_TYPE, COMP_OMP_STRUCTURED_BLOCK, COMP_CRITICAL, COMP_DO_CONCURRENT
@@ -62,7 +62,7 @@ extern gfc_state_data *gfc_state_stack;
 
 /* STRUCTURE and TYPE are treated similarly, so these are common checks. */
 #define gfc_is_derived(s) \
-    (((s) == COMP_DERIVED) || ((s) == COMP_STRUCTURE))
+    (((s) == COMP_DERIVED) || ((s) == COMP_STRUCTURE) || ((s) == COMP_MAP))
 
 int gfc_check_do_variable (gfc_symtree *);
 gfc_try gfc_find_state (gfc_compile_state);

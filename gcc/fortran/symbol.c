@@ -40,6 +40,7 @@ const mstring flavors[] =
   minit ("VARIABLE", FL_VARIABLE), minit ("PARAMETER", FL_PARAMETER),
   minit ("LABEL", FL_LABEL), minit ("PROCEDURE", FL_PROCEDURE),
   minit ("DERIVED", FL_DERIVED), minit ("NAMELIST", FL_NAMELIST),
+  minit ("UNION", FL_UNION),
   minit (NULL, -1)
 };
 

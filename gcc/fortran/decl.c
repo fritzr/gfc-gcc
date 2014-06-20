@@ -96,6 +96,9 @@ bool gfc_matching_function;
 /* Counter used to give anonymous [nested] structures unique internal names. */
 int gfc_anon_structure_id = 0;
 
+/* Counter used to give unique internal names to map declarations. */
+int gfc_map_id = 0;
+
 /********************* DATA statement subroutines *********************/
 
 static bool in_match_data = false;
@@ -6061,6 +6064,18 @@ gfc_match_end (gfc_statement *st)
       eos_ok = 0;
       break;
 
+    case COMP_MAP:
+      *st = ST_END_MAP;
+      target = " map";
+      eos_ok = 0;
+      break;
+
+    case COMP_UNION:
+      *st = ST_END_UNION;
+      target = " union";
+      eos_ok = 0;
+      break;
+
     case COMP_STRUCTURE:
       *st = ST_END_STRUCTURE;
       target = " structure";
@@ -7537,6 +7552,96 @@ gfc_get_type_attr_spec (symbol_attribute *attr, char *name)
 
   /* If we get here, something matched.  */
   return MATCH_YES;
+}
+
+match
+gfc_match_map (void)
+{
+    char name[GFC_MAX_SYMBOL_LEN + 1];
+    gfc_symbol *sym, *gensym;
+    gfc_interface *intr = NULL, *head;
+    locus old_loc;
+
+    old_loc = gfc_current_locus;
+
+    if (gfc_current_state () != COMP_UNION)
+    {
+        gfc_current_locus = old_loc;
+        gfc_error ("MAP statement at %C illegal outside of union declaration");
+        return MATCH_ERROR;
+    }
+    if (gfc_match_eos () != MATCH_YES)
+    {
+        gfc_error ("Expected end of statement at %C after MAP statement");
+        gfc_current_locus = old_loc;
+        return MATCH_ERROR;
+    }
+
+    /* Make up a unique name for the map to store it in the symbol table. */
+    snprintf (name, GFC_MAX_SYMBOL_LEN + 1, "t_MAP$%d", gfc_map_id++);
+
+    if (gfc_get_symbol (name, NULL, &gensym))
+        return MATCH_ERROR;
+
+    /* Use upper case to save the actual derived-type symbol.  */
+    gfc_get_symbol (gfc_get_string ("%c%s",
+                    (char) TOUPPER ((unsigned char) gensym->name[0]),
+                    &gensym->name[1]), NULL, &sym);
+    sym->name = gfc_get_string (gensym->name);
+    head = gensym->generic;
+    intr = gfc_get_interface ();
+    intr->sym = sym;
+    intr->where = gfc_current_locus;
+    intr->sym->declared_at = gfc_current_locus;
+    intr->next = head;
+    gensym->generic = intr;
+    gensym->attr.if_source = IFSRC_DECL;
+
+    if (sym->attr.flavor != FL_DERIVED 
+        && gfc_add_flavor (&sym->attr, FL_DERIVED, sym->name, NULL) == FAILURE)
+      return MATCH_ERROR;
+
+    /* Construct the f2k_derived namespace if it is not yet there.  */
+    if (!sym->f2k_derived)
+        sym->f2k_derived = gfc_get_namespace (NULL, 0);
+
+    if (!sym->hash_value)
+        /* Set the hash for the compound name for this type.  */
+        sym->hash_value = gfc_hash_value (sym);
+
+    /* Structures always act like derived-types with the SEQUENCE attribute */
+    gfc_add_sequence (&sym->attr, sym->name, NULL);
+
+    /* Zero components to start; may be updated as comp. decl. are found. */
+    sym->attr.zero_comp = 1;
+
+    gfc_new_block = sym;
+
+    return MATCH_YES;
+}
+
+match
+gfc_match_union (void)
+{
+    locus old_loc;
+
+    old_loc = gfc_current_locus;
+
+    if (!gfc_is_derived (gfc_current_state ()))
+    {
+        gfc_current_locus = old_loc;
+        gfc_error ("UNION statement at %C illegal outside of structure "
+                   "declaration");
+        return MATCH_ERROR;
+    }
+    if (gfc_match_eos () != MATCH_YES)
+    {
+        gfc_error ("Expected end of statement at %C after UNION statement");
+        gfc_current_locus = old_loc;
+        return MATCH_ERROR;
+    }
+
+    return MATCH_YES;
 }
 
 /* Match the beginning of a structure declaration. This is similar to

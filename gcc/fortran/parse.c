@@ -455,6 +455,7 @@ decode_statement (void)
       break;
 
     case 'm':
+      match ("map", gfc_match_map, ST_MAP);
       match ("module% procedure", gfc_match_modproc, ST_MODULE_PROC);
       match ("module", gfc_match_module, ST_MODULE);
       break;
@@ -507,6 +508,7 @@ decode_statement (void)
       break;
 
     case 'u':
+      match ("union", gfc_match_union, ST_UNION);
       match ("unlock", gfc_match_unlock, ST_UNLOCK);
       break;
 
@@ -1246,6 +1248,10 @@ gfc_ascii_comp_state(gfc_compile_state c)
         p = "DERIVED"; break;
     case COMP_DERIVED_CONTAINS:
         p = "DERIVED CONTAINS"; break;
+    case COMP_UNION:
+        p = "UNION"; break;
+    case COMP_MAP:
+        p = "MAP"; break;
     case COMP_STRUCTURE:
         p = "STRUCTURE"; break;
     case COMP_BLOCK:
@@ -1345,6 +1351,12 @@ gfc_ascii_statement (gfc_statement st)
     case ST_DEALLOCATE:
       p = "DEALLOCATE";
       break;
+    case ST_MAP:
+      p = "MAP";
+      break;
+    case ST_UNION:
+      p = "UNION";
+      break;
     case ST_STRUCTURE_DECL:
       p = "STRUCTURE";
       break;
@@ -1410,6 +1422,12 @@ gfc_ascii_statement (gfc_statement st)
       break;
     case ST_END_STRUCTURE:
       p = "END STRUCTURE";
+      break;
+    case ST_END_UNION:
+      p = "END UNION";
+      break;
+    case ST_END_MAP:
+      p = "END MAP";
       break;
     case ST_END_TYPE:
       p = "END TYPE";
@@ -2141,7 +2159,61 @@ error:
   return error_flag;
 }
 
-/* Parse a structure declaration. */
+static void parse_map (void);
+
+/* Parse a union component definition within a structure/derived-type 
+   definition. */
+
+static void
+parse_union (void)
+{
+    int compiling;
+    gfc_statement st;
+    gfc_state_data s;
+    gfc_component *c;
+
+    /* TODO: Initialize a component and add it to the parent block */
+
+    accept_statement(ST_UNION);
+    push_state (&s, COMP_UNION, gfc_current_block ());
+
+    compiling = 1;
+    gfc_warning_now ("parsing union");
+
+    while (compiling)
+    {
+      st = next_statement ();
+      /* Only MAP declarations valid within a union. */
+      switch (st)
+        {
+        case ST_NONE:
+          unexpected_eof ();
+
+        case ST_MAP:
+          accept_statement (ST_MAP);
+          parse_map ();
+          /* gfc_add_map (c, gfc_new_block); */
+          break;
+
+        case ST_END_UNION:
+          compiling = 0;
+          accept_statement (ST_END_UNION);
+          break;
+
+        default:
+          gfc_error ("Unexpected statement at %C; only MAP blocks are valid in"
+                     " a UNION block");
+          reject_statement ();
+          break;
+        }
+    }
+    /* TODO: Post-processing on the resulting component including setting up
+       common storage areas for each map */
+
+    pop_state ();
+}
+
+/* Parse a structure definition. */
 
 static void
 parse_structure (void)
@@ -2179,6 +2251,11 @@ parse_structure (void)
           gfc_error ("Missing field list after nested structure declaration "
                      "at %C");
           reject_statement ();
+          break;
+
+        case ST_UNION:
+          accept_statement (ST_UNION);
+          parse_union ();
           break;
 
         case ST_DATA_DECL:
@@ -2316,6 +2393,192 @@ parse_structure (void)
 
     pop_state ();
 
+}
+
+/* Parse a map definition within a union. Similar to a structure definition
+   itself. */
+
+static void
+parse_map (void)
+{
+    int compiling_type, seen_field;
+    gfc_statement st;
+    gfc_state_data s;
+    gfc_symbol *sym;
+    gfc_component *c, *lock_comp = NULL;
+
+    /* MAP is a DEC extension. */
+    if(gfc_notify_std (GFC_STD_GNU, "MAP declaration at %C") == FAILURE)
+    {
+        reject_statement ();
+        return;
+    }
+
+    gfc_warning_now ("parsing map");
+
+    accept_statement(ST_MAP);
+    push_state (&s, COMP_MAP, gfc_new_block);
+
+    gfc_new_block->component_access = ACCESS_PUBLIC;
+    compiling_type = 1;
+
+    while (compiling_type)
+    {
+      st = next_statement ();
+      switch (st)
+        {
+        case ST_NONE:
+          unexpected_eof ();
+
+        /* Nested structure declarations should be captured as ST_DATA_DECL. */
+        case ST_STRUCTURE_DECL:
+          gfc_error ("Missing field list after nested structure declaration "
+                     "at %C");
+          reject_statement ();
+          break;
+
+        case ST_UNION:
+          accept_statement (ST_UNION);
+          parse_union ();
+          break;
+
+        case ST_DATA_DECL:
+          accept_statement (ST_DATA_DECL);
+          seen_field = 1;
+          /* The data declaration was a nested/ad-hoc STRUCTURE field */
+          if (gfc_new_block && gfc_new_block != gfc_current_block ()
+                            && gfc_new_block->attr.flavor == FL_DERIVED)
+              parse_structure ();
+          break;
+
+        case ST_END_MAP:
+          compiling_type = 0;
+          accept_statement (ST_END_MAP);
+          break;
+
+        default:
+          unexpected_statement (st);
+          break;
+        }
+    }
+
+    /* need to verify that all fields of the derived type are
+    * interoperable with C if the type is declared to be bind(c)
+    */
+    sym = gfc_current_block ();
+    for (c = sym->components; c; c = c->next)
+    {
+      bool coarray, lock_type, allocatable, pointer;
+      coarray = lock_type = allocatable = pointer = false;
+
+      /* Look for allocatable components.  */
+      if (c->attr.allocatable
+          || (c->ts.type == BT_CLASS && c->attr.class_ok
+              && CLASS_DATA (c)->attr.allocatable)
+          || (c->ts.type == BT_DERIVED && !c->attr.pointer
+              && c->ts.u.derived->attr.alloc_comp))
+        {
+          allocatable = true;
+          sym->attr.alloc_comp = 1;
+        }
+
+      /* Look for pointer components.  */
+      if (c->attr.pointer
+          || (c->ts.type == BT_CLASS && c->attr.class_ok
+              && CLASS_DATA (c)->attr.class_pointer)
+          || (c->ts.type == BT_DERIVED && c->ts.u.derived->attr.pointer_comp))
+        {
+          pointer = true;
+          sym->attr.pointer_comp = 1;
+        }
+
+      /* Look for procedure pointer components.  */
+      if (c->attr.proc_pointer
+          || (c->ts.type == BT_DERIVED
+              && c->ts.u.derived->attr.proc_pointer_comp))
+        sym->attr.proc_pointer_comp = 1;
+
+      /* Looking for coarray components.  */
+      if (c->attr.codimension
+          || (c->ts.type == BT_CLASS && c->attr.class_ok
+              && CLASS_DATA (c)->attr.codimension))
+        {
+          coarray = true;
+          sym->attr.coarray_comp = 1;
+        }
+     
+      if (c->ts.type == BT_DERIVED && c->ts.u.derived->attr.coarray_comp)
+        {
+          coarray = true;
+          if (!pointer && !allocatable)
+            sym->attr.coarray_comp = 1;
+        }
+
+      /* Looking for lock_type components.  */
+      if ((c->ts.type == BT_DERIVED
+              && c->ts.u.derived->from_intmod == INTMOD_ISO_FORTRAN_ENV
+              && c->ts.u.derived->intmod_sym_id == ISOFORTRAN_LOCK_TYPE)
+          || (c->ts.type == BT_CLASS && c->attr.class_ok
+              && CLASS_DATA (c)->ts.u.derived->from_intmod
+                 == INTMOD_ISO_FORTRAN_ENV
+              && CLASS_DATA (c)->ts.u.derived->intmod_sym_id
+                 == ISOFORTRAN_LOCK_TYPE)
+          || (c->ts.type == BT_DERIVED && c->ts.u.derived->attr.lock_comp
+              && !allocatable && !pointer))
+        {
+          lock_type = 1;
+          lock_comp = c;
+          sym->attr.lock_comp = 1;
+        }
+
+      /* Check for F2008, C1302 - and recall that pointers may not be coarrays
+         (5.3.14) and that subobjects of coarray are coarray themselves (2.4.7),
+         unless there are nondirect [allocatable or pointer] components
+         involved (cf. 1.3.33.1 and 1.3.33.3).  */
+
+      if (pointer && !coarray && lock_type)
+        gfc_error ("Component %s at %L of type LOCK_TYPE must have a "
+                   "codimension or be a subcomponent of a coarray, "
+                   "which is not possible as the component has the "
+                   "pointer attribute", c->name, &c->loc);
+      else if (pointer && !coarray && c->ts.type == BT_DERIVED
+               && c->ts.u.derived->attr.lock_comp)
+        gfc_error ("Pointer component %s at %L has a noncoarray subcomponent "
+                   "of type LOCK_TYPE, which must have a codimension or be a "
+                   "subcomponent of a coarray", c->name, &c->loc);
+
+      if (lock_type && allocatable && !coarray)
+        gfc_error ("Allocatable component %s at %L of type LOCK_TYPE must have "
+                   "a codimension", c->name, &c->loc);
+      else if (lock_type && allocatable && c->ts.type == BT_DERIVED
+               && c->ts.u.derived->attr.lock_comp)
+        gfc_error ("Allocatable component %s at %L must have a codimension as "
+                   "it has a noncoarray subcomponent of type LOCK_TYPE",
+                   c->name, &c->loc);
+
+      if (sym->attr.coarray_comp && !coarray && lock_type)
+        gfc_error ("Noncoarray component %s at %L of type LOCK_TYPE or with "
+                   "subcomponent of type LOCK_TYPE must have a codimension or "
+                   "be a subcomponent of a coarray. (Variables of type %s may "
+                   "not have a codimension as already a coarray "
+                   "subcomponent exists)", c->name, &c->loc, sym->name);
+
+      if (sym->attr.lock_comp && coarray && !lock_type)
+        gfc_error ("Noncoarray component %s at %L of type LOCK_TYPE or with "
+                   "subcomponent of type LOCK_TYPE must have a codimension or "
+                   "be a subcomponent of a coarray. (Variables of type %s may "
+                   "not have a codimension as %s at %L has a codimension or a "
+                   "coarray subcomponent)", lock_comp->name, &lock_comp->loc,
+                   sym->name, c->name, &c->loc);
+    }
+
+    if (!seen_field)
+    sym->attr.zero_comp = 1;
+
+    /* So parse_union can add this structure to its list of maps */
+    /* gfc_new_block = gfc_current_block (); */
+
+    pop_state ();
 }
 
 /* Parse a derived type.  */
