@@ -338,6 +338,8 @@ gfc_copy_expr (gfc_expr *p)
 	case BT_ASSUMED:
 	  break;		/* Already done.  */
 
+        /* TODO: case BT_UNION: */
+
 	case BT_PROCEDURE:
         case BT_VOID:
            /* Should never be reached.  */
