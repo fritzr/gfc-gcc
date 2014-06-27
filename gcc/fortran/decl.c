@@ -93,12 +93,6 @@ gfc_symbol *gfc_new_block;
 
 bool gfc_matching_function;
 
-/* Counter used to give anonymous [nested] structures unique internal names. */
-int gfc_anon_structure_id = 0;
-
-/* Counter used to give unique internal names to map declarations. */
-int gfc_map_id = 0;
-
 /********************* DATA statement subroutines *********************/
 
 static bool in_match_data = false;
@@ -491,6 +485,15 @@ match_old_style_init (const char *name)
   gfc_symtree *st;
   gfc_symbol *sym;
   gfc_data *newdata;
+
+  /* This function is called "greedily" (when the following statement /must/
+     be an old-style initializer) therefore we can fail safely. */
+  if (gfc_is_derived (gfc_current_state ()))
+  {
+      gfc_error ("Unsupported old-style initialization in derived-type "
+                 "component declaration at %C");
+      return MATCH_ERROR;
+  }
 
   /* Set up data structure to hold initializers.  */
   gfc_find_sym_tree (name, NULL, 0, &st);
@@ -7557,6 +7560,8 @@ gfc_get_type_attr_spec (symbol_attribute *attr, char *name)
 match
 gfc_match_map (void)
 {
+    /* Counter used to give unique internal names to map declarations. */
+    static unsigned int gfc_map_id = 0;
     char name[GFC_MAX_SYMBOL_LEN + 1];
     gfc_symbol *sym, *gensym;
     gfc_interface *intr = NULL, *head;
@@ -7578,7 +7583,7 @@ gfc_match_map (void)
     }
 
     /* Make up a unique name for the map to store it in the symbol table. */
-    snprintf (name, GFC_MAX_SYMBOL_LEN + 1, "t_MAP$%d", gfc_map_id++);
+    snprintf (name, GFC_MAX_SYMBOL_LEN + 1, "mM$%u", gfc_map_id++);
 
     if (gfc_get_symbol (name, NULL, &gensym))
         return MATCH_ERROR;
@@ -7588,6 +7593,7 @@ gfc_match_map (void)
                     (char) TOUPPER ((unsigned char) gensym->name[0]),
                     &gensym->name[1]), NULL, &sym);
     sym->name = gfc_get_string (gensym->name);
+    sym->is_map = 1;
     head = gensym->generic;
     intr = gfc_get_interface ();
     intr->sym = sym;
@@ -7662,6 +7668,8 @@ gfc_match_union (void)
 match
 gfc_match_structure_decl (void)
 {
+    /* Counter used to give anonymous structures unique internal names. */
+    int gfc_structure_id = 0;
     char name[GFC_MAX_SYMBOL_LEN + 1];
     gfc_symbol *sym, *gensym;
     match m;
@@ -7692,8 +7700,7 @@ gfc_match_structure_decl (void)
            and setting gfc_new_symbol, which is immediately used by
            parse_structure () and variable_decl () to add fields of this type
            and add components. */
-        snprintf (name, GFC_MAX_SYMBOL_LEN + 1, "t_STRUCT$%d", 
-                  gfc_anon_structure_id++);
+        snprintf (name, GFC_MAX_SYMBOL_LEN + 1, "sS$%u", gfc_structure_id++);
     }
     /* No field list allowed after non-nested structure declaration. */
     if (!gfc_is_derived (gfc_current_state ()) && gfc_match_eos () != MATCH_YES)

@@ -47,6 +47,7 @@ static FILE *dumpfile;
 static void show_expr (gfc_expr *p);
 static void show_code_node (int, gfc_code *);
 static void show_namespace (gfc_namespace *ns);
+static void show_symbol (gfc_symbol *sym);
 
 
 /* Allow dumping of an expression in the debugger.  */
@@ -699,10 +700,13 @@ static void
 show_components (gfc_symbol *sym)
 {
   gfc_component *c;
+  gfc_symbol *map;
 
+  ++show_level;
   for (c = sym->components; c; c = c->next)
     {
-      fprintf (dumpfile, "(%s ", c->name);
+      show_indent ();
+      fprintf (dumpfile, "%s ", c->name);
       show_typespec (&c->ts);
       if (c->attr.allocatable)
 	fputs (" ALLOCATABLE", dumpfile);
@@ -716,10 +720,19 @@ show_components (gfc_symbol *sym)
       show_array_spec (c->as);
       if (c->attr.access)
 	fprintf (dumpfile, " %s", gfc_code2string (access_types, c->attr.access));
-      fputc (')', dumpfile);
-      if (c->next != NULL)
-	fputc (' ', dumpfile);
+      if (c->ts.type == BT_UNION)
+      {
+          ++show_level;
+          for(map = c->maps; map; map = map->next_map)
+          {
+              show_indent();
+              fprintf(dumpfile, "MAP ");
+              show_symbol (map);
+          }
+          --show_level;
+      }
     }
+  --show_level;
 }
 
 
@@ -876,6 +889,8 @@ show_symbol (gfc_symbol *sym)
   if (sym->components)
     {
       show_indent ();
+      fprintf (dumpfile, "unions: %d", sym->unions);
+      show_indent ();
       fputs ("components: ", dumpfile);
       show_components (sym);
     }
@@ -982,6 +997,10 @@ static void
 show_symtree (gfc_symtree *st)
 {
   int len, i;
+
+  /* Maps will be shown when showing their enclosing UNION components. */
+  if (st->n.sym->is_map)
+      return;
 
   show_indent ();
 

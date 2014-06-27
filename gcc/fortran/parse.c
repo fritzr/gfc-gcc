@@ -2171,14 +2171,26 @@ parse_union (void)
     gfc_statement st;
     gfc_state_data s;
     gfc_component *c;
+    char name[GFC_MAX_SYMBOL_LEN + 1];
 
-    /* TODO: Initialize a component and add it to the parent block */
+    /* Make up a unique name for this union. */
+    memset(name, '\0', sizeof (name));
+    snprintf(name, sizeof (name), "uU$%d", gfc_current_block ()->unions++);
+
+    /* Add the union as a component in its parent structure. */
+    if (gfc_add_component (gfc_current_block (), name, &c) == FAILURE)
+    {
+        gfc_internal_error ("failed to create union component '%s'", name);
+        reject_statement ();
+        return;
+    }
+    c->attr.flavor = FL_UNION;
+    c->ts.type = BT_UNION;
 
     accept_statement(ST_UNION);
     push_state (&s, COMP_UNION, gfc_current_block ());
 
     compiling = 1;
-    gfc_warning_now ("parsing union");
 
     while (compiling)
     {
@@ -2192,7 +2204,7 @@ parse_union (void)
         case ST_MAP:
           accept_statement (ST_MAP);
           parse_map ();
-          /* gfc_add_map (c, gfc_new_block); */
+          gfc_add_map (c, gfc_new_block);
           break;
 
         case ST_END_UNION:
@@ -2414,8 +2426,6 @@ parse_map (void)
         return;
     }
 
-    gfc_warning_now ("parsing map");
-
     accept_statement(ST_MAP);
     push_state (&s, COMP_MAP, gfc_new_block);
 
@@ -2576,7 +2586,7 @@ parse_map (void)
     sym->attr.zero_comp = 1;
 
     /* So parse_union can add this structure to its list of maps */
-    /* gfc_new_block = gfc_current_block (); */
+    gfc_new_block = gfc_current_block ();
 
     pop_state ();
 }

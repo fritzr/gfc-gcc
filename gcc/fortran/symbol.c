@@ -1893,6 +1893,13 @@ gfc_add_component (gfc_symbol *sym, const char *name,
   return SUCCESS;
 }
 
+/* Add a MAP declaration to a UNION component. */
+void
+gfc_add_map (gfc_component *c, gfc_symbol *map)
+{
+    map->next_map = c->maps;
+    c->maps = map;
+}
 
 /* Recursive function to switch derived types of all symbol in a
    namespace.  */

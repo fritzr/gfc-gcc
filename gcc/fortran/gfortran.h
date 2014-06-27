@@ -985,6 +985,9 @@ typedef struct gfc_component
 
   /* Needed for procedure pointer components.  */
   struct gfc_typebound_proc *tb;
+
+  /* Pointer to the first MAP in this UNION if this component is a UNION. */
+  struct gfc_symbol *maps;
 }
 gfc_component;
 
@@ -1282,6 +1285,16 @@ typedef struct gfc_symbol
 
   /* Link to corresponding association-list if this is an associate name.  */
   struct gfc_association_list *assoc;
+
+  /* Number of unions contained in this symbol if it is a derived type. */
+  int unions;
+
+  /* Whether this symbol is actually a MAP declaration. */
+  int is_map;
+
+  /* If this symbol is a MAP, pointer to the next MAP in the enclosing UNION,
+     or NULL if it is the last MAP in the UNION. */
+  struct gfc_symbol *next_map;
 }
 gfc_symbol;
 
@@ -2619,6 +2632,8 @@ gfc_try gfc_add_type (gfc_symbol *, gfc_typespec *, locus *);
 void gfc_clear_attr (symbol_attribute *);
 gfc_try gfc_missing_attr (symbol_attribute *, locus *);
 gfc_try gfc_copy_attr (symbol_attribute *, symbol_attribute *, locus *);
+
+void gfc_add_map (gfc_component *,gfc_symbol *);
 
 gfc_try gfc_add_component (gfc_symbol *, const char *, gfc_component **);
 gfc_symbol *gfc_use_derived (gfc_symbol *);
