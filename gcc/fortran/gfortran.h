@@ -934,6 +934,7 @@ typedef struct
     struct gfc_symbol *derived;	/* For derived types only.  */
     gfc_charlen *cl;		/* For character types only.  */
     int pad;			/* For hollerith types only.  */
+    struct gfc_symbol *maps;    /* Pointer to MAP list for union types. */
   }
   u;
 
@@ -985,9 +986,6 @@ typedef struct gfc_component
 
   /* Needed for procedure pointer components.  */
   struct gfc_typebound_proc *tb;
-
-  /* Pointer to the first MAP in this UNION if this component is a UNION. */
-  struct gfc_symbol *maps;
 }
 gfc_component;
 
@@ -2632,8 +2630,6 @@ gfc_try gfc_add_type (gfc_symbol *, gfc_typespec *, locus *);
 void gfc_clear_attr (symbol_attribute *);
 gfc_try gfc_missing_attr (symbol_attribute *, locus *);
 gfc_try gfc_copy_attr (symbol_attribute *, symbol_attribute *, locus *);
-
-void gfc_add_map (gfc_component *,gfc_symbol *);
 
 gfc_try gfc_add_component (gfc_symbol *, const char *, gfc_component **);
 gfc_symbol *gfc_use_derived (gfc_symbol *);

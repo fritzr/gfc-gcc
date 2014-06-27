@@ -2171,25 +2171,17 @@ parse_union (void)
     gfc_statement st;
     gfc_state_data s;
     gfc_component *c;
+    gfc_symbol *map_head;
     char name[GFC_MAX_SYMBOL_LEN + 1];
 
     /* Make up a unique name for this union. */
     memset(name, '\0', sizeof (name));
     snprintf(name, sizeof (name), "uU$%d", gfc_current_block ()->unions++);
 
-    /* Add the union as a component in its parent structure. */
-    if (gfc_add_component (gfc_current_block (), name, &c) == FAILURE)
-    {
-        gfc_internal_error ("failed to create union component '%s'", name);
-        reject_statement ();
-        return;
-    }
-    c->attr.flavor = FL_UNION;
-    c->ts.type = BT_UNION;
-
     accept_statement(ST_UNION);
     push_state (&s, COMP_UNION, gfc_current_block ());
 
+    map_head = NULL;
     compiling = 1;
 
     while (compiling)
@@ -2204,7 +2196,8 @@ parse_union (void)
         case ST_MAP:
           accept_statement (ST_MAP);
           parse_map ();
-          gfc_add_map (c, gfc_new_block);
+          gfc_new_block->next_map = map_head;
+          map_head = gfc_new_block;
           break;
 
         case ST_END_UNION:
@@ -2219,8 +2212,24 @@ parse_union (void)
           break;
         }
     }
+
     /* TODO: Post-processing on the resulting component including setting up
-       common storage areas for each map */
+       common storage areas for each map (?) */
+
+    if (map_head != NULL)
+    {
+        /* Add the union as a component in its parent structure. */
+        if (gfc_add_component (gfc_current_block (), name, &c) == FAILURE)
+        {
+            gfc_internal_error ("failed to create union component '%s'", name);
+            reject_statement ();
+            return;
+        }
+        /* Allow translation phase to access the map fields. */
+        c->ts.u.maps = map_head;
+        c->ts.type = BT_UNION;
+        c->attr.flavor = FL_UNION;
+    }
 
     pop_state ();
 }
