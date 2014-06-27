@@ -886,15 +886,6 @@ show_symbol (gfc_symbol *sym)
       fprintf (dumpfile, "result: %s", sym->result->name);
     }
 
-  if (sym->components)
-    {
-      show_indent ();
-      fprintf (dumpfile, "unions: %d", sym->unions);
-      show_indent ();
-      fputs ("components: ", dumpfile);
-      show_components (sym);
-    }
-
   if (sym->f2k_derived)
     {
       show_indent ();
@@ -924,6 +915,15 @@ show_symbol (gfc_symbol *sym)
       show_indent ();
       fputs ("Formal namespace", dumpfile);
       show_namespace (sym->formal_ns);
+    }
+
+  if (sym->components)
+    {
+      show_indent ();
+      fprintf (dumpfile, "unions: %d", sym->unions);
+      show_indent ();
+      fputs ("components: ", dumpfile);
+      show_components (sym);
     }
   --show_level;
 }
