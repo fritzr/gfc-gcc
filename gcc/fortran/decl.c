@@ -486,14 +486,14 @@ match_old_style_init (const char *name)
   gfc_symbol *sym;
   gfc_data *newdata;
 
-  /* This function is called "greedily" (when the following statement /must/
-     be an old-style initializer) therefore we can fail safely. */
-  if (gfc_is_derived (gfc_current_state ()))
-  {
-      gfc_error ("Unsupported old-style initialization in derived-type "
-                 "component declaration at %C");
+  /* FIXME:? Old style initializations not supported for derived type
+     components. */
+  if (gfc_current_state () == COMP_DERIVED)
+    {
+      gfc_error ("Invalid old style initialization for derived type "
+                 "component at %C");
       return MATCH_ERROR;
-  }
+    }
 
   /* Set up data structure to hold initializers.  */
   gfc_find_sym_tree (name, NULL, 0, &st);

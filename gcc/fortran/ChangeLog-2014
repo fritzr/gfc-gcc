@@ -1,3 +1,7 @@
+2014-06-27  Fritz Reese  <Reese-Fritz@zai.com>
+	* decl.c (match_old_style_init): Throw syntax error if old style
+	initialization appears in a derived-type component declaration.
+
 2014-06-16  Fritz Reese  <Reese-Fritz@zai.com>
 
 	* resolve.c (build_default_init_expr): Move core to public function
@@ -18,7 +22,7 @@
 	* options.c: Set gfc_option.flag_init_derived when switched on.
 
 
-Copyright (C) 2012 Free Software Foundation, Inc.
+Copyright (C) 2014 Free Software Foundation, Inc.
 
 Copying and distribution of this file, with or without modification,
 are permitted in any medium without royalty provided the copyright
