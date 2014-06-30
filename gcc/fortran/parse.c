@@ -2226,7 +2226,8 @@ parse_union (void)
             return;
         }
         /* Allow translation phase to access the map fields. */
-        c->ts.u.maps = map_head;
+        c->ts.u.un = c;
+        c->maps = map_head;
         c->ts.type = BT_UNION;
         c->attr.flavor = FL_UNION;
     }

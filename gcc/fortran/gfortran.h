@@ -934,7 +934,7 @@ typedef struct
     struct gfc_symbol *derived;	/* For derived types only.  */
     gfc_charlen *cl;		/* For character types only.  */
     int pad;			/* For hollerith types only.  */
-    struct gfc_symbol *maps;    /* Pointer to MAP list for union types. */
+    struct gfc_component *un;   /* Pointer to union decl. for union types. */
   }
   u;
 
@@ -986,6 +986,9 @@ typedef struct gfc_component
 
   /* Needed for procedure pointer components.  */
   struct gfc_typebound_proc *tb;
+
+  /* Pointer to MAP list for union types. */
+  struct gfc_symbol *maps;
 }
 gfc_component;
 
@@ -2547,6 +2550,7 @@ gfc_try gfc_check_any_c_kind (gfc_typespec *);
 int gfc_validate_kind (bt, int, bool);
 int gfc_get_int_kind_from_width_isofortranenv (int size);
 int gfc_get_real_kind_from_width_isofortranenv (int size);
+tree gfc_get_union_type (gfc_component *);
 tree gfc_get_derived_type (gfc_symbol * derived);
 extern int gfc_index_integer_kind;
 extern int gfc_default_integer_kind;

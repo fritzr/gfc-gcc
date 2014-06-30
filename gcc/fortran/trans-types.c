@@ -1100,6 +1100,10 @@ gfc_typenode_for_spec (gfc_typespec * spec)
 	basetype = gfc_get_character_type (spec->kind, spec->u.cl);
       break;
 
+    case BT_UNION:
+      basetype = gfc_get_union_type (spec->u.un);
+      break;
+
     case BT_DERIVED:
     case BT_CLASS:
       basetype = gfc_get_derived_type (spec->u.derived);
@@ -2323,6 +2327,40 @@ gfc_get_ppc_type (gfc_component* c)
   return build_pointer_type (build_function_type_list (t, NULL_TREE));
 }
 
+/* Build a tree node for a union type. Requires building each map
+   structure which is an element of the union. */
+
+tree
+gfc_get_union_type (gfc_component *un)
+{
+    gfc_symbol *map = NULL;
+    tree map_type = NULL, map_field = NULL;
+    tree *chain = NULL;
+
+    tree typenode = make_node (UNION_TYPE);
+    TYPE_NAME (typenode) = get_identifier (un->name);
+
+    /* Add each contained MAP as a field. */
+    for (map = un->maps; map; map = map->next_map)
+    {
+        gcc_assert (map->is_map);
+        map_type = gfc_typenode_for_spec (&map->ts);
+
+        map_field = gfc_add_field_to_struct(typenode, get_identifier(un->name),
+                                            map_type, &chain);
+
+        gcc_assert (map_field);
+
+        if (!map->backend_decl)
+            map->backend_decl = map_field;
+    }
+
+    if (un->loc.lb)
+        gfc_set_decl_location (typenode, &un->loc);
+
+    un->backend_decl = typenode;
+    return typenode;
+}
 
 /* Build a tree node for a derived type.  If there are equal
    derived types, with different local names, these are built

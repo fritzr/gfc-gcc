@@ -723,7 +723,7 @@ show_components (gfc_symbol *sym)
       if (c->ts.type == BT_UNION)
       {
           ++show_level;
-          for(map = c->ts.u.maps; map; map = map->next_map)
+          for(map = c->maps; map; map = map->next_map)
           {
               show_indent();
               fprintf(dumpfile, "MAP ");
