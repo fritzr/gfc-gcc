@@ -2000,9 +2000,7 @@ bad:
    tfunc(c,*) returns FAILURE for some component c (SUCCESS otherwise). */
 
 gfc_try
-gfc_traverse_components (gfc_symbol *sym, 
-                         gfc_try (*tfunc)(gfc_component *, void *),
-                         void *data)
+gfc_traverse_components (gfc_symbol *sym, compfunc tfunc, void *data)
 {
   gfc_component *p;
   gfc_symbol *m;
