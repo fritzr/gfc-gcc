@@ -1993,6 +1993,59 @@ bad:
   return NULL;
 }
 
+/* Traverse the components of sym by calling tfunc(c, data) for each
+   component c associated with sym.
+   If a call to tfunc() returns FAILURE, stops traversal. Otherwise tfunc()
+   should return SUCCESS. This function returns FAILURE when sym is NULL or
+   tfunc(c,*) returns FAILURE for some component c (SUCCESS otherwise). */
+
+gfc_try
+gfc_traverse_components (gfc_symbol *sym, 
+                         gfc_try (*tfunc)(gfc_component *, void *),
+                         void *data)
+{
+  gfc_component *p;
+  gfc_symbol *m;
+
+  if (sym == NULL)
+    return FAILURE;
+
+  sym = gfc_use_derived (sym);
+
+  if (sym == NULL)
+    return FAILURE;
+
+  for (p = sym->components; p; p = p->next)
+    {
+      if (tfunc && tfunc (p, data) == FAILURE)
+        return FAILURE;
+      /* If component is a union, search recursively through it. In Fortran,
+         because unions/maps are anonymous, any symbols within a map (however
+         deeply nested) are referenced as members of the parent structure. 
+         For example; x.a may refer to x->U->M->U->M->a. */
+      if (p->ts.type == BT_UNION)
+        for (m = p->maps; m; m = m->next_map)
+          return gfc_traverse_components (m, tfunc, data);
+    }
+  return SUCCESS;
+}
+
+typedef struct {
+    const char *name;
+    gfc_component *matched;
+} component_search;
+
+static gfc_try
+match_component (gfc_component *c, void *sv)
+{
+    component_search *s = (component_search *)sv;
+    if (strcmp (s->name, c->name) == 0)
+    {
+        s->matched = c;
+        return FAILURE; /* Stop search. */
+    }
+    return SUCCESS; /* Continue search. */
+}
 
 /* Given a derived type node and a component name, try to locate the
    component structure.  Returns the NULL pointer if the component is
@@ -2004,6 +2057,7 @@ gfc_find_component (gfc_symbol *sym, const char *name,
 		    bool noaccess, bool silent)
 {
   gfc_component *p;
+  component_search c;
 
   if (name == NULL || sym == NULL)
     return NULL;
@@ -2013,9 +2067,10 @@ gfc_find_component (gfc_symbol *sym, const char *name,
   if (sym == NULL)
     return NULL;
 
-  for (p = sym->components; p; p = p->next)
-    if (strcmp (p->name, name) == 0)
-      break;
+  c.name = name;
+  c.matched = NULL;
+  gfc_traverse_components (sym, match_component, (void *)&c);
+  p = c.matched;
 
   if (p && sym->attr.use_assoc && !noaccess)
     {
