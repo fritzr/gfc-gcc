@@ -621,11 +621,10 @@ gfc_match_extended_integer (char *buffer, int *radix, int *cnt)
           return MATCH_ERROR;
       gcc_assert (gfc_match_char ('#') == MATCH_YES);
 
-      /* Buffer was set by matching the radix earlier; clear it. */
-      if (buffer)
-          memset (buffer, '\0', length + 1);
       old_loc = gfc_current_locus;
-      m = gfc_match_literal_int (buffer, base, NULL);
+      m = gfc_match_literal_int (buffer, base, &length);
+      if (buffer)
+          buffer[length] = '\0';
       if (m != MATCH_YES)
       {
           gfc_current_locus = old_loc;
