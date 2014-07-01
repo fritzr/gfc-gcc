@@ -2023,7 +2023,8 @@ gfc_traverse_components (gfc_symbol *sym, compfunc tfunc, void *data)
          For example; x.a may refer to x->U->M->U->M->a. */
       if (p->ts.type == BT_UNION)
         for (m = p->maps; m; m = m->next_map)
-          return gfc_traverse_components (m, tfunc, data);
+          if (gfc_traverse_components (m, tfunc, data) == FAILURE)
+              return FAILURE;
     }
   return SUCCESS;
 }
