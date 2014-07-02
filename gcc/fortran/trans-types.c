@@ -2344,8 +2344,8 @@ gfc_get_union_type (gfc_component *un)
     for (map = un->maps; map; map = map->next_map)
     {
         gcc_assert (map->is_map);
-        map_type = gfc_typenode_for_spec (&map->ts);
 
+        map_type = gfc_get_derived_type (map);
         map_field = gfc_add_field_to_struct(typenode, get_identifier(un->name),
                                             map_type, &chain);
 
@@ -2355,8 +2355,8 @@ gfc_get_union_type (gfc_component *un)
             map->backend_decl = map_field;
     }
 
-    if (un->loc.lb)
-        gfc_set_decl_location (typenode, &un->loc);
+    gfc_finish_type (typenode);
+    gfc_set_decl_location (TYPE_STUB_DECL (typenode), &un->loc);
 
     un->backend_decl = typenode;
     return typenode;
