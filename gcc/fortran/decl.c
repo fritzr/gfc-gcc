@@ -486,15 +486,6 @@ match_old_style_init (const char *name)
   gfc_symbol *sym;
   gfc_data *newdata;
 
-  /* FIXME:? Old style initializations not supported for derived type
-     components. */
-  if (gfc_current_state () == COMP_DERIVED)
-    {
-      gfc_error ("Invalid old style initialization for derived type "
-                 "component at %C");
-      return MATCH_ERROR;
-    }
-
   /* Set up data structure to hold initializers.  */
   gfc_find_sym_tree (name, NULL, 0, &st);
   sym = st->n.sym;
@@ -1961,12 +1952,12 @@ variable_decl (int elem)
 			  "initialization at %C") == FAILURE)
 	return MATCH_ERROR;
       else if (gfc_current_state () == COMP_DERIVED)
-	{
-	  gfc_error ("Invalid old style initialization for derived type "
-		     "component at %C");
-	  m = MATCH_ERROR;
-	  goto cleanup;
-	}
+        {
+          gfc_error ("Invalid old style initialization for derived type "
+                     "component at %C");
+          m = MATCH_ERROR;
+          goto cleanup;
+        }
 
       return match_old_style_init (name);
     }
