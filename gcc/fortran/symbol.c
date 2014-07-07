@@ -1836,26 +1836,6 @@ fail:
   return FAILURE;
 }
 
-typedef struct {
-    const char *name;
-    gfc_component **tail;
-} tail_search_data;
-
-static gfc_try
-tail_search (gfc_component *p, void *data)
-{
-    tail_search_data *d = (tail_search_data *)data;
-    if (strcmp (p->name, d->name) == 0)
-    {
-        gfc_error ("Component '%s' at %C already declared at %L",
-                   d->name, &p->loc);
-        return FAILURE;
-    }
-
-    *d->tail = p;
-    return SUCCESS;
-}
-
 /************** Component name management ************/
 
 /* Component names of a derived type form their own little namespaces
@@ -1873,11 +1853,17 @@ gfc_add_component (gfc_symbol *sym, const char *name,
 		   gfc_component **component)
 {
   gfc_component *p, *tail;
-  tail_search_data d = { name, &tail };
+
+  if ((p = gfc_find_component (sym, name, true, true)) != NULL)
+    {
+      gfc_error ("Component '%s' at %C already declared at %L",
+                 name, &p->loc);
+      return FAILURE;
+    }
 
   tail = NULL;
-
-  gfc_traverse_components (sym, tail_search, (void *)&d);
+  for (p = sym->components; p; p = p->next)
+      tail = p;
 
   if (sym->attr.extension
 	&& gfc_find_component (sym->components->ts.u.derived, name, true, true))
