@@ -382,6 +382,31 @@ gfc_match_end_interface (void)
   return m;
 }
 
+int
+gfc_compare_unions (gfc_component *u1, gfc_component *u2)
+{
+    gfc_symbol *m1, *m2;
+    m1 = u1->maps;
+    m2 = u2->maps;
+    for(;;)
+    {
+        if (m1 == NULL && m2 == NULL)
+            break;
+
+        if (m1 == NULL || m2 == NULL)
+            return 0;
+        
+        /* TODO: Really it shouldn't matter what order the maps are in.
+           Currently two unions with the same maps in a different order would
+           compare as not equal. */
+        if (gfc_compare_derived_types (m1, m2) == 0)
+            return 0;
+
+        m1 = m1->next_map;
+        m2 = m2->next_map;
+    }
+    return 1;
+}
 
 /* Compare two derived types using the criteria in 4.4.2 of the standard,
    recursing through gfc_compare_types for the components.  */
@@ -458,6 +483,10 @@ gfc_compare_derived_types (gfc_symbol *derived1, gfc_symbol *derived2)
       else if (!(dt1->ts.type == BT_DERIVED && derived1 == dt1->ts.u.derived)
 		&& (dt1->ts.type == BT_DERIVED && derived1 == dt1->ts.u.derived))
 	return 0;
+
+      if (dt1->ts.type == BT_UNION && dt2->ts.type == BT_UNION 
+              && gfc_compare_unions (dt1, dt2) == 0)
+        return 0;
 
       dt1 = dt1->next;
       dt2 = dt2->next;
