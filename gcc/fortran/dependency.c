@@ -918,6 +918,20 @@ gfc_are_equivalenced_arrays (gfc_expr *e1, gfc_expr *e2)
   return 0;
 }
 
+static gfc_try
+is_derived (gfc_component *cm1, void *data)
+{
+  gfc_symbol *sym2 = (gfc_symbol *)data;
+  if (cm1->ts.type == BT_DERIVED)
+    return FAILURE;
+
+  if ((sym2->attr.pointer || cm1->attr.pointer)
+        && gfc_compare_types (&cm1->ts, &sym2->ts))
+    return FAILURE;
+
+  return SUCCESS;
+}
+
 
 /* Return true if there is no possibility of aliasing because of a type
    mismatch between all the possible pointer references and the
@@ -927,7 +941,6 @@ gfc_are_equivalenced_arrays (gfc_expr *e1, gfc_expr *e2)
 static bool
 check_data_pointer_types (gfc_expr *expr1, gfc_expr *expr2)
 {
-  gfc_component *cm1;
   gfc_symbol *sym1;
   gfc_symbol *sym2;
   gfc_ref *ref1;
@@ -976,20 +989,12 @@ check_data_pointer_types (gfc_expr *expr1, gfc_expr *expr2)
 
   if (sym1->ts.type == BT_DERIVED && !seen_component_ref)
     {
-      for (cm1 = sym1->ts.u.derived->components; cm1; cm1 = cm1->next)
-	{
-	  if (cm1->ts.type == BT_DERIVED)
-	    return false;
-
-	  if ((sym2->attr.pointer || cm1->attr.pointer)
-		&& gfc_compare_types (&cm1->ts, &sym2->ts))
-	    return false;
-	}
+      if (gfc_traverse_components (sym1->ts.u.derived, is_derived, sym2) == FAILURE)
+          return false;
     }
 
   return true;
 }
-
 
 /* Return true if the statement body redefines the condition.  Returns
    true if expr2 depends on expr1.  expr1 should be a single term

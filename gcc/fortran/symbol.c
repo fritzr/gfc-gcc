@@ -1836,6 +1836,25 @@ fail:
   return FAILURE;
 }
 
+typedef struct {
+    const char *name;
+    gfc_component **tail;
+} tail_search_data;
+
+static gfc_try
+tail_search (gfc_component *p, void *data)
+{
+    tail_search_data *d = (tail_search_data *)data;
+    if (strcmp (p->name, d->name) == 0)
+    {
+        gfc_error ("Component '%s' at %C already declared at %L",
+                   d->name, &p->loc);
+        return FAILURE;
+    }
+
+    *d->tail = p;
+    return SUCCESS;
+}
 
 /************** Component name management ************/
 
@@ -1854,20 +1873,11 @@ gfc_add_component (gfc_symbol *sym, const char *name,
 		   gfc_component **component)
 {
   gfc_component *p, *tail;
+  tail_search_data d = { name, &tail };
 
   tail = NULL;
 
-  for (p = sym->components; p; p = p->next)
-    {
-      if (strcmp (p->name, name) == 0)
-	{
-	  gfc_error ("Component '%s' at %C already declared at %L",
-		     name, &p->loc);
-	  return FAILURE;
-	}
-
-      tail = p;
-    }
+  gfc_traverse_components (sym, tail_search, (void *)&d);
 
   if (sym->attr.extension
 	&& gfc_find_component (sym->components->ts.u.derived, name, true, true))
@@ -2002,9 +2012,6 @@ bad:
 gfc_try
 gfc_traverse_components (gfc_symbol *sym, compfunc tfunc, void *data)
 {
-  gfc_component *p;
-  gfc_symbol *m;
-
   if (sym == NULL)
     return FAILURE;
 
@@ -2013,7 +2020,14 @@ gfc_traverse_components (gfc_symbol *sym, compfunc tfunc, void *data)
   if (sym == NULL)
     return FAILURE;
 
-  for (p = sym->components; p; p = p->next)
+  return gfc_traverse_components_head (sym->components, tfunc, data);
+}
+
+gfc_try
+gfc_traverse_components_head (gfc_component *p, compfunc tfunc, void *data)
+{
+  gfc_symbol *m;
+  for (; p; p = p->next)
     {
       if (tfunc && tfunc (p, data) == FAILURE)
         return FAILURE;
@@ -2023,7 +2037,8 @@ gfc_traverse_components (gfc_symbol *sym, compfunc tfunc, void *data)
          For example; x.a may refer to x->U->M->U->M->a. */
       if (p->ts.type == BT_UNION)
         for (m = p->maps; m; m = m->next_map)
-          if (gfc_traverse_components (m, tfunc, data) == FAILURE)
+          if (gfc_traverse_components_head (m->components, tfunc, data) 
+                  == FAILURE)
               return FAILURE;
     }
   return SUCCESS;

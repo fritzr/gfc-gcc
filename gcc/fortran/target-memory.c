@@ -231,39 +231,52 @@ gfc_encode_character (int kind, int length, const gfc_char_t *string,
   return length;
 }
 
+typedef struct {
+    unsigned char *buffer;
+    size_t buffer_size;
+    gfc_constructor *c;
+} encode_derived_data;
+
+static gfc_try
+encode_comp (gfc_component *cmp, void *data)
+{
+  int ptr;
+  HOST_WIDE_INT size;
+  encode_derived_data *d = (encode_derived_data *)data;
+
+  if (!d->c->expr)
+    goto continu;
+  ptr = TREE_INT_CST_LOW(DECL_FIELD_OFFSET(cmp->backend_decl))
+        + TREE_INT_CST_LOW(DECL_FIELD_BIT_OFFSET(cmp->backend_decl))/8;
+
+  if (d->c->expr->expr_type == EXPR_NULL)
+    {
+      size = int_size_in_bytes (TREE_TYPE (cmp->backend_decl));
+      gcc_assert (size >= 0);
+      memset (&d->buffer[ptr], 0, size);
+    }
+  else
+    gfc_target_encode_expr (d->c->expr, &d->buffer[ptr],
+                            d->buffer_size - ptr);
+
+continu:
+  d->c = gfc_constructor_next (d->c);
+  return SUCCESS;
+}
 
 static unsigned HOST_WIDE_INT
 encode_derived (gfc_expr *source, unsigned char *buffer, size_t buffer_size)
 {
-  gfc_constructor *c;
-  gfc_component *cmp;
-  int ptr;
   tree type;
   HOST_WIDE_INT size;
 
   type = gfc_typenode_for_spec (&source->ts);
 
-  for (c = gfc_constructor_first (source->value.constructor),
-       cmp = source->ts.u.derived->components;
-       c;
-       c = gfc_constructor_next (c), cmp = cmp->next)
-    {
-      gcc_assert (cmp);
-      if (!c->expr)
-	continue;
-      ptr = TREE_INT_CST_LOW(DECL_FIELD_OFFSET(cmp->backend_decl))
-	    + TREE_INT_CST_LOW(DECL_FIELD_BIT_OFFSET(cmp->backend_decl))/8;
-
-      if (c->expr->expr_type == EXPR_NULL)
-	{
-	  size = int_size_in_bytes (TREE_TYPE (cmp->backend_decl));
-	  gcc_assert (size >= 0);
-	  memset (&buffer[ptr], 0, size);
-	}
-      else
-	gfc_target_encode_expr (c->expr, &buffer[ptr],
-				buffer_size - ptr);
-    }
+  encode_derived_data d;
+  d.buffer = buffer;
+  d.buffer_size = buffer_size;
+  d.c = gfc_constructor_first (source->value.constructor);
+  gfc_traverse_components (source->ts.u.derived, encode_comp, (void *)&d);
 
   size = int_size_in_bytes (type);
   gcc_assert (size >= 0);
@@ -463,18 +476,69 @@ gfc_interpret_character (unsigned char *buffer, size_t buffer_size,
   return result->value.character.length;
 }
 
+typedef struct {
+    unsigned char *buffer;
+    size_t buffer_size;
+    gfc_expr *result;
+} interpret_comp_data;
+
+static gfc_try
+interpret_comp (gfc_component *cmp, void *data)
+{
+  interpret_comp_data *d = (interpret_comp_data *)data;
+  gfc_constructor *c;
+  int ptr;
+  gfc_expr *e = gfc_get_constant_expr (cmp->ts.type, cmp->ts.kind,
+                                       &d->result->where); 
+  e->ts = cmp->ts;
+
+  /* Copy shape, if needed.  */
+  if (cmp->as && cmp->as->rank)
+    {
+      int n;
+
+      e->expr_type = EXPR_ARRAY;
+      e->rank = cmp->as->rank;
+
+      e->shape = gfc_get_shape (e->rank);
+      for (n = 0; n < e->rank; n++)
+         {
+           mpz_init_set_ui (e->shape[n], 1);
+           mpz_add (e->shape[n], e->shape[n],
+                    cmp->as->upper[n]->value.integer);
+           mpz_sub (e->shape[n], e->shape[n],
+                    cmp->as->lower[n]->value.integer);
+         }
+    }
+
+  c = gfc_constructor_append_expr (&d->result->value.constructor, e, NULL);
+
+  /* The constructor points to the component.  */
+  c->n.component = cmp;
+
+  /* Calculate the offset, which consists of the FIELD_OFFSET in
+     bytes, which appears in multiples of DECL_OFFSET_ALIGN-bit-sized,
+     and additional bits of FIELD_BIT_OFFSET. The code assumes that all
+     sizes of the components are multiples of BITS_PER_UNIT,
+     i.e. there are, e.g., no bit fields.  */
+
+  gcc_assert (cmp->backend_decl);
+  ptr = TREE_INT_CST_LOW (DECL_FIELD_BIT_OFFSET (cmp->backend_decl));
+  gcc_assert (ptr % 8 == 0);
+  ptr = ptr/8 + TREE_INT_CST_LOW (DECL_FIELD_OFFSET (cmp->backend_decl));
+
+  gfc_target_interpret_expr (&d->buffer[ptr], d->buffer_size - ptr, e, true);
+
+  return SUCCESS;
+}
 
 int
 gfc_interpret_derived (unsigned char *buffer, size_t buffer_size, gfc_expr *result)
 {
-  gfc_component *cmp;
-  int ptr;
   tree type;
 
   /* The attributes of the derived type need to be bolted to the floor.  */
   result->expr_type = EXPR_STRUCTURE;
-
-  cmp = result->ts.u.derived->components;
 
   if (result->ts.u.derived->from_intmod == INTMOD_ISO_C_BINDING
       && (result->ts.u.derived->intmod_sym_id == ISOCBINDING_PTR
@@ -482,6 +546,7 @@ gfc_interpret_derived (unsigned char *buffer, size_t buffer_size, gfc_expr *resu
     {
       gfc_constructor *c;
       gfc_expr *e;
+      gfc_component *cmp = result->ts.u.derived->components;
       /* Needed as gfc_typenode_for_spec as gfc_typenode_for_spec
 	 sets this to BT_INTEGER.  */
       result->ts.type = BT_DERIVED;
@@ -496,54 +561,14 @@ gfc_interpret_derived (unsigned char *buffer, size_t buffer_size, gfc_expr *resu
   type = gfc_typenode_for_spec (&result->ts);
 
   /* Run through the derived type components.  */
-  for (;cmp; cmp = cmp->next)
-    {
-      gfc_constructor *c;
-      gfc_expr *e = gfc_get_constant_expr (cmp->ts.type, cmp->ts.kind,
-					   &result->where); 
-      e->ts = cmp->ts;
-
-      /* Copy shape, if needed.  */
-      if (cmp->as && cmp->as->rank)
-	{
-	  int n;
-
-	  e->expr_type = EXPR_ARRAY;
-	  e->rank = cmp->as->rank;
-
-	  e->shape = gfc_get_shape (e->rank);
-	  for (n = 0; n < e->rank; n++)
-	     {
-	       mpz_init_set_ui (e->shape[n], 1);
-	       mpz_add (e->shape[n], e->shape[n],
-			cmp->as->upper[n]->value.integer);
-	       mpz_sub (e->shape[n], e->shape[n],
-			cmp->as->lower[n]->value.integer);
-	     }
-	}
-
-      c = gfc_constructor_append_expr (&result->value.constructor, e, NULL);
-
-      /* The constructor points to the component.  */
-      c->n.component = cmp;
-
-      /* Calculate the offset, which consists of the FIELD_OFFSET in
-	 bytes, which appears in multiples of DECL_OFFSET_ALIGN-bit-sized,
-	 and additional bits of FIELD_BIT_OFFSET. The code assumes that all
-	 sizes of the components are multiples of BITS_PER_UNIT,
-	 i.e. there are, e.g., no bit fields.  */
-
-      gcc_assert (cmp->backend_decl);
-      ptr = TREE_INT_CST_LOW (DECL_FIELD_BIT_OFFSET (cmp->backend_decl));
-      gcc_assert (ptr % 8 == 0);
-      ptr = ptr/8 + TREE_INT_CST_LOW (DECL_FIELD_OFFSET (cmp->backend_decl));
-
-      gfc_target_interpret_expr (&buffer[ptr], buffer_size - ptr, e, true);
-    }
+  interpret_comp_data d;
+  d.buffer = buffer;
+  d.buffer_size = buffer_size;
+  d.result = result;
+  gfc_traverse_components (result->ts.u.derived, interpret_comp, (void *)&d);
     
   return int_size_in_bytes (type);
 }
-
 
 /* Read a binary buffer to a constant expression.  */
 int
@@ -616,10 +641,42 @@ gfc_target_interpret_expr (unsigned char *buffer, size_t buffer_size,
 
 
 /* --------------------------------------------------------------- */ 
-/* Two functions used by trans-common.c to write overlapping
+/* Three functions used by trans-common.c to write overlapping
    equivalence initializers to a buffer.  This is added to the union
    and the original initializers freed.  */
 
+typedef struct {
+    gfc_constructor *c;
+    unsigned char *data;
+    unsigned char *chk;
+    size_t len;
+} comp_to_char_data;
+
+/* Forward declaration for comp_to_char. */
+static size_t
+expr_to_char (gfc_expr *e, unsigned char *data, unsigned char *chk, size_t len);
+
+/* Take a derived type, one component at a time, using the offsets from the
+   backend declaration. */
+
+static gfc_try
+comp_to_char (gfc_component *cmp, void *data)
+{
+  int ptr;
+  comp_to_char_data *d = (comp_to_char_data *)data;
+
+  gcc_assert (cmp->backend_decl);
+
+  if (d->c->expr)
+    {
+      ptr = TREE_INT_CST_LOW(DECL_FIELD_OFFSET(cmp->backend_decl))
+          + TREE_INT_CST_LOW(DECL_FIELD_BIT_OFFSET(cmp->backend_decl))/8;
+      expr_to_char (d->c->expr, &d->data[ptr], &d->chk[ptr], d->len);
+    }
+
+  d->c = gfc_constructor_next (d->c);
+  return SUCCESS;
+}
 
 /* Writes the values of a constant expression to a char buffer. If another
    unequal initializer has already been written to the buffer, this is an
@@ -629,29 +686,20 @@ static size_t
 expr_to_char (gfc_expr *e, unsigned char *data, unsigned char *chk, size_t len)
 {
   int i;
-  int ptr;
-  gfc_constructor *c;
-  gfc_component *cmp;
   unsigned char *buffer;
 
   if (e == NULL)
     return 0;
 
-  /* Take a derived type, one component at a time, using the offsets from the backend
-     declaration.  */
+  /* Handle components recursively.  */
   if (e->ts.type == BT_DERIVED)
     {
-      for (c = gfc_constructor_first (e->value.constructor),
-	   cmp = e->ts.u.derived->components;
-	   c; c = gfc_constructor_next (c), cmp = cmp->next)
-	{
-	  gcc_assert (cmp && cmp->backend_decl);
-	  if (!c->expr)
-	    continue;
-	    ptr = TREE_INT_CST_LOW(DECL_FIELD_OFFSET(cmp->backend_decl))
-			+ TREE_INT_CST_LOW(DECL_FIELD_BIT_OFFSET(cmp->backend_decl))/8;
-	  expr_to_char (c->expr, &data[ptr], &chk[ptr], len);
-	}
+      comp_to_char_data d;
+      d.data = data;
+      d.chk = chk;
+      d.len = len;
+      d.c = gfc_constructor_first (e->value.constructor);
+      gfc_traverse_components (e->ts.u.derived, comp_to_char, (void *)&d);
       return len;
     }
 

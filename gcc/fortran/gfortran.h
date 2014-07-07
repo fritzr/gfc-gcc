@@ -2642,6 +2642,7 @@ gfc_component *gfc_find_component (gfc_symbol *, const char *, bool, bool);
 
 typedef gfc_try (*compfunc)(gfc_component *, void *);
 gfc_try gfc_traverse_components (gfc_symbol *, compfunc, void *);
+gfc_try gfc_traverse_components_head (gfc_component *, compfunc, void *);
 
 gfc_st_label *gfc_get_st_label (int);
 void gfc_free_st_label (gfc_st_label *);

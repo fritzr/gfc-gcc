@@ -576,6 +576,24 @@ gfc_advance_section (mpz_t *section_index, gfc_array_ref *ar,
   mpz_clear (delta);
 }
 
+typedef struct {
+  gfc_constructor_base *base;
+  gfc_constructor *cur;
+  gfc_expr *expr;
+} structure_cons;
+
+static gfc_try
+append_cons (gfc_component *order, void *data)
+{
+  structure_cons *c = (structure_cons *)data;
+  
+  c->cur = find_con_by_component (order, c->expr->value.constructor);
+  if (c->cur)
+    gfc_constructor_append_expr (c->base, c->cur->expr, &c->cur->expr->where);
+  else
+    gfc_constructor_append_expr (c->base, NULL, NULL);
+  return SUCCESS;
+}
 
 /* Rearrange a structure constructor so the elements are in the specified
    order.  Also insert NULL entries if necessary.  */
@@ -584,22 +602,16 @@ static void
 formalize_structure_cons (gfc_expr *expr)
 {
   gfc_constructor_base base = NULL;
-  gfc_constructor *cur;
-  gfc_component *order;
+  structure_cons c;
 
   /* Constructor is already formalized.  */
-  cur = gfc_constructor_first (expr->value.constructor);
-  if (!cur || cur->n.component == NULL)
+  c.cur = gfc_constructor_first (expr->value.constructor);
+  if (!c.cur || c.cur->n.component == NULL)
     return;
 
-  for (order = expr->ts.u.derived->components; order; order = order->next)
-    {
-      cur = find_con_by_component (order, expr->value.constructor);
-      if (cur)
-	gfc_constructor_append_expr (&base, cur->expr, &cur->expr->where);
-      else
-	gfc_constructor_append_expr (&base, NULL, NULL);
-    }
+  c.expr = expr;
+  c.base = &base;
+  gfc_traverse_components (expr->ts.u.derived, append_cons, (void *)&c);
 
   /* For all what it's worth, one would expect
        gfc_constructor_free (expr->value.constructor);

@@ -2505,11 +2505,12 @@ static void mio_namespace_ref (gfc_namespace **nsp);
 static void mio_formal_arglist (gfc_formal_arglist **formal);
 static void mio_typebound_proc (gfc_typebound_proc** proc);
 
-static void
-mio_component (gfc_component *c, int vtype)
+static gfc_try
+mio_component (gfc_component *c, void *d_vtype)
 {
   pointer_info *p;
   int n;
+  int vtype = *(int *)d_vtype;
 
   mio_lparen ();
 
@@ -2545,6 +2546,8 @@ mio_component (gfc_component *c, int vtype)
     mio_typebound_proc (&c->tb);
 
   mio_rparen ();
+
+  return SUCCESS;
 }
 
 
@@ -2557,8 +2560,7 @@ mio_component_list (gfc_component **cp, int vtype)
 
   if (iomode == IO_OUTPUT)
     {
-      for (c = *cp; c; c = c->next)
-	mio_component (c, vtype);
+        gfc_traverse_components_head (*cp, mio_component, (void *)&vtype);
     }
   else
     {
@@ -2571,7 +2573,7 @@ mio_component_list (gfc_component **cp, int vtype)
 	    break;
 
 	  c = gfc_get_component ();
-	  mio_component (c, vtype);
+	  mio_component (c, (void *)&vtype);
 
 	  if (tail == NULL)
 	    *cp = c;
@@ -4444,6 +4446,26 @@ check_for_ambiguous (gfc_symtree *st, pointer_info *info)
   return true;
 }
 
+/* Read a component declaration. */
+
+static gfc_try
+read_component (gfc_component *c, void *)
+{
+  pointer_info *p;
+  const char *comp_name;
+  int n;
+
+  mio_lparen (); /* component opening.  */
+  mio_integer (&n);
+  p = get_integer (n);
+  if (p->u.pointer == NULL)
+    associate_integer_pointer (p, c);
+  mio_pool_string (&comp_name);
+  gcc_assert (comp_name == c->name);
+  skip_list (1); /* component end.  */
+
+  return SUCCESS;
+}
 
 /* Read a module file.  */
 
@@ -4523,8 +4545,6 @@ read_module (void)
 	 with the existing symbol's component pointers.  */
       if (sym->attr.flavor == FL_DERIVED)
 	{
-	  gfc_component *c;
-
 	  /* First seek to the symbol's component list.  */
 	  mio_lparen (); /* symbol opening.  */
 	  skip_list (); /* skip symbol attribute.  */
@@ -4538,21 +4558,7 @@ read_module (void)
 	  /* not a cray pointer.  */
 
 	  mio_lparen (); /* component list opening.  */
-	  for (c = sym->components; c; c = c->next)
-	    {
-	      pointer_info *p;
-	      const char *comp_name;
-	      int n;
-
-	      mio_lparen (); /* component opening.  */
-	      mio_integer (&n);
-	      p = get_integer (n);
-	      if (p->u.pointer == NULL)
-		associate_integer_pointer (p, c);
-	      mio_pool_string (&comp_name);
-	      gcc_assert (comp_name == c->name);
-	      skip_list (1); /* component end.  */
-	    }
+          gfc_traverse_components (sym, read_component, NULL);
 	  mio_rparen (); /* component list closing.  */
 
 	  skip_list (1); /* symbol end.  */

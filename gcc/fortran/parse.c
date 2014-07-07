@@ -2235,6 +2235,123 @@ parse_union (void)
     pop_state ();
 }
 
+static gfc_try
+check_component (gfc_component *c, void *data)
+{
+  gfc_component *lock_comp = NULL;
+  gfc_symbol *sym = (gfc_symbol *)data;
+  bool coarray, lock_type, allocatable, pointer;
+  coarray = lock_type = allocatable = pointer = false;
+
+  /* Look for allocatable components.  */
+  if (c->attr.allocatable
+      || (c->ts.type == BT_CLASS && c->attr.class_ok
+          && CLASS_DATA (c)->attr.allocatable)
+      || (c->ts.type == BT_DERIVED && !c->attr.pointer
+          && c->ts.u.derived->attr.alloc_comp))
+    {
+      allocatable = true;
+      sym->attr.alloc_comp = 1;
+    }
+
+  /* Look for pointer components.  */
+  if (c->attr.pointer
+      || (c->ts.type == BT_CLASS && c->attr.class_ok
+          && CLASS_DATA (c)->attr.class_pointer)
+      || (c->ts.type == BT_DERIVED && c->ts.u.derived->attr.pointer_comp))
+    {
+      pointer = true;
+      sym->attr.pointer_comp = 1;
+    }
+
+  /* Look for procedure pointer components.  */
+  if (c->attr.proc_pointer
+      || (c->ts.type == BT_DERIVED
+          && c->ts.u.derived->attr.proc_pointer_comp))
+    sym->attr.proc_pointer_comp = 1;
+
+  /* Looking for coarray components.  */
+  if (c->attr.codimension
+      || (c->ts.type == BT_CLASS && c->attr.class_ok
+          && CLASS_DATA (c)->attr.codimension))
+    {
+      coarray = true;
+      sym->attr.coarray_comp = 1;
+    }
+ 
+  if (c->ts.type == BT_DERIVED && c->ts.u.derived->attr.coarray_comp)
+    {
+      coarray = true;
+      if (!pointer && !allocatable)
+        sym->attr.coarray_comp = 1;
+    }
+
+  /* Looking for lock_type components.  */
+  if ((c->ts.type == BT_DERIVED
+          && c->ts.u.derived->from_intmod == INTMOD_ISO_FORTRAN_ENV
+          && c->ts.u.derived->intmod_sym_id == ISOFORTRAN_LOCK_TYPE)
+      || (c->ts.type == BT_CLASS && c->attr.class_ok
+          && CLASS_DATA (c)->ts.u.derived->from_intmod
+             == INTMOD_ISO_FORTRAN_ENV
+          && CLASS_DATA (c)->ts.u.derived->intmod_sym_id
+             == ISOFORTRAN_LOCK_TYPE)
+      || (c->ts.type == BT_DERIVED && c->ts.u.derived->attr.lock_comp
+          && !allocatable && !pointer))
+    {
+      lock_type = 1;
+      lock_comp = c;
+      sym->attr.lock_comp = 1;
+    }
+
+  /* Check for F2008, C1302 - and recall that pointers may not be coarrays
+     (5.3.14) and that subobjects of coarray are coarray themselves (2.4.7),
+     unless there are nondirect [allocatable or pointer] components
+     involved (cf. 1.3.33.1 and 1.3.33.3).  */
+
+  if (pointer && !coarray && lock_type)
+    gfc_error ("Component %s at %L of type LOCK_TYPE must have a "
+               "codimension or be a subcomponent of a coarray, "
+               "which is not possible as the component has the "
+               "pointer attribute", c->name, &c->loc);
+  else if (pointer && !coarray && c->ts.type == BT_DERIVED
+           && c->ts.u.derived->attr.lock_comp)
+    gfc_error ("Pointer component %s at %L has a noncoarray subcomponent "
+               "of type LOCK_TYPE, which must have a codimension or be a "
+               "subcomponent of a coarray", c->name, &c->loc);
+
+  if (lock_type && allocatable && !coarray)
+    gfc_error ("Allocatable component %s at %L of type LOCK_TYPE must have "
+               "a codimension", c->name, &c->loc);
+  else if (lock_type && allocatable && c->ts.type == BT_DERIVED
+           && c->ts.u.derived->attr.lock_comp)
+    gfc_error ("Allocatable component %s at %L must have a codimension as "
+               "it has a noncoarray subcomponent of type LOCK_TYPE",
+               c->name, &c->loc);
+
+  if (sym->attr.coarray_comp && !coarray && lock_type)
+    gfc_error ("Noncoarray component %s at %L of type LOCK_TYPE or with "
+               "subcomponent of type LOCK_TYPE must have a codimension or "
+               "be a subcomponent of a coarray. (Variables of type %s may "
+               "not have a codimension as already a coarray "
+               "subcomponent exists)", c->name, &c->loc, sym->name);
+
+  if (sym->attr.lock_comp && coarray && !lock_type)
+    gfc_error ("Noncoarray component %s at %L of type LOCK_TYPE or with "
+               "subcomponent of type LOCK_TYPE must have a codimension or "
+               "be a subcomponent of a coarray. (Variables of type %s may "
+               "not have a codimension as %s at %L has a codimension or a "
+               "coarray subcomponent)", lock_comp->name, &lock_comp->loc,
+               sym->name, c->name, &c->loc);
+
+  /* Look for private components.  */
+  if (sym->component_access == ACCESS_PRIVATE
+      || c->attr.access == ACCESS_PRIVATE
+      || (c->ts.type == BT_DERIVED && c->ts.u.derived->attr.private_comp))
+    sym->attr.private_comp = 1;
+
+  return SUCCESS;
+}
+
 /* Parse a structure definition. */
 
 static void
@@ -2244,7 +2361,6 @@ parse_structure (void)
     gfc_statement st;
     gfc_state_data s;
     gfc_symbol *sym;
-    gfc_component *c, *lock_comp = NULL;
 
     /* STRUCTURE is a DEC extension. */
     if(gfc_notify_std (GFC_STD_GNU, "STRUCTURE declaration at %C") == FAILURE)
@@ -2304,114 +2420,10 @@ parse_structure (void)
     * interoperable with C if the type is declared to be bind(c)
     */
     sym = gfc_current_block ();
-    for (c = sym->components; c; c = c->next)
-    {
-      bool coarray, lock_type, allocatable, pointer;
-      coarray = lock_type = allocatable = pointer = false;
-
-      /* Look for allocatable components.  */
-      if (c->attr.allocatable
-          || (c->ts.type == BT_CLASS && c->attr.class_ok
-              && CLASS_DATA (c)->attr.allocatable)
-          || (c->ts.type == BT_DERIVED && !c->attr.pointer
-              && c->ts.u.derived->attr.alloc_comp))
-        {
-          allocatable = true;
-          sym->attr.alloc_comp = 1;
-        }
-
-      /* Look for pointer components.  */
-      if (c->attr.pointer
-          || (c->ts.type == BT_CLASS && c->attr.class_ok
-              && CLASS_DATA (c)->attr.class_pointer)
-          || (c->ts.type == BT_DERIVED && c->ts.u.derived->attr.pointer_comp))
-        {
-          pointer = true;
-          sym->attr.pointer_comp = 1;
-        }
-
-      /* Look for procedure pointer components.  */
-      if (c->attr.proc_pointer
-          || (c->ts.type == BT_DERIVED
-              && c->ts.u.derived->attr.proc_pointer_comp))
-        sym->attr.proc_pointer_comp = 1;
-
-      /* Looking for coarray components.  */
-      if (c->attr.codimension
-          || (c->ts.type == BT_CLASS && c->attr.class_ok
-              && CLASS_DATA (c)->attr.codimension))
-        {
-          coarray = true;
-          sym->attr.coarray_comp = 1;
-        }
-     
-      if (c->ts.type == BT_DERIVED && c->ts.u.derived->attr.coarray_comp)
-        {
-          coarray = true;
-          if (!pointer && !allocatable)
-            sym->attr.coarray_comp = 1;
-        }
-
-      /* Looking for lock_type components.  */
-      if ((c->ts.type == BT_DERIVED
-              && c->ts.u.derived->from_intmod == INTMOD_ISO_FORTRAN_ENV
-              && c->ts.u.derived->intmod_sym_id == ISOFORTRAN_LOCK_TYPE)
-          || (c->ts.type == BT_CLASS && c->attr.class_ok
-              && CLASS_DATA (c)->ts.u.derived->from_intmod
-                 == INTMOD_ISO_FORTRAN_ENV
-              && CLASS_DATA (c)->ts.u.derived->intmod_sym_id
-                 == ISOFORTRAN_LOCK_TYPE)
-          || (c->ts.type == BT_DERIVED && c->ts.u.derived->attr.lock_comp
-              && !allocatable && !pointer))
-        {
-          lock_type = 1;
-          lock_comp = c;
-          sym->attr.lock_comp = 1;
-        }
-
-      /* Check for F2008, C1302 - and recall that pointers may not be coarrays
-         (5.3.14) and that subobjects of coarray are coarray themselves (2.4.7),
-         unless there are nondirect [allocatable or pointer] components
-         involved (cf. 1.3.33.1 and 1.3.33.3).  */
-
-      if (pointer && !coarray && lock_type)
-        gfc_error ("Component %s at %L of type LOCK_TYPE must have a "
-                   "codimension or be a subcomponent of a coarray, "
-                   "which is not possible as the component has the "
-                   "pointer attribute", c->name, &c->loc);
-      else if (pointer && !coarray && c->ts.type == BT_DERIVED
-               && c->ts.u.derived->attr.lock_comp)
-        gfc_error ("Pointer component %s at %L has a noncoarray subcomponent "
-                   "of type LOCK_TYPE, which must have a codimension or be a "
-                   "subcomponent of a coarray", c->name, &c->loc);
-
-      if (lock_type && allocatable && !coarray)
-        gfc_error ("Allocatable component %s at %L of type LOCK_TYPE must have "
-                   "a codimension", c->name, &c->loc);
-      else if (lock_type && allocatable && c->ts.type == BT_DERIVED
-               && c->ts.u.derived->attr.lock_comp)
-        gfc_error ("Allocatable component %s at %L must have a codimension as "
-                   "it has a noncoarray subcomponent of type LOCK_TYPE",
-                   c->name, &c->loc);
-
-      if (sym->attr.coarray_comp && !coarray && lock_type)
-        gfc_error ("Noncoarray component %s at %L of type LOCK_TYPE or with "
-                   "subcomponent of type LOCK_TYPE must have a codimension or "
-                   "be a subcomponent of a coarray. (Variables of type %s may "
-                   "not have a codimension as already a coarray "
-                   "subcomponent exists)", c->name, &c->loc, sym->name);
-
-      if (sym->attr.lock_comp && coarray && !lock_type)
-        gfc_error ("Noncoarray component %s at %L of type LOCK_TYPE or with "
-                   "subcomponent of type LOCK_TYPE must have a codimension or "
-                   "be a subcomponent of a coarray. (Variables of type %s may "
-                   "not have a codimension as %s at %L has a codimension or a "
-                   "coarray subcomponent)", lock_comp->name, &lock_comp->loc,
-                   sym->name, c->name, &c->loc);
-    }
+    gfc_traverse_components (sym, check_component, (void *)sym);
 
     if (!seen_field)
-    sym->attr.zero_comp = 1;
+        sym->attr.zero_comp = 1;
 
     pop_state ();
 
@@ -2427,7 +2439,6 @@ parse_map (void)
     gfc_statement st;
     gfc_state_data s;
     gfc_symbol *sym;
-    gfc_component *c, *lock_comp = NULL;
 
     /* MAP is a DEC extension. */
     if(gfc_notify_std (GFC_STD_GNU, "MAP declaration at %C") == FAILURE)
@@ -2486,114 +2497,10 @@ parse_map (void)
     * interoperable with C if the type is declared to be bind(c)
     */
     sym = gfc_current_block ();
-    for (c = sym->components; c; c = c->next)
-    {
-      bool coarray, lock_type, allocatable, pointer;
-      coarray = lock_type = allocatable = pointer = false;
-
-      /* Look for allocatable components.  */
-      if (c->attr.allocatable
-          || (c->ts.type == BT_CLASS && c->attr.class_ok
-              && CLASS_DATA (c)->attr.allocatable)
-          || (c->ts.type == BT_DERIVED && !c->attr.pointer
-              && c->ts.u.derived->attr.alloc_comp))
-        {
-          allocatable = true;
-          sym->attr.alloc_comp = 1;
-        }
-
-      /* Look for pointer components.  */
-      if (c->attr.pointer
-          || (c->ts.type == BT_CLASS && c->attr.class_ok
-              && CLASS_DATA (c)->attr.class_pointer)
-          || (c->ts.type == BT_DERIVED && c->ts.u.derived->attr.pointer_comp))
-        {
-          pointer = true;
-          sym->attr.pointer_comp = 1;
-        }
-
-      /* Look for procedure pointer components.  */
-      if (c->attr.proc_pointer
-          || (c->ts.type == BT_DERIVED
-              && c->ts.u.derived->attr.proc_pointer_comp))
-        sym->attr.proc_pointer_comp = 1;
-
-      /* Looking for coarray components.  */
-      if (c->attr.codimension
-          || (c->ts.type == BT_CLASS && c->attr.class_ok
-              && CLASS_DATA (c)->attr.codimension))
-        {
-          coarray = true;
-          sym->attr.coarray_comp = 1;
-        }
-     
-      if (c->ts.type == BT_DERIVED && c->ts.u.derived->attr.coarray_comp)
-        {
-          coarray = true;
-          if (!pointer && !allocatable)
-            sym->attr.coarray_comp = 1;
-        }
-
-      /* Looking for lock_type components.  */
-      if ((c->ts.type == BT_DERIVED
-              && c->ts.u.derived->from_intmod == INTMOD_ISO_FORTRAN_ENV
-              && c->ts.u.derived->intmod_sym_id == ISOFORTRAN_LOCK_TYPE)
-          || (c->ts.type == BT_CLASS && c->attr.class_ok
-              && CLASS_DATA (c)->ts.u.derived->from_intmod
-                 == INTMOD_ISO_FORTRAN_ENV
-              && CLASS_DATA (c)->ts.u.derived->intmod_sym_id
-                 == ISOFORTRAN_LOCK_TYPE)
-          || (c->ts.type == BT_DERIVED && c->ts.u.derived->attr.lock_comp
-              && !allocatable && !pointer))
-        {
-          lock_type = 1;
-          lock_comp = c;
-          sym->attr.lock_comp = 1;
-        }
-
-      /* Check for F2008, C1302 - and recall that pointers may not be coarrays
-         (5.3.14) and that subobjects of coarray are coarray themselves (2.4.7),
-         unless there are nondirect [allocatable or pointer] components
-         involved (cf. 1.3.33.1 and 1.3.33.3).  */
-
-      if (pointer && !coarray && lock_type)
-        gfc_error ("Component %s at %L of type LOCK_TYPE must have a "
-                   "codimension or be a subcomponent of a coarray, "
-                   "which is not possible as the component has the "
-                   "pointer attribute", c->name, &c->loc);
-      else if (pointer && !coarray && c->ts.type == BT_DERIVED
-               && c->ts.u.derived->attr.lock_comp)
-        gfc_error ("Pointer component %s at %L has a noncoarray subcomponent "
-                   "of type LOCK_TYPE, which must have a codimension or be a "
-                   "subcomponent of a coarray", c->name, &c->loc);
-
-      if (lock_type && allocatable && !coarray)
-        gfc_error ("Allocatable component %s at %L of type LOCK_TYPE must have "
-                   "a codimension", c->name, &c->loc);
-      else if (lock_type && allocatable && c->ts.type == BT_DERIVED
-               && c->ts.u.derived->attr.lock_comp)
-        gfc_error ("Allocatable component %s at %L must have a codimension as "
-                   "it has a noncoarray subcomponent of type LOCK_TYPE",
-                   c->name, &c->loc);
-
-      if (sym->attr.coarray_comp && !coarray && lock_type)
-        gfc_error ("Noncoarray component %s at %L of type LOCK_TYPE or with "
-                   "subcomponent of type LOCK_TYPE must have a codimension or "
-                   "be a subcomponent of a coarray. (Variables of type %s may "
-                   "not have a codimension as already a coarray "
-                   "subcomponent exists)", c->name, &c->loc, sym->name);
-
-      if (sym->attr.lock_comp && coarray && !lock_type)
-        gfc_error ("Noncoarray component %s at %L of type LOCK_TYPE or with "
-                   "subcomponent of type LOCK_TYPE must have a codimension or "
-                   "be a subcomponent of a coarray. (Variables of type %s may "
-                   "not have a codimension as %s at %L has a codimension or a "
-                   "coarray subcomponent)", lock_comp->name, &lock_comp->loc,
-                   sym->name, c->name, &c->loc);
-    }
+    gfc_traverse_components (sym, check_component, (void *)sym);
 
     if (!seen_field)
-    sym->attr.zero_comp = 1;
+        sym->attr.zero_comp = 1;
 
     /* So parse_union can add this structure to its list of maps */
     gfc_new_block = gfc_current_block ();
@@ -2610,7 +2517,6 @@ parse_derived (void)
   gfc_statement st;
   gfc_state_data s;
   gfc_symbol *sym;
-  gfc_component *c, *lock_comp = NULL;
 
   accept_statement (ST_DERIVED_DECL);
   push_state (&s, COMP_DERIVED, gfc_new_block);
@@ -2727,117 +2633,7 @@ endType:
    * interoperable with C if the type is declared to be bind(c)
    */
   sym = gfc_current_block ();
-  for (c = sym->components; c; c = c->next)
-    {
-      bool coarray, lock_type, allocatable, pointer;
-      coarray = lock_type = allocatable = pointer = false;
-
-      /* Look for allocatable components.  */
-      if (c->attr.allocatable
-	  || (c->ts.type == BT_CLASS && c->attr.class_ok
-	      && CLASS_DATA (c)->attr.allocatable)
-	  || (c->ts.type == BT_DERIVED && !c->attr.pointer
-	      && c->ts.u.derived->attr.alloc_comp))
-	{
-	  allocatable = true;
-	  sym->attr.alloc_comp = 1;
-	}
-
-      /* Look for pointer components.  */
-      if (c->attr.pointer
-	  || (c->ts.type == BT_CLASS && c->attr.class_ok
-	      && CLASS_DATA (c)->attr.class_pointer)
-	  || (c->ts.type == BT_DERIVED && c->ts.u.derived->attr.pointer_comp))
-	{
-	  pointer = true;
-	  sym->attr.pointer_comp = 1;
-	}
-
-      /* Look for procedure pointer components.  */
-      if (c->attr.proc_pointer
-	  || (c->ts.type == BT_DERIVED
-	      && c->ts.u.derived->attr.proc_pointer_comp))
-	sym->attr.proc_pointer_comp = 1;
-
-      /* Looking for coarray components.  */
-      if (c->attr.codimension
-	  || (c->ts.type == BT_CLASS && c->attr.class_ok
-	      && CLASS_DATA (c)->attr.codimension))
-	{
-	  coarray = true;
-	  sym->attr.coarray_comp = 1;
-	}
-     
-      if (c->ts.type == BT_DERIVED && c->ts.u.derived->attr.coarray_comp)
-	{
-	  coarray = true;
-	  if (!pointer && !allocatable)
-	    sym->attr.coarray_comp = 1;
-	}
-
-      /* Looking for lock_type components.  */
-      if ((c->ts.type == BT_DERIVED
-	      && c->ts.u.derived->from_intmod == INTMOD_ISO_FORTRAN_ENV
-	      && c->ts.u.derived->intmod_sym_id == ISOFORTRAN_LOCK_TYPE)
-	  || (c->ts.type == BT_CLASS && c->attr.class_ok
-	      && CLASS_DATA (c)->ts.u.derived->from_intmod
-		 == INTMOD_ISO_FORTRAN_ENV
-	      && CLASS_DATA (c)->ts.u.derived->intmod_sym_id
-		 == ISOFORTRAN_LOCK_TYPE)
-	  || (c->ts.type == BT_DERIVED && c->ts.u.derived->attr.lock_comp
-	      && !allocatable && !pointer))
-	{
-	  lock_type = 1;
-	  lock_comp = c;
-	  sym->attr.lock_comp = 1;
-	}
-
-      /* Check for F2008, C1302 - and recall that pointers may not be coarrays
-	 (5.3.14) and that subobjects of coarray are coarray themselves (2.4.7),
-	 unless there are nondirect [allocatable or pointer] components
-	 involved (cf. 1.3.33.1 and 1.3.33.3).  */
-
-      if (pointer && !coarray && lock_type)
-	gfc_error ("Component %s at %L of type LOCK_TYPE must have a "
-		   "codimension or be a subcomponent of a coarray, "
-		   "which is not possible as the component has the "
-		   "pointer attribute", c->name, &c->loc);
-      else if (pointer && !coarray && c->ts.type == BT_DERIVED
-	       && c->ts.u.derived->attr.lock_comp)
-	gfc_error ("Pointer component %s at %L has a noncoarray subcomponent "
-		   "of type LOCK_TYPE, which must have a codimension or be a "
-		   "subcomponent of a coarray", c->name, &c->loc);
-
-      if (lock_type && allocatable && !coarray)
-	gfc_error ("Allocatable component %s at %L of type LOCK_TYPE must have "
-		   "a codimension", c->name, &c->loc);
-      else if (lock_type && allocatable && c->ts.type == BT_DERIVED
-	       && c->ts.u.derived->attr.lock_comp)
-	gfc_error ("Allocatable component %s at %L must have a codimension as "
-		   "it has a noncoarray subcomponent of type LOCK_TYPE",
-		   c->name, &c->loc);
-
-      if (sym->attr.coarray_comp && !coarray && lock_type)
-	gfc_error ("Noncoarray component %s at %L of type LOCK_TYPE or with "
-		   "subcomponent of type LOCK_TYPE must have a codimension or "
-		   "be a subcomponent of a coarray. (Variables of type %s may "
-		   "not have a codimension as already a coarray "
-		   "subcomponent exists)", c->name, &c->loc, sym->name);
-
-      if (sym->attr.lock_comp && coarray && !lock_type)
-	gfc_error ("Noncoarray component %s at %L of type LOCK_TYPE or with "
-		   "subcomponent of type LOCK_TYPE must have a codimension or "
-		   "be a subcomponent of a coarray. (Variables of type %s may "
-		   "not have a codimension as %s at %L has a codimension or a "
-		   "coarray subcomponent)", lock_comp->name, &lock_comp->loc,
-		   sym->name, c->name, &c->loc);
-
-      /* Look for private components.  */
-      if (sym->component_access == ACCESS_PRIVATE
-	  || c->attr.access == ACCESS_PRIVATE
-	  || (c->ts.type == BT_DERIVED && c->ts.u.derived->attr.private_comp))
-	sym->attr.private_comp = 1;
-    }
+  gfc_traverse_components (sym, check_component, (void *)sym);
 
   if (!seen_component)
     sym->attr.zero_comp = 1;
