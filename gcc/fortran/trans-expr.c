@@ -6129,6 +6129,9 @@ conv_comp (gfc_component *cm, void *data)
   conv_comp_data *d = (conv_comp_data *)data;
   tree val;
 
+  if (!d->c)
+      return FAILURE;
+
   /* Skip absent members in default initializers and allocatable
      components.  Although the latter have a default initializer
      of EXPR_NULL,... by default, the static nullify is not needed
