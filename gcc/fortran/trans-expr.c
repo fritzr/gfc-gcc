@@ -1550,6 +1550,7 @@ gfc_conv_component_ref (gfc_se * se, gfc_ref * ref)
   tree tmp;
   tree decl;
   tree field;
+  tree context;
 
   c = ref->u.c.component;
 
@@ -1560,15 +1561,21 @@ gfc_conv_component_ref (gfc_se * se, gfc_ref * ref)
   field = c->backend_decl;
   gcc_assert (field && TREE_CODE (field) == FIELD_DECL);
   decl = se->expr;
+  context = DECL_FIELD_CONTEXT (field);
 
   /* Components can correspond to fields of different containing
      types, as components are created without context, whereas
      a concrete use of a component has the type of decl as context.
      So, if the type doesn't match, we search the corresponding
      FIELD_DECL in the parent type.  To not waste too much time
-     we cache this result in norestrict_decl.  */
+     we cache this result in norestrict_decl. 
+     On the other hand, if the context is a MAP (a RECORD_TYPE within a UNION)
+     always use the given FIELD_DECL. */
 
-  if (DECL_FIELD_CONTEXT (field) != TREE_TYPE (decl))
+  if (context != TREE_TYPE (decl) 
+      && !(TREE_CODE (context) == RECORD_TYPE 
+           && TYPE_CONTEXT (context) != NULL_TREE 
+           && TREE_CODE (TYPE_CONTEXT (context)) == UNION_TYPE))
     {
       tree f2 = c->norestrict_decl;
       if (!f2 || DECL_FIELD_CONTEXT (f2) != TREE_TYPE (decl))
