@@ -2362,9 +2362,6 @@ gfc_get_union_type (gfc_component *un)
             map->backend_decl = map_field;
     }
 
-    gfc_finish_type (typenode);
-    gfc_set_decl_location (TYPE_STUB_DECL (typenode), &un->loc);
-
     un->backend_decl = typenode;
     return typenode;
 }
