@@ -331,14 +331,13 @@ gfc_copy_expr (gfc_expr *p)
 	    }
 	  break;
 
+        case BT_UNION:
 	case BT_HOLLERITH:
 	case BT_LOGICAL:
 	case BT_DERIVED:
 	case BT_CLASS:
 	case BT_ASSUMED:
 	  break;		/* Already done.  */
-
-        /* TODO: case BT_UNION: */
 
 	case BT_PROCEDURE:
         case BT_VOID:
@@ -2191,32 +2190,34 @@ not_numeric:
   return FAILURE;
 }
 
+static gfc_try
+check_alloc (gfc_component *comp, void *data)
+{
+  gfc_constructor **ctor = (gfc_constructor **)data;
+  if (comp->attr.allocatable
+      && (*ctor)->expr->expr_type != EXPR_NULL)
+    {
+      gfc_error("Invalid initialization expression for ALLOCATABLE "
+                "component '%s' in structure constructor at %L",
+                comp->name, &(*ctor)->expr->where);
+      return FAILURE;
+    }
+  *ctor = gfc_constructor_next (*ctor);
+  return SUCCESS;
+}
+
 /* F2003, 7.1.7 (3): In init expression, allocatable components
    must not be data-initialized.  */
 static gfc_try
 check_alloc_comp_init (gfc_expr *e)
 {
-  gfc_component *comp;
   gfc_constructor *ctor;
 
   gcc_assert (e->expr_type == EXPR_STRUCTURE);
   gcc_assert (e->ts.type == BT_DERIVED);
 
-  for (comp = e->ts.u.derived->components,
-       ctor = gfc_constructor_first (e->value.constructor);
-       comp; comp = comp->next, ctor = gfc_constructor_next (ctor))
-    {
-      if (comp->attr.allocatable
-          && ctor->expr->expr_type != EXPR_NULL)
-        {
-	  gfc_error("Invalid initialization expression for ALLOCATABLE "
-	            "component '%s' in structure constructor at %L",
-	            comp->name, &ctor->expr->where);
-	  return FAILURE;
-	}
-    }
-
-  return SUCCESS;
+  ctor = gfc_constructor_first (e->value.constructor);
+  return gfc_traverse_components (e->ts.u.derived, check_alloc, (void *)&ctor);
 }
 
 static match
@@ -2823,59 +2824,6 @@ gfc_build_default_init_expr (gfc_typespec *ts, locus *where)
     }
 
   return init_expr;
-}
-
-
-/* Apply an initialization expression to a typespec.
-   Can be used for both symbols and components.
-   Similar to add_init_expr_to_sym in decl.c; could probably be combined with
-   some effort. */
-void
-gfc_apply_init (gfc_typespec *ts, symbol_attribute *attr, gfc_expr *init)
-{
-  if (ts->type == BT_CHARACTER && !attr->pointer && init
-      && ts->u.cl
-      && ts->u.cl->length && ts->u.cl->length->expr_type == EXPR_CONSTANT)
-    {
-      int len;
-
-      gcc_assert (ts->u.cl && ts->u.cl->length);
-      gcc_assert (ts->u.cl->length->expr_type == EXPR_CONSTANT);
-      gcc_assert (ts->u.cl->length->ts.type == BT_INTEGER);
-
-      len = mpz_get_si (ts->u.cl->length->value.integer);
-
-      if (init->expr_type == EXPR_CONSTANT)
-	gfc_set_constant_character_len (len, init, -1);
-      else if (mpz_cmp (ts->u.cl->length->value.integer,
-			init->ts.u.cl->length->value.integer))
-	{
-	  gfc_constructor *ctor;
-	  ctor = gfc_constructor_first (init->value.constructor);
-
-	  if (ctor)
-	    {
-	      int first_len;
-	      bool has_ts = (init->ts.u.cl
-			     && init->ts.u.cl->length_from_typespec);
-
-	      /* Remember the length of the first element for checking
-		 that all elements *in the constructor* have the same
-		 length.  This need not be the length of the LHS!  */
-	      gcc_assert (ctor->expr->expr_type == EXPR_CONSTANT);
-	      gcc_assert (ctor->expr->ts.type == BT_CHARACTER);
-	      first_len = ctor->expr->value.character.length;
-
-	      for ( ; ctor; ctor = gfc_constructor_next (ctor))
-		if (ctor->expr->expr_type == EXPR_CONSTANT)
-		{
-		  gfc_set_constant_character_len (len, ctor->expr,
-						  has_ts ? -1 : first_len);
-		  ctor->expr->ts.u.cl->length = gfc_copy_expr (ts->u.cl->length);
-		}
-	    }
-	}
-    }
 }
 
 
@@ -4054,6 +4002,24 @@ gfc_check_assign_symbol (gfc_symbol *sym, gfc_component *comp, gfc_expr *rvalue)
   return SUCCESS;
 }
 
+static gfc_try
+has_default_initializer (gfc_component *c, void *)
+{
+    if (c->ts.type == BT_DERIVED)
+      {
+        if (!c->attr.pointer
+	     && gfc_has_default_initializer (c->ts.u.derived))
+	  return FAILURE;
+	if (c->attr.pointer && c->initializer)
+	  return FAILURE;
+      }
+    else
+      {
+        if (c->initializer)
+	  return FAILURE;
+      }
+    return SUCCESS;
+}
 
 /* Check for default initializer; sym->value is not enough
    as it is also set for EXPR_NULL of allocatables.  */
@@ -4061,78 +4027,63 @@ gfc_check_assign_symbol (gfc_symbol *sym, gfc_component *comp, gfc_expr *rvalue)
 bool
 gfc_has_default_initializer (gfc_symbol *der)
 {
-  gfc_component *c;
-
   gcc_assert (der->attr.flavor == FL_DERIVED);
-  for (c = der->components; c; c = c->next)
-    if (c->ts.type == BT_DERIVED)
-      {
-        if (!c->attr.pointer
-	     && gfc_has_default_initializer (c->ts.u.derived))
-	  return true;
-	if (c->attr.pointer && c->initializer)
-	  return true;
-      }
-    else
-      {
-        if (c->initializer)
-	  return true;
-      }
-
-  return false;
+  return gfc_traverse_components (der, has_default_initializer, NULL) == FAILURE;
 }
 
-
-/* Fetch or generate an initializer for the given component.
-   Only generate an initializer if generate is true. */
-
-static gfc_expr *
-component_init (gfc_component *c, bool generate)
+static gfc_try
+get_default_init (gfc_component *comp, void *data)
 {
-  gfc_expr *init = NULL;
-
-  if (c->initializer) return c->initializer;
-  if (!generate) return NULL;
-
-  /* Recursively handle derived type components */
-  if (c->ts.type == BT_DERIVED || c->ts.type == BT_CLASS)
-    init = gfc_default_initializer (&c->ts, true);
-
-  /* Simple components */
-  else
-  {
-    init = gfc_build_default_init_expr (&c->ts, &c->loc);
-    gfc_apply_init (&c->ts, &c->attr, init);
-  }
-
-  return init;
+    gfc_component **init_comp = (gfc_component **)data;
+    if (comp->initializer || comp->attr.allocatable
+	|| (comp->ts.type == BT_CLASS && CLASS_DATA (comp)
+	    && CLASS_DATA (comp)->attr.allocatable))
+    {
+        *init_comp = comp;
+        return FAILURE;
+    }
+    return SUCCESS;
 }
 
+static gfc_try
+add_constructor (gfc_component *comp, void *data)
+{
+  gfc_expr *init = (gfc_expr *)data;
+  gfc_constructor *ctor = gfc_constructor_get();
 
-/* Get an expression for a default initializer of a derived type. 
-   If generate is true and -finit-derived is specified, generate default
-   initialization expressions for components that lack them as with
-   gfc_build_default_init_expr. */
+  if (comp->initializer)
+    {
+      ctor->expr = gfc_copy_expr (comp->initializer);
+      if ((comp->ts.type != comp->initializer->ts.type
+           || comp->ts.kind != comp->initializer->ts.kind)
+          && !comp->attr.pointer && !comp->attr.proc_pointer)
+        gfc_convert_type_warn (ctor->expr, &comp->ts, 2, false);
+    }
+
+  if (comp->attr.allocatable
+      || (comp->ts.type == BT_CLASS && CLASS_DATA (comp)->attr.allocatable))
+    {
+      ctor->expr = gfc_get_expr ();
+      ctor->expr->expr_type = EXPR_NULL;
+      ctor->expr->ts = comp->ts;
+    }
+
+  gfc_constructor_append (&init->value.constructor, ctor);
+
+  return SUCCESS;
+}
+
+/* Get an expression for a default initializer.  */
 
 gfc_expr *
-gfc_default_initializer (gfc_typespec *ts, bool generate)
+gfc_default_initializer (gfc_typespec *ts)
 {
-  gfc_expr *init, *tmp;
+  gfc_expr *init;
   gfc_component *comp;
-  generate = gfc_option.flag_init_derived && generate;
 
   /* See if we have a default initializer in this, but not in nested
-     types (otherwise we could use gfc_has_default_initializer()).
-     We don't need to check if we are going to generate them. */
-  comp = ts->u.derived->components;
-  if (!generate)
-  {
-    for (; comp; comp = comp->next)
-      if (comp->initializer || comp->attr.allocatable
-          || (comp->ts.type == BT_CLASS && CLASS_DATA (comp)
-              && CLASS_DATA (comp)->attr.allocatable))
-        break;
-  }
+     types (otherwise we could use gfc_has_default_initializer()).  */
+  gfc_traverse_components (ts->u.derived, get_default_init, (void *)&comp);
 
   if (!comp)
     return NULL;
@@ -4141,32 +4092,8 @@ gfc_default_initializer (gfc_typespec *ts, bool generate)
 					     &ts->u.derived->declared_at);
   init->ts = *ts;
 
-  for (comp = ts->u.derived->components; comp; comp = comp->next)
-    {
-      gfc_constructor *ctor = gfc_constructor_get();
-
-      /* Fetch or generate an initializer for the component.  */
-      tmp = component_init (comp, generate);
-      if (tmp)
-	{
-          /* If the initializer was not generated, we need a copy.  */
-          ctor->expr = comp->initializer ? gfc_copy_expr (tmp) : tmp;
-	  if ((comp->ts.type != tmp->ts.type
-	       || comp->ts.kind != tmp->ts.kind)
-	      && !comp->attr.pointer && !comp->attr.proc_pointer)
-	    gfc_convert_type_warn (ctor->expr, &comp->ts, 2, false);
-	}
-
-      if (comp->attr.allocatable
-	  || (comp->ts.type == BT_CLASS && CLASS_DATA (comp)->attr.allocatable))
-	{
-	  ctor->expr = gfc_get_expr ();
-	  ctor->expr->expr_type = EXPR_NULL;
-	  ctor->expr->ts = comp->ts;
-	}
-
-      gfc_constructor_append (&init->value.constructor, ctor);
-    }
+  /* Add constructors for each component to the initializer. */
+  gfc_traverse_components (ts->u.derived, add_constructor, (void *)init);
 
   return init;
 }
