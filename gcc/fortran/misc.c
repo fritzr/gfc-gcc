@@ -172,6 +172,9 @@ gfc_typename (gfc_typespec *ts)
     case BT_PROCEDURE:
       strcpy (buffer, "PROCEDURE");
       break;
+    case BT_UNION:
+      sprintf (buffer, "UNION");
+      break;
     case BT_UNKNOWN:
       strcpy (buffer, "UNKNOWN");
       break;
