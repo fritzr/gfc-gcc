@@ -1018,6 +1018,235 @@ resolve_contained_functions (gfc_namespace *ns)
 
 static gfc_try resolve_fl_derived0 (gfc_symbol *sym);
 
+typedef struct {
+    gfc_try t;
+    gfc_constructor *cons;
+    int init;
+} resolve_cons_data;
+
+static gfc_try
+resolve_cons (gfc_component *comp, void *data)
+{
+  int rank;
+  bool impure;
+  symbol_attribute a;
+  resolve_cons_data *d = (resolve_cons_data *)data;
+  gfc_constructor *cons = d->cons;
+
+  if (!cons)
+    return FAILURE;
+
+  if (!cons->expr)
+    goto continu;
+
+  if (gfc_resolve_expr (cons->expr) == FAILURE)
+    {
+      d->t = FAILURE;
+      goto continu;
+    }
+
+  rank = comp->as ? comp->as->rank : 0;
+  if (cons->expr->expr_type != EXPR_NULL && rank != cons->expr->rank
+      && (comp->attr.allocatable || cons->expr->rank))
+    {
+      gfc_error ("The rank of the element in the structure "
+                 "constructor at %L does not match that of the "
+                 "component (%d/%d)", &cons->expr->where,
+                 cons->expr->rank, rank);
+      d->t = FAILURE;
+    }
+
+  /* If we don't have the right type, try to convert it.  */
+
+  if (!comp->attr.proc_pointer &&
+      !gfc_compare_types (&cons->expr->ts, &comp->ts))
+    {
+      if (strcmp (comp->name, "_extends") == 0)
+        {
+          /* Can afford to be brutal with the _extends initializer.
+             The derived type can get lost because it is PRIVATE
+             but it is not usage constrained by the standard.  */
+          cons->expr->ts = comp->ts;
+        }
+      else if (comp->attr.pointer && cons->expr->ts.type != BT_UNKNOWN)
+        {
+          gfc_error ("The element in the structure constructor at %L, "
+                     "for pointer component '%s', is %s but should be %s",
+                     &cons->expr->where, comp->name,
+                     gfc_basic_typename (cons->expr->ts.type),
+                     gfc_basic_typename (comp->ts.type));
+          d->t = FAILURE;
+        }
+      else
+        {
+          gfc_try t2 = gfc_convert_type (cons->expr, &comp->ts, 1);
+          if (d->t != FAILURE)
+            d->t = t2;
+        }
+    }
+
+  /* For strings, the length of the constructor should be the same as
+     the one of the structure, ensure this if the lengths are known at
+     compile time and when we are dealing with PARAMETER or structure
+     constructors.  */
+  if (cons->expr->ts.type == BT_CHARACTER && comp->ts.u.cl
+      && comp->ts.u.cl->length
+      && comp->ts.u.cl->length->expr_type == EXPR_CONSTANT
+      && cons->expr->ts.u.cl && cons->expr->ts.u.cl->length
+      && cons->expr->ts.u.cl->length->expr_type == EXPR_CONSTANT
+      && cons->expr->rank != 0
+      && mpz_cmp (cons->expr->ts.u.cl->length->value.integer,
+                  comp->ts.u.cl->length->value.integer) != 0)
+    {
+      if (cons->expr->expr_type == EXPR_VARIABLE
+          && cons->expr->symtree->n.sym->attr.flavor == FL_PARAMETER)
+        {
+          /* Wrap the parameter in an array constructor (EXPR_ARRAY)
+             to make use of the gfc_resolve_character_array_constructor
+             machinery.  The expression is later simplified away to
+             an array of string literals.  */
+          gfc_expr *para = cons->expr;
+          cons->expr = gfc_get_expr ();
+          cons->expr->ts = para->ts;
+          cons->expr->where = para->where;
+          cons->expr->expr_type = EXPR_ARRAY;
+          cons->expr->rank = para->rank;
+          cons->expr->shape = gfc_copy_shape (para->shape, para->rank);
+          gfc_constructor_append_expr (&cons->expr->value.constructor,
+                                       para, &cons->expr->where);
+        }
+      if (cons->expr->expr_type == EXPR_ARRAY)
+        {
+          gfc_constructor *p;
+          p = gfc_constructor_first (cons->expr->value.constructor);
+          if (cons->expr->ts.u.cl != p->expr->ts.u.cl)
+            {
+              gfc_charlen *cl, *cl2;
+
+              cl2 = NULL;
+              for (cl = gfc_current_ns->cl_list; cl; cl = cl->next)
+                {
+                  if (cl == cons->expr->ts.u.cl)
+                    break;
+                  cl2 = cl;
+                }
+
+              gcc_assert (cl);
+
+              if (cl2)
+                cl2->next = cl->next;
+
+              gfc_free_expr (cl->length);
+              free (cl);
+            }
+
+          cons->expr->ts.u.cl = gfc_new_charlen (gfc_current_ns, NULL);
+          cons->expr->ts.u.cl->length_from_typespec = true;
+          cons->expr->ts.u.cl->length = gfc_copy_expr (comp->ts.u.cl->length);
+          gfc_resolve_character_array_constructor (cons->expr);
+        }
+    }
+
+  if (cons->expr->expr_type == EXPR_NULL
+      && !(comp->attr.pointer || comp->attr.allocatable
+           || comp->attr.proc_pointer
+           || (comp->ts.type == BT_CLASS
+               && (CLASS_DATA (comp)->attr.class_pointer
+                   || CLASS_DATA (comp)->attr.allocatable))))
+    {
+      d->t = FAILURE;
+      gfc_error ("The NULL in the structure constructor at %L is "
+                 "being applied to component '%s', which is neither "
+                 "a POINTER nor ALLOCATABLE", &cons->expr->where,
+                 comp->name);
+    }
+
+  if (comp->attr.proc_pointer && comp->ts.interface)
+    {
+      /* Check procedure pointer interface.  */
+      gfc_symbol *s2 = NULL;
+      gfc_component *c2;
+      const char *name;
+      char err[200];
+
+      c2 = gfc_get_proc_ptr_comp (cons->expr);
+      if (c2)
+        {
+          s2 = c2->ts.interface;
+          name = c2->name;
+        }
+      else if (cons->expr->expr_type == EXPR_FUNCTION)
+        {
+          s2 = cons->expr->symtree->n.sym->result;
+          name = cons->expr->symtree->n.sym->result->name;
+        }
+      else if (cons->expr->expr_type != EXPR_NULL)
+        {
+          s2 = cons->expr->symtree->n.sym;
+          name = cons->expr->symtree->n.sym->name;
+        }
+
+      if (s2 && !gfc_compare_interfaces (comp->ts.interface, s2, name, 0, 1,
+                                         err, sizeof (err), NULL, NULL))
+        {
+          gfc_error ("Interface mismatch for procedure-pointer component "
+                     "'%s' in structure constructor at %L: %s",
+                     comp->name, &cons->expr->where, err);
+          return FAILURE;
+        }
+    }
+
+  if (!comp->attr.pointer || comp->attr.proc_pointer
+      || cons->expr->expr_type == EXPR_NULL)
+    goto continu;
+
+  a = gfc_expr_attr (cons->expr);
+
+  if (!a.pointer && !a.target)
+    {
+      d->t = FAILURE;
+      gfc_error ("The element in the structure constructor at %L, "
+                 "for pointer component '%s' should be a POINTER or "
+                 "a TARGET", &cons->expr->where, comp->name);
+    }
+
+  if (d->init)
+    {
+      /* F08:C461. Additional checks for pointer initialization.  */
+      if (a.allocatable)
+        {
+          d->t = FAILURE;
+          gfc_error ("Pointer initialization target at %L "
+                     "must not be ALLOCATABLE ", &cons->expr->where);
+        }
+      if (!a.save)
+        {
+          d->t = FAILURE;
+          gfc_error ("Pointer initialization target at %L "
+                     "must have the SAVE attribute", &cons->expr->where);
+        }
+    }
+
+  /* F2003, C1272 (3).  */
+  impure = cons->expr->expr_type == EXPR_VARIABLE
+                && (gfc_impure_variable (cons->expr->symtree->n.sym)
+                    || gfc_is_coindexed (cons->expr));
+  if (impure && gfc_pure (NULL))
+    {
+      d->t = FAILURE;
+      gfc_error ("Invalid expression in the structure constructor for "
+                 "pointer component '%s' at %L in PURE procedure",
+                 comp->name, &cons->expr->where);
+    }
+
+  if (impure)
+    gfc_unset_implicit_pure (NULL);
+
+continu:
+  d->cons = gfc_constructor_next (cons);
+  return SUCCESS;
+}
+
 
 /* Resolve all of the elements of a structure constructor and make sure that
    the types are correct. The 'init' flag indicates that the given
@@ -1028,10 +1257,6 @@ resolve_structure_cons (gfc_expr *expr, int init)
 {
   gfc_constructor *cons;
   gfc_component *comp;
-  gfc_try t;
-  symbol_attribute a;
-
-  t = SUCCESS;
 
   if (expr->ts.type == BT_DERIVED)
     resolve_fl_derived0 (expr->ts.u.derived);
@@ -1063,220 +1288,14 @@ resolve_structure_cons (gfc_expr *expr, int init)
   else
     comp = expr->ts.u.derived->components;
 
-  for (; comp && cons; comp = comp->next, cons = gfc_constructor_next (cons))
-    {
-      int rank;
-
-      if (!cons->expr)
-	continue;
-
-      if (gfc_resolve_expr (cons->expr) == FAILURE)
-	{
-	  t = FAILURE;
-	  continue;
-	}
-
-      rank = comp->as ? comp->as->rank : 0;
-      if (cons->expr->expr_type != EXPR_NULL && rank != cons->expr->rank
-	  && (comp->attr.allocatable || cons->expr->rank))
-	{
-	  gfc_error ("The rank of the element in the structure "
-		     "constructor at %L does not match that of the "
-		     "component (%d/%d)", &cons->expr->where,
-		     cons->expr->rank, rank);
-	  t = FAILURE;
-	}
-
-      /* If we don't have the right type, try to convert it.  */
-
-      if (!comp->attr.proc_pointer &&
-	  !gfc_compare_types (&cons->expr->ts, &comp->ts))
-	{
-	  if (strcmp (comp->name, "_extends") == 0)
-	    {
-	      /* Can afford to be brutal with the _extends initializer.
-		 The derived type can get lost because it is PRIVATE
-		 but it is not usage constrained by the standard.  */
-	      cons->expr->ts = comp->ts;
-	    }
-	  else if (comp->attr.pointer && cons->expr->ts.type != BT_UNKNOWN)
-	    {
-	      gfc_error ("The element in the structure constructor at %L, "
-			 "for pointer component '%s', is %s but should be %s",
-			 &cons->expr->where, comp->name,
-			 gfc_basic_typename (cons->expr->ts.type),
-			 gfc_basic_typename (comp->ts.type));
-	      t = FAILURE;
-	    }
-	  else
-	    {
-	      gfc_try t2 = gfc_convert_type (cons->expr, &comp->ts, 1);
-	      if (t != FAILURE)
-		t = t2;
-	    }
-	}
-
-      /* For strings, the length of the constructor should be the same as
-	 the one of the structure, ensure this if the lengths are known at
- 	 compile time and when we are dealing with PARAMETER or structure
-	 constructors.  */
-      if (cons->expr->ts.type == BT_CHARACTER && comp->ts.u.cl
-	  && comp->ts.u.cl->length
-	  && comp->ts.u.cl->length->expr_type == EXPR_CONSTANT
-	  && cons->expr->ts.u.cl && cons->expr->ts.u.cl->length
-	  && cons->expr->ts.u.cl->length->expr_type == EXPR_CONSTANT
-	  && cons->expr->rank != 0
-	  && mpz_cmp (cons->expr->ts.u.cl->length->value.integer,
-		      comp->ts.u.cl->length->value.integer) != 0)
-	{
-	  if (cons->expr->expr_type == EXPR_VARIABLE
-	      && cons->expr->symtree->n.sym->attr.flavor == FL_PARAMETER)
-	    {
-	      /* Wrap the parameter in an array constructor (EXPR_ARRAY)
-		 to make use of the gfc_resolve_character_array_constructor
-		 machinery.  The expression is later simplified away to
-		 an array of string literals.  */
-	      gfc_expr *para = cons->expr;
-	      cons->expr = gfc_get_expr ();
-	      cons->expr->ts = para->ts;
-	      cons->expr->where = para->where;
-	      cons->expr->expr_type = EXPR_ARRAY;
-	      cons->expr->rank = para->rank;
-	      cons->expr->shape = gfc_copy_shape (para->shape, para->rank);
-	      gfc_constructor_append_expr (&cons->expr->value.constructor,
-					   para, &cons->expr->where);
-	    }
-	  if (cons->expr->expr_type == EXPR_ARRAY)
-	    {
-	      gfc_constructor *p;
-	      p = gfc_constructor_first (cons->expr->value.constructor);
-	      if (cons->expr->ts.u.cl != p->expr->ts.u.cl)
-		{
-		  gfc_charlen *cl, *cl2;
-
-		  cl2 = NULL;
-		  for (cl = gfc_current_ns->cl_list; cl; cl = cl->next)
-		    {
-		      if (cl == cons->expr->ts.u.cl)
-			break;
-		      cl2 = cl;
-		    }
-
-		  gcc_assert (cl);
-
-		  if (cl2)
-		    cl2->next = cl->next;
-
-		  gfc_free_expr (cl->length);
-		  free (cl);
-		}
-
-	      cons->expr->ts.u.cl = gfc_new_charlen (gfc_current_ns, NULL);
-	      cons->expr->ts.u.cl->length_from_typespec = true;
-	      cons->expr->ts.u.cl->length = gfc_copy_expr (comp->ts.u.cl->length);
-	      gfc_resolve_character_array_constructor (cons->expr);
-	    }
-	}
-
-      if (cons->expr->expr_type == EXPR_NULL
-	  && !(comp->attr.pointer || comp->attr.allocatable
-	       || comp->attr.proc_pointer
-	       || (comp->ts.type == BT_CLASS
-		   && (CLASS_DATA (comp)->attr.class_pointer
-		       || CLASS_DATA (comp)->attr.allocatable))))
-	{
-	  t = FAILURE;
-	  gfc_error ("The NULL in the structure constructor at %L is "
-		     "being applied to component '%s', which is neither "
-		     "a POINTER nor ALLOCATABLE", &cons->expr->where,
-		     comp->name);
-	}
-
-      if (comp->attr.proc_pointer && comp->ts.interface)
-	{
-	  /* Check procedure pointer interface.  */
-	  gfc_symbol *s2 = NULL;
-	  gfc_component *c2;
-	  const char *name;
-	  char err[200];
-
-	  c2 = gfc_get_proc_ptr_comp (cons->expr);
-	  if (c2)
-	    {
-	      s2 = c2->ts.interface;
-	      name = c2->name;
-	    }
-	  else if (cons->expr->expr_type == EXPR_FUNCTION)
-	    {
-	      s2 = cons->expr->symtree->n.sym->result;
-	      name = cons->expr->symtree->n.sym->result->name;
-	    }
-	  else if (cons->expr->expr_type != EXPR_NULL)
-	    {
-	      s2 = cons->expr->symtree->n.sym;
-	      name = cons->expr->symtree->n.sym->name;
-	    }
-
-	  if (s2 && !gfc_compare_interfaces (comp->ts.interface, s2, name, 0, 1,
-					     err, sizeof (err), NULL, NULL))
-	    {
-	      gfc_error ("Interface mismatch for procedure-pointer component "
-			 "'%s' in structure constructor at %L: %s",
-			 comp->name, &cons->expr->where, err);
-	      return FAILURE;
-	    }
-	}
-
-      if (!comp->attr.pointer || comp->attr.proc_pointer
-	  || cons->expr->expr_type == EXPR_NULL)
-	continue;
-
-      a = gfc_expr_attr (cons->expr);
-
-      if (!a.pointer && !a.target)
-	{
-	  t = FAILURE;
-	  gfc_error ("The element in the structure constructor at %L, "
-		     "for pointer component '%s' should be a POINTER or "
-		     "a TARGET", &cons->expr->where, comp->name);
-	}
-
-      if (init)
-	{
-	  /* F08:C461. Additional checks for pointer initialization.  */
-	  if (a.allocatable)
-	    {
-	      t = FAILURE;
-	      gfc_error ("Pointer initialization target at %L "
-			 "must not be ALLOCATABLE ", &cons->expr->where);
-	    }
-	  if (!a.save)
-	    {
-	      t = FAILURE;
-	      gfc_error ("Pointer initialization target at %L "
-			 "must have the SAVE attribute", &cons->expr->where);
-	    }
-	}
-
-      /* F2003, C1272 (3).  */
-      bool impure = cons->expr->expr_type == EXPR_VARIABLE
-		    && (gfc_impure_variable (cons->expr->symtree->n.sym)
-			|| gfc_is_coindexed (cons->expr));
-      if (impure && gfc_pure (NULL))
-	{
-	  t = FAILURE;
-	  gfc_error ("Invalid expression in the structure constructor for "
-		     "pointer component '%s' at %L in PURE procedure",
-		     comp->name, &cons->expr->where);
-	}
-
-      if (impure)
-	gfc_unset_implicit_pure (NULL);
-    }
-
-  return t;
+  resolve_cons_data d;
+  d.t = SUCCESS;
+  d.cons = cons;
+  d.init = init;
+  if (gfc_traverse_components_head (comp, resolve_cons, (void *)&d) == FAILURE)
+      return FAILURE;
+  return d.t;
 }
-
 
 /****************** Expression name resolution ******************/
 
