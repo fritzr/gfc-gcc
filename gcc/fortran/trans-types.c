@@ -2344,10 +2344,13 @@ gfc_get_union_type (gfc_component *un)
     for (map = un->maps; map; map = map->next_map)
     {
         gcc_assert (map->is_map);
+        gcc_assert (map->attr.flavor == FL_DERIVED); /* TODO: ? FL_MAP */
 
         map_type = gfc_get_derived_type (map);
-        map_field = gfc_add_field_to_struct(typenode, get_identifier(un->name),
+        map_field = gfc_add_field_to_struct(typenode, get_identifier(map->name),
                                             map_type, &chain);
+        TYPE_CONTEXT (map_type) = typenode;
+        /* DECL_NAMELESS(map_field) = true; */
 
         gcc_assert (map_field);
 
