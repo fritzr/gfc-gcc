@@ -2665,9 +2665,16 @@ gfc_match_rvalue (gfc_expr **result)
   bool implicit_char;
   gfc_ref *ref;
 
-  m = gfc_match_name (name);
-  if (m != MATCH_YES)
-    return m;
+  /* %LOC() is a valid rvalue; treat it as the intrinsic function LOC() */
+  m = gfc_match ("%%loc");
+  if (m == MATCH_YES)
+      strcpy (name, "loc");
+  else
+  {
+      m = gfc_match_name (name);
+      if (m != MATCH_YES)
+        return m;
+  }
 
   if (gfc_find_state (COMP_INTERFACE) == SUCCESS
       && !gfc_current_ns->has_import_set)
