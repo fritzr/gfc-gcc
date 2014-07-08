@@ -1951,7 +1951,7 @@ variable_decl (int elem)
       if (gfc_notify_std (GFC_STD_GNU, "Old-style "
 			  "initialization at %C") == FAILURE)
 	return MATCH_ERROR;
-      else if (gfc_current_state () == COMP_DERIVED)
+      else if (gfc_is_derived (gfc_current_state ()))
         {
           gfc_error ("Invalid old style initialization for derived type "
                      "component at %C");
