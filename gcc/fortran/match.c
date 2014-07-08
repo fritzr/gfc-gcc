@@ -157,8 +157,10 @@ gfc_match_member_sep(gfc_symbol *sym)
        if this is a member access we need the latter to check components. */
     if(sym->attr.flavor == FL_DERIVED)
         tsym = sym;
-    else if(sym->ts.u.derived)
+    else if(sym->ts.type == BT_DERIVED)
         tsym = sym->ts.u.derived;
+    else
+        return MATCH_NO;
 
     iop = INTRINSIC_NONE;
     name[0] = '\0';
