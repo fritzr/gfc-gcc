@@ -197,21 +197,27 @@ gfc_match_member_sep(gfc_symbol *sym)
         goto no;
 
     /* Match accesses to existing derived-type components for 
-       derived-type vars. */
+       derived-type vars: "x.y.z" = (x->y)->z */
     c = gfc_find_component(tsym, name, false, true);
     if (c && (c->ts.type == BT_DERIVED || c->ts.type == BT_CLASS))
         goto yes;
 
-    /* If no such component, intrinsic operators ".y." are the last hope. */
+    /* If y is not a component or has no members, try intrinsic operators. */
     gfc_current_locus = start_loc;
-    if (gfc_match_intrinsic_op (&iop) != MATCH_YES
-        || iop == INTRINSIC_NONE)
+    if (gfc_match_intrinsic_op (&iop) != MATCH_YES)
     {
+        /* If ".y." is not an intrinsic operator but y was a valid non-
+           structure component, match and leave the trailing dot to be 
+           dealt with later. */
+        if (c)
+            goto yes;
+
         gfc_error ("'%s' is neither a defined operator nor a "
                    "structure component in dotted string at %C", name);
         goto error;
     }
-    /* .y. is an intrinsic operator, decidedly not a member access. */
+
+    /* .y. is an intrinsic operator, overriding any possible member access. */
     goto no;
 
     /* Return keeping the current locus consistent with the match result. */
