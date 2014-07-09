@@ -116,8 +116,8 @@ by type.  Explanations are in the following sections.
 @xref{Fortran Dialect Options,,Options controlling Fortran dialect}.
 @gccoptlist{-fall-intrinsics -fbackslash -fcray-pointer -fd-lines-as-code @gol
 -fd-lines-as-comments -fdec -fdec-extended-int -fdec-member-dot @gol
--fdec-structure -fdefault-double-8 -fdefault-integer-8 -fdefault-real-8 @gol
--fdollar-ok @gol
+-fdec-structure -fdec-math -fdefault-double-8 -fdefault-integer-8 @gol
+-fdefault-real-8 -fdollar-ok @gol
 -ffixed-line-length-@var{n} -ffixed-line-length-none -ffree-form @gol
 -ffree-line-length-@var{n} -ffree-line-length-none -fimplicit-none @gol
 -finteger-4-integer-8 -fmax-identifier-length -fmodule-private @gol
@@ -237,6 +237,7 @@ These extensions are non-standard and typically ancient.
 
 The options enabled by this switch are: @option{-fdollar-ok} 
 @option{-fdec-structure} @option{-fdec-member-dot} @option{-fdec-extended-int}
+@option{-fdec-math}
 
 @item -fdec-extended-int
 @opindex @code{fdec-extended-int}
@@ -253,6 +254,11 @@ Enable dot (`.`) as a member separator (in addition to the usual `%`).
 Enable DEC old-style STRUCTURE and RECORD. This is provided for
 compatibility; Fortran 90 derived types should be used instead where
 possible. This implies @option{-fdec-member-dot}.
+
+@item -fdec-math
+@opindex @code{fdec-math}
+Enable extra math builtin functions, such as: QABS, degree-valued trig
+functions, etc...
 
 @item -fdefault-double-8
 @opindex @code{fdefault-double-8}

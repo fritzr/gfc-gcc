@@ -67,6 +67,7 @@ gfc_try gfc_check_float (gfc_expr *);
 gfc_try gfc_check_fstat (gfc_expr *, gfc_expr *);
 gfc_try gfc_check_ftell (gfc_expr *);
 gfc_try gfc_check_fn_c (gfc_expr *);
+gfc_try gfc_check_fn_q (gfc_expr *);
 gfc_try gfc_check_fn_d (gfc_expr *);
 gfc_try gfc_check_fn_r (gfc_expr *);
 gfc_try gfc_check_fn_rc (gfc_expr *);

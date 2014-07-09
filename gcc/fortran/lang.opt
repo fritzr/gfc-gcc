@@ -381,6 +381,10 @@ fdec-extended-int
 Fortran
 Enable extended base#value integer constants
 
+fdec-math
+Fortran
+Enable additional builtin math functions.
+
 fdec-member-dot
 Fortran
 Enable dot (`.`) as a member separator (in addition to the usual `%`).

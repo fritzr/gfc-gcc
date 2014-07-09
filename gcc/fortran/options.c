@@ -60,6 +60,7 @@ set_dec_flags (int value)
     gfc_option.flag_dec_extended_int = value;
     gfc_option.flag_dec_structure  = value;
     gfc_option.flag_dec_member_dot = value;
+    gfc_option.flag_dec_math = value;
 }
 
 /* Return language mask for Fortran options.  */
@@ -1152,6 +1153,10 @@ gfc_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_fdec_member_dot:
       gfc_option.flag_dec_member_dot = 1;
+      break;
+
+    case OPT_fdec_math:
+      gfc_option.flag_dec_math = 1;
       break;
     }
 

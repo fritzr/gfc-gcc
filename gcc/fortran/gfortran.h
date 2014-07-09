@@ -2329,6 +2329,7 @@ typedef struct
   int flag_dec_extended_int;
   int flag_dec_structure;
   int flag_dec_member_dot;
+  int flag_dec_math;
 
   int fpe;
   int rtcheck;

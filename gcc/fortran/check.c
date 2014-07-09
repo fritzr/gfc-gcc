@@ -203,6 +203,25 @@ double_check (gfc_expr *d, int n)
 }
 
 
+/* Make sure the expression is a quad precision real.  */
+
+static gfc_try
+quad_check (gfc_expr *d, int n)
+{
+    if (type_check (d, n, BT_REAL) == FAILURE)
+      return FAILURE;
+
+    if (d->ts.kind != 16)
+      {
+        gfc_error ("'%s' argument of '%s' intrinsic at %L must be quad "
+                   "precision", gfc_current_intrinsic_arg[n]->name,
+                   gfc_current_intrinsic, &d->where);
+        return FAILURE;
+      }
+    
+    return SUCCESS;
+}
+
 static gfc_try
 coarray_check (gfc_expr *e, int n)
 {
@@ -1714,6 +1733,17 @@ gfc_check_fn_d (gfc_expr *a)
     return FAILURE;
 
   return SUCCESS;
+}
+
+/* A single quad-precision real argument. */
+
+gfc_try
+gfc_check_fn_q (gfc_expr *a)
+{
+    if (quad_check (a, 0) == FAILURE)
+      return FAILURE;
+    
+    return SUCCESS;
 }
 
 /* A single real or complex argument.  */
