@@ -1708,11 +1708,20 @@ simplify_trig_arg (gfc_isym_id func, gfc_expr *x)
 
   switch (func)
   {
-      case GFC_ISYM_COS:
-          return gfc_simplify_cos (x);
-      /* ... */
-      default:
-          break;
+    case GFC_ISYM_ACOS:
+         return gfc_simplify_acos (x);
+    case GFC_ISYM_ASIN:
+         return gfc_simplify_asin (x);
+    case GFC_ISYM_ATAN:
+         return gfc_simplify_atan (x); 
+    case GFC_ISYM_COS:
+         return gfc_simplify_cos (x);
+    case GFC_ISYM_SIN:
+         return gfc_simplify_sin (x);
+    case GFC_ISYM_TAN:
+         return gfc_simplify_tan (x);
+    default:
+         break;
   }
   /* Unreachable. */
   gfc_internal_error ("in simplify_trig_arg(): Bad intrinsic");

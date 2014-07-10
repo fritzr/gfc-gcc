@@ -1152,6 +1152,17 @@ add_functions (void)
 	     gfc_check_fn_d, gfc_simplify_acos, gfc_resolve_acos,
 	     x, BT_REAL, dd, REQUIRED);
 
+  if (gfc_option.flag_dec_math)
+  {
+    add_sym_1 ("acosd", GFC_ISYM_ACOS, CLASS_ELEMENTAL, ACTUAL_YES, BT_REAL, dr, GFC_STD_GNU,
+	       gfc_check_fn_r, gfc_simplify_atrigd, gfc_resolve_acos,
+	       x, BT_REAL, dr, REQUIRED);
+
+    add_sym_1 ("dacosd", GFC_ISYM_ACOS, CLASS_ELEMENTAL, ACTUAL_YES, BT_REAL, dd, GFC_STD_GNU,
+	       gfc_check_fn_d, gfc_simplify_atrigd, gfc_resolve_acos,
+	       x, BT_REAL, dd, REQUIRED);
+  }
+
   make_generic ("acos", GFC_ISYM_ACOS, GFC_STD_F77);
 
   add_sym_1 ("acosh", GFC_ISYM_ACOSH, CLASS_ELEMENTAL, ACTUAL_YES, BT_REAL, dr,
@@ -1235,6 +1246,17 @@ add_functions (void)
 	     gfc_check_fn_d, gfc_simplify_asin, gfc_resolve_asin,
 	     x, BT_REAL, dd, REQUIRED);
 
+  if (gfc_option.flag_dec_math)
+  {
+    add_sym_1 ("asind", GFC_ISYM_ASIN, CLASS_ELEMENTAL, ACTUAL_YES, BT_REAL, dr, GFC_STD_GNU,
+	       gfc_check_fn_r, gfc_simplify_atrigd, gfc_resolve_asin,
+	       x, BT_REAL, dr, REQUIRED);
+
+    add_sym_1 ("dasind", GFC_ISYM_ASIN, CLASS_ELEMENTAL, ACTUAL_YES, BT_REAL, dd, GFC_STD_GNU,
+	       gfc_check_fn_d, gfc_simplify_atrigd, gfc_resolve_asin,
+	       x, BT_REAL, dd, REQUIRED);
+  }
+
   make_generic ("asin", GFC_ISYM_ASIN, GFC_STD_F77);
   
   add_sym_1 ("asinh", GFC_ISYM_ASINH, CLASS_ELEMENTAL, ACTUAL_YES, BT_REAL, dr,
@@ -1260,6 +1282,17 @@ add_functions (void)
   add_sym_1 ("datan", GFC_ISYM_ATAN, CLASS_ELEMENTAL, ACTUAL_YES, BT_REAL, dd, GFC_STD_F77,
 	     gfc_check_fn_d, gfc_simplify_atan, gfc_resolve_atan,
 	     x, BT_REAL, dd, REQUIRED);
+
+  if (gfc_option.flag_dec_math)
+  {
+    add_sym_1 ("atand", GFC_ISYM_ATAN, CLASS_ELEMENTAL, ACTUAL_YES, BT_REAL, dr, GFC_STD_GNU,
+	       gfc_check_fn_r, gfc_simplify_atrigd, gfc_resolve_atan,
+	       x, BT_REAL, dr, REQUIRED);
+  
+    add_sym_1 ("datand", GFC_ISYM_ATAN, CLASS_ELEMENTAL, ACTUAL_YES, BT_REAL, dd, GFC_STD_GNU,
+	       gfc_check_fn_d, gfc_simplify_atrigd, gfc_resolve_atan,
+	       x, BT_REAL, dd, REQUIRED);
+  }
 
   /* Two-argument version of atan, equivalent to atan2.  */
   add_sym_2 ("atan", GFC_ISYM_ATAN2, CLASS_ELEMENTAL, ACTUAL_YES, BT_REAL, dr, GFC_STD_F2008,
@@ -2634,6 +2667,17 @@ add_functions (void)
 
   make_alias ("cdsin", GFC_STD_GNU);
 
+  if (gfc_option.flag_dec_math)
+  {
+    add_sym_1 ("sind", GFC_ISYM_SIN, CLASS_ELEMENTAL, ACTUAL_YES, BT_REAL, dr, GFC_STD_GNU,
+	       gfc_check_fn_r, gfc_simplify_trigd, gfc_resolve_sin,
+	       x, BT_REAL, dr, REQUIRED);
+
+    add_sym_1 ("dsind", GFC_ISYM_SIN, CLASS_ELEMENTAL, ACTUAL_YES, BT_REAL, dd, GFC_STD_GNU,
+	       gfc_check_fn_d, gfc_simplify_trigd, gfc_resolve_sin,
+	       x, BT_REAL, dd, REQUIRED);
+  }
+
   make_generic ("sin", GFC_ISYM_SIN, GFC_STD_F77);
 
   add_sym_1 ("sinh", GFC_ISYM_SINH, CLASS_ELEMENTAL, ACTUAL_YES, BT_REAL, dr, GFC_STD_F77,
@@ -2758,6 +2802,17 @@ add_functions (void)
   add_sym_1 ("dtan", GFC_ISYM_TAN, CLASS_ELEMENTAL, ACTUAL_YES, BT_REAL, dd, GFC_STD_F77,
 	     gfc_check_fn_d, gfc_simplify_tan, gfc_resolve_tan,
 	     x, BT_REAL, dd, REQUIRED);
+
+  if (gfc_option.flag_dec_math)
+  {
+    add_sym_1 ("tand", GFC_ISYM_TAN, CLASS_ELEMENTAL, ACTUAL_YES, BT_REAL, dr, GFC_STD_GNU,
+	       gfc_check_fn_r, gfc_simplify_trigd, gfc_resolve_tan,
+	       x, BT_REAL, dr, REQUIRED);
+
+    add_sym_1 ("dtand", GFC_ISYM_TAN, CLASS_ELEMENTAL, ACTUAL_YES, BT_REAL, dd, GFC_STD_GNU,
+	       gfc_check_fn_d, gfc_simplify_trigd, gfc_resolve_tan,
+	       x, BT_REAL, dd, REQUIRED);
+  }
 
   make_generic ("tan", GFC_ISYM_TAN, GFC_STD_F77);
 
