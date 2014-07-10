@@ -1771,18 +1771,22 @@ radians_f (mpfr_t x, mp_rnd_t rnd_mode)
 static gfc_expr *
 get_radians (gfc_expr *deg)
 {
-  gfc_expr *mpi, *d180;
+  mpfr_t tmp;
+  gfc_expr *factor; /* pi / 180 */
 
   gcc_assert (deg->ts.type == BT_REAL);
 
-  mpi = gfc_get_constant_expr (deg->ts.type, deg->ts.kind, &deg->where);
-  mpfr_const_pi (mpi->value.real, GFC_RND_MODE);
+  factor = gfc_get_constant_expr (deg->ts.type, deg->ts.kind, &deg->where);
 
-  d180 = gfc_get_constant_expr (deg->ts.type, deg->ts.kind, &deg->where);
-  mpfr_set_d (d180->value.real, 180.0l, GFC_RND_MODE);
+  /* Factor = pi / 180 */
+  mpfr_init (tmp);
+  mpfr_set_d (tmp, 180.0l, GFC_RND_MODE);
+  mpfr_const_pi (factor->value.real, GFC_RND_MODE);
+  mpfr_div (factor->value.real, factor->value.real, tmp, GFC_RND_MODE);
+  mpfr_clear (tmp);
 
-  /* rad = (deg * pi) / 180 */
-  return gfc_divide (gfc_multiply (deg, mpi), d180);
+  /* rad = deg * (pi / 180) */
+  return gfc_multiply (deg, factor);
 }
 
 /* Build an expression for converting radians to degrees. */
@@ -1790,18 +1794,22 @@ get_radians (gfc_expr *deg)
 static gfc_expr *
 get_degrees (gfc_expr *rad)
 {
-  gfc_expr *mpi, *d180;
+  mpfr_t tmp;
+  gfc_expr *factor; /* 180 / pi */
 
   gcc_assert (rad->ts.type == BT_REAL);
 
-  mpi = gfc_get_constant_expr (rad->ts.type, rad->ts.kind, &rad->where);
-  mpfr_const_pi (mpi->value.real, GFC_RND_MODE);
+  factor = gfc_get_constant_expr (rad->ts.type, rad->ts.kind, &rad->where);
 
-  d180 = gfc_get_constant_expr (rad->ts.type, rad->ts.kind, &rad->where);
-  mpfr_set_d (d180->value.real, 180.0l, GFC_RND_MODE);
+  /* Factor = 180 / pi */
+  mpfr_init (tmp);
+  mpfr_const_pi (tmp, GFC_RND_MODE);
+  mpfr_set_d (factor->value.real, 180.0l, GFC_RND_MODE);
+  mpfr_div (factor->value.real, factor->value.real, tmp, GFC_RND_MODE);
+  mpfr_clear (tmp);
 
-  /* deg = (rad * 180) / pi */
-  return gfc_divide (gfc_multiply (rad, d180), mpi);
+  /* deg = rad * (180 / pi) */
+  return gfc_multiply (rad, factor);
 }
 
 /* Convert argument from degrees to radians before calling the trig
