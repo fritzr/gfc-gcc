@@ -1820,8 +1820,6 @@ gfc_simplify_trigd (gfc_expr *icall)
   /* Argument expression is not constant: replace it with degree to radian
      conversion of original argument. */
   x = get_radians (x);
-  if (SUCCESS != gfc_resolve_expr (x))
-      gfc_internal_error ("in gfc_simplify_trigd(): Failed to resolve");
   icall->value.function.actual->expr = x;
 
   /* Let do_simplify resolve the trig call; we just changed its arg. */
@@ -1860,12 +1858,11 @@ gfc_simplify_atrigd (gfc_expr *icall)
   arg = x->value.function.actual; /* Copy of icall's actual */
   x->value = icall->value;
   x->value.function.actual = arg;
-
-  x = get_degrees (x);
+  icall = x;
 
   /* Resolve manually since do_simplify assumes we're done with x. */
-  if (SUCCESS != gfc_resolve_expr (x))
-      gfc_internal_error ("in gfc_simplify_atrigd(): Failed to resolve");
+  (*icall->value.function.isym->resolve.f1) (icall, arg->expr);
+  x = get_degrees (icall);
 
   return x;
 }
