@@ -70,3 +70,10 @@ OTHER_BUILTIN (POW,       "pow",       1,       true)
 OTHER_BUILTIN (ROUND,     "round",     1,       true)
 OTHER_BUILTIN (SCALBN,    "scalbn",    scalbn,  true)
 OTHER_BUILTIN (TRUNC,     "trunc",     1,       true)
+
+/* MATH_ALIAS_BUILTIN (NEWID, OLDID, NAME, ARGTYPE)
+   NEWID  The new id of the builtin (to match GFC_ISYM_* in gfortran.h)
+   OLDID  The id of the actual builtin to alias ""
+   NAME   Te name of the new builtin
+   ARGTYPE The type of the arguments, to match that of OLDID */
+MATH_ALIAS_BUILTIN (COTAN, TAN, "tan", 0)

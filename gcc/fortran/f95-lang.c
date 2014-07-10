@@ -570,6 +570,7 @@ gfc_define_builtin (const char *name, tree type, enum built_in_function code,
     DO_DEFINE_MATH_BUILTIN (code, name, argtype, mfunc_) \
     DO_DEFINE_MATH_BUILTIN (C##code, "c" name, argtype, mfunc_c)
 
+#define MATH_ALIAS_BUILTIN(newid, id, name, type)
 
 /* Create function types for builtin functions.  */
 
@@ -1046,6 +1047,7 @@ gfc_init_builtin_functions (void)
   targetm.init_builtins ();
 }
 
+#undef MATH_ALIAS_BUILTIN
 #undef DEFINE_MATH_BUILTIN_C
 #undef DEFINE_MATH_BUILTIN
 

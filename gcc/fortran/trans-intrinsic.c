@@ -97,6 +97,12 @@ gfc_intrinsic_map_t;
     BUILT_IN_C ## ID ## L, true, true, true, NAME, NULL_TREE, NULL_TREE, \
     NULL_TREE, NULL_TREE, NULL_TREE, NULL_TREE, NULL_TREE, NULL_TREE},
 
+#define MATH_ALIAS_BUILTIN(NEWID, ID, NAME, TYPE) \
+  { GFC_ISYM_ ## NEWID, BUILT_IN_ ## ID ## F, BUILT_IN_ ## ID, \
+    BUILT_IN_ ## ID ## L, END_BUILTINS, END_BUILTINS, END_BUILTINS, \
+    true, false, true, NAME, NULL_TREE, NULL_TREE, NULL_TREE, NULL_TREE, \
+    NULL_TREE, NULL_TREE, NULL_TREE, NULL_TREE},
+
 #define LIB_FUNCTION(ID, NAME, HAVE_COMPLEX) \
   { GFC_ISYM_ ## ID, END_BUILTINS, END_BUILTINS, END_BUILTINS, \
     END_BUILTINS, END_BUILTINS, END_BUILTINS, \
@@ -125,6 +131,7 @@ static GTY(()) gfc_intrinsic_map_t gfc_intrinsic_map[] =
 };
 #undef OTHER_BUILTIN
 #undef LIB_FUNCTION
+#undef MATH_ALIAS_BUILTIN
 #undef DEFINE_MATH_BUILTIN
 #undef DEFINE_MATH_BUILTIN_C
 
@@ -654,6 +661,7 @@ gfc_build_intrinsic_lib_fndecls (void)
 
 #define DEFINE_MATH_BUILTIN(ID, NAME, ARGTYPE)
 #define DEFINE_MATH_BUILTIN_C(ID, NAME, ARGTYPE)
+#define MATH_ALIAS_BUILTIN(NEWID, ID, NAME, TYPE)
 #define LIB_FUNCTION(ID, NAME, HAVE_COMPLEX)
 
     /* Only these built-ins are actually needed here. These are used directly
@@ -667,6 +675,7 @@ gfc_build_intrinsic_lib_fndecls (void)
 
 #undef OTHER_BUILTIN
 #undef LIB_FUNCTION
+#undef MATH_ALIAS_BUILTIN
 #undef DEFINE_MATH_BUILTIN
 #undef DEFINE_MATH_BUILTIN_C
 
