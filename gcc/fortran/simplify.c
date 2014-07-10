@@ -1699,6 +1699,176 @@ gfc_simplify_conjg (gfc_expr *e)
   return range_check (result, "CONJG");
 }
 
+/* Return the simplification of the constant expression func(x). */
+
+static gfc_expr *
+simplify_trig_arg (gfc_isym_id func, gfc_expr *x)
+{
+  gcc_assert (x->expr_type == EXPR_CONSTANT);
+
+  switch (func)
+  {
+      case GFC_ISYM_COS:
+          return gfc_simplify_cos (x);
+      /* ... */
+      default:
+          break;
+  }
+  /* Unreachable. */
+  gfc_internal_error ("in simplify_trig_arg(): Bad intrinsic");
+  return NULL;
+}
+
+/* Convert a floating-point number from radians to degrees. */
+
+static void
+degrees_f (mpfr_t x, mp_rnd_t rnd_mode)
+{
+    mpfr_t tmp;
+    mpfr_init (tmp);
+
+    /* x = x * 180 */
+    mpfr_set_d (tmp, 180.0l, rnd_mode);
+    mpfr_mul (x, x, tmp, rnd_mode);
+
+    /* x = x / pi */
+    mpfr_const_pi (tmp, rnd_mode);
+    mpfr_div (x, x, tmp, rnd_mode); 
+
+    mpfr_clear (tmp);
+}
+
+/* Convert a floating-point number from degrees to radians. */
+
+static void
+radians_f (mpfr_t x, mp_rnd_t rnd_mode)
+{
+    mpfr_t tmp;
+    mpfr_init (tmp);
+
+    /* x = x * pi */
+    mpfr_const_pi (tmp, rnd_mode);
+    mpfr_mul (x, x, tmp, rnd_mode);
+
+    /* x = x / 180 */
+    mpfr_set_d (tmp, 180.0l, rnd_mode);
+    mpfr_div (x, x, tmp, rnd_mode); 
+
+    mpfr_clear (tmp);
+}
+
+/* Build an expression for converting degrees to radians. */
+
+static gfc_expr *
+get_radians (gfc_expr *deg)
+{
+  gfc_expr *mpi, *d180;
+
+  gcc_assert (deg->ts.type == BT_REAL);
+
+  mpi = gfc_get_constant_expr (deg->ts.type, deg->ts.kind, &deg->where);
+  mpfr_const_pi (mpi->value.real, GFC_RND_MODE);
+
+  d180 = gfc_get_constant_expr (deg->ts.type, deg->ts.kind, &deg->where);
+  mpfr_set_d (d180->value.real, 180.0l, GFC_RND_MODE);
+
+  /* rad = (deg * pi) / 180 */
+  return gfc_divide (gfc_multiply (deg, mpi), d180);
+}
+
+/* Build an expression for converting radians to degrees. */
+
+static gfc_expr *
+get_degrees (gfc_expr *rad)
+{
+  gfc_expr *mpi, *d180;
+
+  gcc_assert (rad->ts.type == BT_REAL);
+
+  mpi = gfc_get_constant_expr (rad->ts.type, rad->ts.kind, &rad->where);
+  mpfr_const_pi (mpi->value.real, GFC_RND_MODE);
+
+  d180 = gfc_get_constant_expr (rad->ts.type, rad->ts.kind, &rad->where);
+  mpfr_set_d (d180->value.real, 180.0l, GFC_RND_MODE);
+
+  /* deg = (rad * 180) / pi */
+  return gfc_divide (gfc_multiply (rad, d180), mpi);
+}
+
+/* Convert argument from degrees to radians before calling the trig
+   function in icall. */
+
+gfc_expr *
+gfc_simplify_trigd (gfc_expr *icall)
+{
+  gfc_expr *x;
+
+  /* The actual argument. */
+  x = icall->value.function.actual->expr;
+
+  if (x->ts.type != BT_REAL)
+    gfc_internal_error ("in gfc_simplify_trigd(): Bad type");
+
+  if (x->expr_type == EXPR_CONSTANT)
+  {
+      /* Convert constant to radians before passing off to actual
+         simplification routine. */
+      radians_f (x->value.real, GFC_RND_MODE);
+      return simplify_trig_arg (icall->value.function.isym->id, x);
+  }
+
+  /* Argument expression is not constant: replace it with degree to radian
+     conversion of original argument. */
+  x = get_radians (x);
+  if (SUCCESS != gfc_resolve_expr (x))
+      gfc_internal_error ("in gfc_simplify_trigd(): Failed to resolve");
+  icall->value.function.actual->expr = x;
+
+  /* Let do_simplify resolve the trig call; we just changed its arg. */
+  return NULL;
+}
+
+/* Convert result from degrees to radians after calling the inverse trig
+   function in icall. */
+
+gfc_expr *
+gfc_simplify_atrigd (gfc_expr *icall)
+{
+  gfc_expr *x;
+  gfc_actual_arglist *arg;
+
+  /* The actual argument. */
+  x = icall->value.function.actual->expr;
+
+  if (x->ts.type != BT_REAL)
+    gfc_internal_error ("in gfc_simplify_atrigd(): Bad type");
+
+  if (x->expr_type == EXPR_CONSTANT)
+  {
+      /* Convert constant to radians after passing off to actual
+         simplification routine. */
+      x = simplify_trig_arg (icall->value.function.isym->id, x);
+      degrees_f (x->value.real, GFC_RND_MODE);
+      return x;
+  }
+
+  /* Argument expression is not constant: replace result with degree to radian
+     conversion. We must use a copy here because do_simplify will replace (free)
+     the original expression. The value is not copied by gfc_copy_expr, but the
+     actual arg is. */
+  x = gfc_copy_expr (icall);
+  arg = x->value.function.actual; /* Copy of icall's actual */
+  x->value = icall->value;
+  x->value.function.actual = arg;
+
+  x = get_degrees (x);
+
+  /* Resolve manually since do_simplify assumes we're done with x. */
+  if (SUCCESS != gfc_resolve_expr (x))
+      gfc_internal_error ("in gfc_simplify_atrigd(): Failed to resolve");
+
+  return x;
+}
 
 gfc_expr *
 gfc_simplify_cos (gfc_expr *x)

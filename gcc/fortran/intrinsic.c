@@ -1493,6 +1493,17 @@ add_functions (void)
 
   make_alias ("cdcos", GFC_STD_GNU);
 
+  if (gfc_option.flag_dec_math)
+  {
+    add_sym_1 ("cosd", GFC_ISYM_COS, CLASS_ELEMENTAL, ACTUAL_YES, BT_REAL, dr, GFC_STD_GNU,
+               gfc_check_fn_r, gfc_simplify_trigd, gfc_resolve_cos,
+               x, BT_REAL, dr, REQUIRED);
+
+    add_sym_1 ("dcosd", GFC_ISYM_COS, CLASS_ELEMENTAL, ACTUAL_YES, BT_REAL, dd, GFC_STD_GNU,
+               gfc_check_fn_d, gfc_simplify_trigd, gfc_resolve_cos,
+               x, BT_REAL, dd, REQUIRED);
+  }
+
   make_generic ("cos", GFC_ISYM_COS, GFC_STD_F77);
 
   add_sym_1 ("cosh", GFC_ISYM_COSH, CLASS_ELEMENTAL, ACTUAL_YES, BT_REAL, dr, GFC_STD_F77,
@@ -3777,6 +3788,19 @@ do_simplify (gfc_intrinsic_sym *specific, gfc_expr *e)
   if (specific->simplify.f1 == gfc_simplify_max)
     {
       result = gfc_simplify_max (e);
+      goto finish;
+    }
+
+  /* Degree trig functions just wrap trig builtins with deg/rad conversions. */
+  if (specific->simplify.f1 == gfc_simplify_trigd)
+    {
+      result = gfc_simplify_trigd (e);
+      goto finish;
+    }
+
+  if (specific->simplify.f1 == gfc_simplify_atrigd)
+    {
+      result = gfc_simplify_atrigd (e);
       goto finish;
     }
 
