@@ -245,7 +245,7 @@ Enable the DEC extended integer constant format. This format allows integer
 constants with bases between 2 and 36 to be specified in the "base#value"
 format.
 
-@item -fmember-dot
+@item -fdec-member-dot
 @opindex @code{fdec-member-dot}
 Enable dot (`.`) as a member separator (in addition to the usual `%`).
 
