@@ -57,6 +57,7 @@ static void
 set_dec_flags (int value)
 {
     if (value) gfc_option.flag_dollar_ok = 1;
+    if (value) gfc_option.flag_d_lines = 0; /* -fd-lines-as-comments */
     gfc_option.flag_dec_extended_int = value;
     gfc_option.flag_dec_structure  = value;
     gfc_option.flag_dec_member_dot = value;
