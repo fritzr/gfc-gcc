@@ -61,6 +61,7 @@ set_dec_flags (int value)
     gfc_option.flag_dec_structure  = value;
     gfc_option.flag_dec_member_dot = value;
     gfc_option.flag_dec_math = value;
+    gfc_option.flag_dec_logical_xor = value;
 }
 
 /* Return language mask for Fortran options.  */
@@ -1157,6 +1158,10 @@ gfc_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_fdec_math:
       gfc_option.flag_dec_math = 1;
+      break;
+
+    case OPT_fdec_logical_xor:
+      gfc_option.flag_dec_logical_xor = 1;
       break;
     }
 

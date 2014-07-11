@@ -1238,6 +1238,18 @@ gfc_match_intrinsic_op (gfc_intrinsic_op *result)
 	    }
 	  break;
 
+        case 'x':
+          if (gfc_option.flag_dec_logical_xor
+              && gfc_next_ascii_char () == 'o'
+              && gfc_next_ascii_char () == 'r'
+              && gfc_next_ascii_char () == '.')
+            {
+              /* Matched ".xor." -> equivalent to ".neqv." */
+              *result = INTRINSIC_NEQV;
+              return MATCH_YES;
+            }
+          break;
+
 	default:
 	  break;
 	}

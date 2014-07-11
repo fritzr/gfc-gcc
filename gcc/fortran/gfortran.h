@@ -2331,6 +2331,7 @@ typedef struct
   int flag_dec_structure;
   int flag_dec_member_dot;
   int flag_dec_math;
+  int flag_dec_logical_xor;
 
   int fpe;
   int rtcheck;
