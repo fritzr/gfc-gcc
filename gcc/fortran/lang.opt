@@ -377,6 +377,10 @@ fdec
 Fortran
 Enable all DEC/Intel language extensions.
 
+fdec-bitwise-ops
+Fortran
+Use bitwise operators when logical operators are used with int operands.
+
 fdec-extended-int
 Fortran
 Enable extended base#value integer constants
