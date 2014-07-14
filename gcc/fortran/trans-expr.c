@@ -6123,6 +6123,8 @@ typedef struct {
     vec<constructor_elt, va_gc> *v;
 } conv_comp_data;
 
+/* Convert a constructor for a single component; part of gfc_conv_structure. */
+
 static gfc_try
 conv_comp (gfc_component *cm, void *data)
 {
@@ -6180,7 +6182,6 @@ gfc_conv_structure (gfc_se * se, gfc_expr * expr, int init)
 {
   tree type;
   tree tmp;
-  vec<constructor_elt, va_gc> *v = NULL;
 
   gcc_assert (se->ss == NULL);
   gcc_assert (expr->expr_type == EXPR_STRUCTURE);
@@ -6196,11 +6197,11 @@ gfc_conv_structure (gfc_se * se, gfc_expr * expr, int init)
     }
 
   conv_comp_data d;
-  d.v = v;
+  d.v = NULL;
   d.c = gfc_constructor_first (expr->value.constructor);
   gfc_traverse_components (expr->ts.u.derived, conv_comp, (void *)&d);
 
-  se->expr = build_constructor (type, v);
+  se->expr = build_constructor (type, d.v);
   if (init)
     TREE_CONSTANT (se->expr) = 1;
 }
