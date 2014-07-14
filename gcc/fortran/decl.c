@@ -581,6 +581,122 @@ cleanup:
 
 /************************ Declaration statements *********************/
 
+/* Like gfc_match_init_expr, but matches a 'clist' (old-style initialization
+   list). The difference here is the expression is a list of constants
+   and is surrounded by '/'. 
+   If ts is not NULL, updates the typespec of the resulting expression to
+   match, throwing errors if the matched initializer has an incompatible type.
+   The scalar parameter tells whether this should match a scalar
+   initialization or a list of constants corresponding to array elements. */
+match
+gfc_match_clist_expr (gfc_expr **result, gfc_typespec *ts, bool scalar)
+{
+  gfc_constructor_base array_head = NULL;
+  gfc_expr *expr = NULL;
+  match m;
+  locus where;
+  mpz_t repeat;
+  mpz_init_set_ui (repeat, 0);
+
+  /* We have already matched "/". Now look for a constant list, as with
+     top_val_list from decl.c, but append the result to an array constructor. */
+  if (gfc_match ("/") == MATCH_YES)
+  {
+    gfc_error ("Empty old style initializer list at %C");
+    goto cleanup;
+  }
+
+  where = gfc_current_locus;
+  for (;;)
+    {
+      m = match_data_constant (&expr);
+      if (m == MATCH_NO)
+        goto syntax;
+      if (m == MATCH_ERROR)
+        goto cleanup;
+
+      /* Found a repeat specification; match again the actual constant. */
+      if (expr->ts.type == BT_INTEGER && gfc_match_char ('*') == MATCH_YES)
+      {
+        if (scalar)
+        {
+          gfc_error ("Invalid scalar initializer at %C");
+          goto cleanup;
+        }
+        mpz_set (repeat, expr->value.integer);
+        gfc_free_expr (expr);
+        expr = NULL;
+
+        m = match_data_constant (&expr);
+        if (m == MATCH_NO)
+          goto syntax;
+        if (m == MATCH_ERROR)
+          goto cleanup;
+      }
+      else
+        mpz_set_ui (repeat, 1);
+
+      if (!scalar)
+      {
+        /* Add the constant initializer as many times as repeated. */
+        for (; mpz_cmp_ui (repeat, 0) > 0; mpz_sub_ui (repeat, repeat, 1))
+        {
+          gfc_constructor_append_expr (&array_head,
+              gfc_copy_expr (expr), &gfc_current_locus);
+        }
+      }
+      /* For scalar initializers quit after one element. */
+      else
+      {
+        if(gfc_match_char ('/') != MATCH_YES)
+        {
+          gfc_error ("End of scalar initializer expected at %C");
+          goto cleanup;
+        }
+        break;
+      }
+
+      if (gfc_match_char ('/') == MATCH_YES)
+        break;
+      if (gfc_match_char (',') == MATCH_NO)
+        goto syntax;
+    }
+
+
+  /* Set up expr as an array constructor. */
+  if (!scalar)
+  {
+    if (ts)
+    {
+      expr = gfc_get_array_expr (ts->type, ts->kind, &where);
+      expr->ts = *ts;
+    }
+    else
+      expr = gfc_get_array_expr (BT_UNKNOWN, 0, &where);
+    expr->value.constructor = array_head;
+  }
+
+  /* Make sure scalar types match if known. */
+  else if (ts && !gfc_compare_types (&expr->ts, ts)
+              && gfc_convert_type (expr, ts, 1) == FAILURE)
+    goto cleanup;
+
+  if (expr->ts.u.cl)
+    expr->ts.u.cl->length_from_typespec = 1;
+
+  *result = expr;
+  mpz_clear (repeat);
+  return MATCH_YES;
+
+syntax:
+  gfc_error ("Syntax error in old style initializer list at %C");
+
+cleanup:
+  gfc_constructor_free (array_head);
+  gfc_free_expr (expr);
+  mpz_clear (repeat);
+  return MATCH_ERROR;
+}
 
 /* Auxiliary function to merge DIMENSION and CODIMENSION array specs.  */
 
@@ -1951,7 +2067,9 @@ variable_decl (int elem)
       if (gfc_notify_std (GFC_STD_GNU, "Old-style "
 			  "initialization at %C") == FAILURE)
 	return MATCH_ERROR;
-      else if (gfc_is_derived (gfc_current_state ()))
+      /* Allow old style initializations for STRUCTURE/MAP declarations but
+         not derived TYPE declarations (matches DEC/Intel behavior). */
+      else if (gfc_current_state () == COMP_DERIVED)
         {
           gfc_error ("Invalid old style initialization for derived type "
                      "component at %C");
@@ -1959,7 +2077,24 @@ variable_decl (int elem)
           goto cleanup;
         }
 
-      return match_old_style_init (name);
+      /* For derived type components, read the initializer as a special
+         expression and let the rest of this function apply the initializer
+         as usual. */
+      else if (gfc_is_derived (gfc_current_state ()))
+      {
+        m = gfc_match_clist_expr (
+            &initializer, &current_ts, !(as && as->rank));
+        if (m == MATCH_NO)
+          gfc_error ("Syntax error in old style initialization of "
+                     "structure component %s at %C", name);
+        if (m != MATCH_YES)
+          goto cleanup;
+      }
+
+      /* Otherwise we treat the old style initialization just like a
+         DATA declaration for the current variable. */
+      else
+        return match_old_style_init (name);
     }
 
   /* The double colon must be present in order to have initializers.

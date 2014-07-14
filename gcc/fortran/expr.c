@@ -2642,6 +2642,8 @@ gfc_reduce_init_expr (gfc_expr *expr)
 }
 
 
+
+
 /* Match an initialization expression.  We work by first matching an
    expression, then reducing it to a constant.  */
 
@@ -4029,6 +4031,37 @@ gfc_has_default_initializer (gfc_symbol *der)
 {
   gcc_assert (der->attr.flavor == FL_DERIVED);
   return gfc_traverse_components (der, has_default_initializer, NULL) == FAILURE;
+}
+
+static gfc_try
+free_default_initializer (gfc_component *c, void *data ATTRIBUTE_UNUSED)
+{
+  if (c->ts.type == BT_DERIVED)
+    {
+      if (!c->attr.pointer)
+        gfc_free_derived_initializer (c->ts.u.derived);
+      else if (c->attr.pointer && c->initializer)
+      {
+        gfc_free_expr (c->initializer);
+        c->initializer = NULL;
+      }
+    }
+  else if (c->initializer)
+  {
+    gfc_free_expr (c->initializer);
+    c->initializer = NULL;
+  }
+  return SUCCESS;
+}
+
+/* Recursively free all default initializers for the given derived-type
+   components. */
+
+void
+gfc_free_derived_initializer (gfc_symbol *der)
+{
+  gcc_assert (der->attr.flavor == FL_DERIVED);
+  gfc_traverse_components (der, free_default_initializer, NULL);
 }
 
 static gfc_try

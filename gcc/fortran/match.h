@@ -199,6 +199,7 @@ match gfc_match_value (void);
 match gfc_match_volatile (void);
 
 /* decl.c.  */
+match gfc_match_clist_expr (gfc_expr **, gfc_typespec *, bool);
 
 /* Fortran 2003 c interop.
    TODO: some of these should be moved to another file rather than decl.c */
