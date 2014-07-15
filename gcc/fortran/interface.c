@@ -382,31 +382,6 @@ gfc_match_end_interface (void)
   return m;
 }
 
-int
-gfc_compare_unions (gfc_component *u1, gfc_component *u2)
-{
-    gfc_symbol *m1, *m2;
-    m1 = u1->maps;
-    m2 = u2->maps;
-    for(;;)
-    {
-        if (m1 == NULL && m2 == NULL)
-            break;
-
-        if (m1 == NULL || m2 == NULL)
-            return 0;
-        
-        /* TODO: Really it shouldn't matter what order the maps are in.
-           Currently two unions with the same maps in a different order would
-           compare as not equal. */
-        if (gfc_compare_derived_types (m1, m2) == 0)
-            return 0;
-
-        m1 = m1->next_map;
-        m2 = m2->next_map;
-    }
-    return 1;
-}
 
 /* Compare two derived types using the criteria in 4.4.2 of the standard,
    recursing through gfc_compare_types for the components.  */
@@ -484,10 +459,6 @@ gfc_compare_derived_types (gfc_symbol *derived1, gfc_symbol *derived2)
 		&& (dt1->ts.type == BT_DERIVED && derived1 == dt1->ts.u.derived))
 	return 0;
 
-      if (dt1->ts.type == BT_UNION && dt2->ts.type == BT_UNION 
-              && gfc_compare_unions (dt1, dt2) == 0)
-        return 0;
-
       dt1 = dt1->next;
       dt2 = dt2->next;
 
@@ -533,6 +504,9 @@ gfc_compare_types (gfc_typespec *ts1, gfc_typespec *ts2)
   /* Compare derived types.  */
   if (gfc_type_compatible (ts1, ts2))
     return 1;
+
+  if (ts1->type == BT_UNION && ts2->type == BT_UNION)
+    return gfc_compare_derived_types (ts1->u.union_t ,ts2->u.union_t);
 
   return gfc_compare_derived_types (ts1->u.derived ,ts2->u.derived);
 }
@@ -1496,7 +1470,8 @@ check_interface0 (gfc_interface *p, const char *interface_name)
 	 functions or subroutines.  */
       if (((!p->sym->attr.function && !p->sym->attr.subroutine)
 	   || !p->sym->attr.if_source)
-	  && p->sym->attr.flavor != FL_DERIVED)
+	  && p->sym->attr.flavor != FL_DERIVED 
+          && p->sym->attr.flavor != FL_UNION)
 	{
 	  if (p->sym->attr.external)
 	    gfc_error ("Procedure '%s' in %s at %L has no explicit interface",
@@ -1510,10 +1485,12 @@ check_interface0 (gfc_interface *p, const char *interface_name)
 
       /* Verify that procedures are either all SUBROUTINEs or all FUNCTIONs.  */
       if ((psave->sym->attr.function && !p->sym->attr.function
-	   && p->sym->attr.flavor != FL_DERIVED)
+	   && p->sym->attr.flavor != FL_DERIVED
+           && p->sym->attr.flavor != FL_UNION)
 	  || (psave->sym->attr.subroutine && !p->sym->attr.subroutine))
 	{
-	  if (p->sym->attr.flavor != FL_DERIVED)
+	  if (p->sym->attr.flavor != FL_DERIVED
+              && p->sym->attr.flavor != FL_UNION)
 	    gfc_error ("In %s at %L procedures must be either all SUBROUTINEs"
 		       " or all FUNCTIONs", interface_name,
 		       &p->sym->declared_at);
@@ -1578,7 +1555,9 @@ check_interface1 (gfc_interface *p, gfc_interface *q0,
 	  continue;
 
 	if (p->sym->attr.flavor != FL_DERIVED
+            && p->sym->attr.flavor != FL_UNION
 	    && q->sym->attr.flavor != FL_DERIVED
+            && q->sym->attr.flavor != FL_UNION
 	    && gfc_compare_interfaces (p->sym, q->sym, q->sym->name,
 				       generic_flag, 0, NULL, 0, NULL, NULL))
 	  {
@@ -3357,7 +3336,8 @@ gfc_search_interface (gfc_interface *intr, int sub_flag,
 
   for (; intr; intr = intr->next)
     {
-      if (intr->sym->attr.flavor == FL_DERIVED)
+      if (intr->sym->attr.flavor == FL_DERIVED
+          || intr->sym->attr.flavor == FL_UNION)
 	continue;
       if (sub_flag && intr->sym->attr.function)
 	continue;

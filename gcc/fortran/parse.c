@@ -2171,17 +2171,12 @@ parse_union (void)
     gfc_statement st;
     gfc_state_data s;
     gfc_component *c;
-    gfc_symbol *map_head;
-    char name[GFC_MAX_SYMBOL_LEN + 1];
-
-    /* Make up a unique name for this union. */
-    memset(name, '\0', sizeof (name));
-    snprintf(name, sizeof (name), "uU$%d", gfc_current_block ()->unions++);
+    gfc_symbol *un;
 
     accept_statement(ST_UNION);
-    push_state (&s, COMP_UNION, gfc_current_block ());
+    push_state (&s, COMP_UNION, gfc_new_block);
+    un = gfc_new_block;
 
-    map_head = NULL;
     compiling = 1;
 
     while (compiling)
@@ -2196,8 +2191,17 @@ parse_union (void)
         case ST_MAP:
           accept_statement (ST_MAP);
           parse_map ();
-          gfc_new_block->next_map = map_head;
-          map_head = gfc_new_block;
+          /* Add a component to the union for each map. */
+          if (gfc_add_component (un, gfc_new_block->name, &c) == FAILURE)
+          {
+            gfc_internal_error ("failed to create map component '%s'", 
+                gfc_new_block->name);
+            reject_statement ();
+            return;
+          }
+          c->ts.type = BT_DERIVED;
+          c->ts.u.derived = gfc_new_block;
+          un->attr.zero_comp = 0;
           break;
 
         case ST_END_UNION:
@@ -2216,23 +2220,16 @@ parse_union (void)
     /* TODO: Post-processing on the resulting component including setting up
        common storage areas for each map (?) */
 
-    if (map_head != NULL)
-    {
-        /* Add the union as a component in its parent structure. */
-        if (gfc_add_component (gfc_current_block (), name, &c) == FAILURE)
-        {
-            gfc_internal_error ("failed to create union component '%s'", name);
-            reject_statement ();
-            return;
-        }
-        /* Allow translation phase to access the map fields. */
-        c->ts.u.un = c;
-        c->maps = map_head;
-        c->ts.type = BT_UNION;
-        c->attr.flavor = FL_UNION;
-    }
-
+    /* Add the union as a component in its parent structure. */
     pop_state ();
+    if (gfc_add_component (gfc_current_block (), un->name, &c) == FAILURE)
+    {
+      gfc_internal_error ("failed to create union component '%s'", un->name);
+      reject_statement ();
+      return;
+    }
+    c->ts.type = BT_UNION;
+    c->ts.u.union_t = un;
 }
 
 static gfc_try

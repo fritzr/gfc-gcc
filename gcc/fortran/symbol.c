@@ -2012,20 +2012,20 @@ gfc_traverse_components (gfc_symbol *sym, compfunc tfunc, void *data)
 gfc_try
 gfc_traverse_components_head (gfc_component *p, compfunc tfunc, void *data)
 {
-  gfc_symbol *m;
+  gfc_component *map;
   for (; p; p = p->next)
     {
       if (tfunc && tfunc (p, data) == FAILURE)
         return FAILURE;
-      /* If component is a union, search recursively through it. In Fortran,
-         because unions/maps are anonymous, any symbols within a map (however
-         deeply nested) are referenced as members of the parent structure. 
-         For example; x.a may refer to x->U->M->U->M->a. */
+      /* If component is a union, search recursively through its maps.
+         in Fortran, because unions/maps are anonymous, any symbols within a
+         map (however deeply nested) are referenced as members of the parent
+         structure.  For example; x.a may refer to x->U->M->U->M->a. */
       if (p->ts.type == BT_UNION)
-        for (m = p->maps; m; m = m->next_map)
-          if (gfc_traverse_components_head (m->components, tfunc, data) 
-                  == FAILURE)
-              return FAILURE;
+        for (map = p->ts.u.union_t->components; map; map = map->next)
+          if (gfc_traverse_components_head (map->ts.u.derived->components,
+                tfunc, data) == FAILURE)
+            return FAILURE;
     }
   return SUCCESS;
 }

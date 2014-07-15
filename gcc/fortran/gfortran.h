@@ -935,7 +935,7 @@ typedef struct
     struct gfc_symbol *derived;	/* For derived types only.  */
     gfc_charlen *cl;		/* For character types only.  */
     int pad;			/* For hollerith types only.  */
-    struct gfc_component *un;   /* Pointer to union decl. for union types. */
+    struct gfc_symbol *union_t; /* Pointer to union decl. for union types. */
   }
   u;
 
@@ -1287,16 +1287,6 @@ typedef struct gfc_symbol
 
   /* Link to corresponding association-list if this is an associate name.  */
   struct gfc_association_list *assoc;
-
-  /* Number of unions contained in this symbol if it is a derived type. */
-  int unions;
-
-  /* Whether this symbol is actually a MAP declaration. */
-  int is_map;
-
-  /* If this symbol is a MAP, pointer to the next MAP in the enclosing UNION,
-     or NULL if it is the last MAP in the UNION. */
-  struct gfc_symbol *next_map;
 }
 gfc_symbol;
 
@@ -2555,7 +2545,7 @@ gfc_try gfc_check_any_c_kind (gfc_typespec *);
 int gfc_validate_kind (bt, int, bool);
 int gfc_get_int_kind_from_width_isofortranenv (int size);
 int gfc_get_real_kind_from_width_isofortranenv (int size);
-tree gfc_get_union_type (gfc_component *);
+tree gfc_get_union_type (gfc_symbol *);
 tree gfc_get_derived_type (gfc_symbol * derived);
 extern int gfc_index_integer_kind;
 extern int gfc_default_integer_kind;

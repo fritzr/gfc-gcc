@@ -7827,6 +7827,10 @@ gfc_match_map (void)
 match
 gfc_match_union (void)
 {
+    /* Counter used to give unique internal names to union declarations. */
+    static unsigned int gfc_union_id = 0;
+    char name[GFC_MAX_SYMBOL_LEN + 1];
+    gfc_symbol *sym;
     locus old_loc;
 
     old_loc = gfc_current_locus;
@@ -7844,6 +7848,12 @@ gfc_match_union (void)
         gfc_current_locus = old_loc;
         return MATCH_ERROR;
     }
+
+    snprintf (name, GFC_MAX_SYMBOL_LEN + 1, "uU$%u", gfc_union_id++);
+    if (get_type_decl ("Union", name, FL_UNION, NULL, &sym) == FAILURE)
+      return MATCH_ERROR;
+
+    gfc_new_block = sym;
 
     return MATCH_YES;
 }

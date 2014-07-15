@@ -1101,7 +1101,7 @@ gfc_typenode_for_spec (gfc_typespec * spec)
       break;
 
     case BT_UNION:
-      basetype = gfc_get_union_type (spec->u.un);
+      basetype = gfc_get_union_type (spec->u.union_t);
       break;
 
     case BT_DERIVED:
@@ -2284,7 +2284,7 @@ copy_components (gfc_symbol *to, gfc_symbol *from, bool from_gsym)
       else if (from_cm->ts.type == BT_CHARACTER)
 	to_cm->ts.u.cl->backend_decl = from_cm->ts.u.cl->backend_decl;
       else if (from_cm->ts.type == BT_UNION)
-        gfc_get_union_type (to_cm);
+        gfc_get_union_type (to_cm->ts.u.union_t);
     }
 }
 
@@ -2335,9 +2335,9 @@ gfc_get_ppc_type (gfc_component* c)
    structure which is an element of the union. */
 
 tree
-gfc_get_union_type (gfc_component *un)
+gfc_get_union_type (gfc_symbol *un)
 {
-    gfc_symbol *map = NULL;
+    gfc_component *map = NULL;
     tree map_type = NULL, map_field = NULL;
     tree *chain = NULL;
 
@@ -2345,24 +2345,20 @@ gfc_get_union_type (gfc_component *un)
     TYPE_NAME (typenode) = get_identifier (un->name);
 
     /* Add each contained MAP as a field. */
-    for (map = un->maps; map; map = map->next_map)
+    for (map = un->components; map; map = map->next)
     {
-        gcc_assert (map->is_map);
-        gcc_assert (map->attr.flavor == FL_DERIVED); /* TODO: ? FL_MAP */
+        gcc_assert (map->ts.type == BT_DERIVED); /* TODO: ? FL_MAP */
 
-        map_type = gfc_get_derived_type (map);
+        map_type = gfc_get_derived_type (map->ts.u.derived);
         map_field = gfc_add_field_to_struct(typenode, get_identifier(map->name),
                                             map_type, &chain);
         TYPE_CONTEXT (map_type) = typenode;
-        /* DECL_NAMELESS(map_field) = true; */
-
-        gcc_assert (map_field);
-
-        if (!map->backend_decl)
-            map->backend_decl = map_field;
+        DECL_NAMELESS(map_field) = true;
     }
 
     un->backend_decl = typenode;
+    gfc_finish_type (typenode);
+
     return typenode;
 }
 
