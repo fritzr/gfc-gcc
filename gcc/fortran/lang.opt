@@ -513,6 +513,10 @@ finit-derived
 Fortran
 Automatically initialize local derived type variables
 
+floc-rval
+Fortran
+Enable the use of %LOC as an rvalue, like the built-in LOC().
+
 fmax-array-constructor=
 Fortran RejectNegative Joined UInteger
 -fmax-array-constructor=<n>	Maximum number of objects in an array constructor

@@ -58,6 +58,7 @@ set_dec_flags (int value)
 {
     if (value) gfc_option.flag_dollar_ok = 1;
     if (value) gfc_option.flag_d_lines = 0; /* -fd-lines-as-comments */
+    if (value) gfc_option.flag_loc_rval = 1;
     gfc_option.flag_dec_extended_int = value;
     gfc_option.flag_dec_structure  = value;
     gfc_option.flag_dec_member_dot = value;
@@ -180,6 +181,7 @@ gfc_init_options (unsigned int decoded_options_count,
   gfc_option.rtcheck = 0;
   gfc_option.coarray = GFC_FCOARRAY_NONE;
 
+  gfc_option.flag_loc_rval = 0;
   set_dec_flags (0);
 
   set_default_std_flags ();
@@ -1139,6 +1141,10 @@ gfc_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_fcoarray_:
       gfc_handle_coarray_option (arg);
+      break;
+
+    case OPT_floc_rval:
+      gfc_option.flag_loc_rval = 1;
       break;
 
     case OPT_fdec:

@@ -121,7 +121,7 @@ by type.  Explanations are in the following sections.
 -fdefault-double-8 -fdefault-integer-8 -fdefault-real-8 -fdollar-ok @gol
 -ffixed-line-length-@var{n} -ffixed-line-length-none -ffree-form @gol
 -ffree-line-length-@var{n} -ffree-line-length-none -fimplicit-none @gol
--finteger-4-integer-8 -fmax-identifier-length -fmodule-private @gol
+-finteger-4-integer-8 -floc-rval -fmax-identifier-length -fmodule-private @gol
 -fno-fixed-form -fno-range-check -fopenmp -freal-4-real-10 @gol
 -freal-4-real-16 -freal-4-real-8 -freal-8-real-10 -freal-8-real-16 @gol
 -freal-8-real-4 -std=@var{std}
@@ -353,6 +353,12 @@ lines in the source file. The default value is 132.
 @var{n} may be @samp{none}, meaning that the entire line is meaningful.
 @option{-ffree-line-length-0} means the same thing as
 @option{-ffree-line-length-none}.
+
+@item -floc-rval
+@opindex @code{floc-rval}
+Enable the recognition of the %LOC() function as an rvalue. That is, it can
+be used just like the intrinsic LOC() function.
+@option{-floc-rval}
 
 @item -fmax-identifier-length=@var{n}
 @opindex @code{fmax-identifier-length=}@var{n}

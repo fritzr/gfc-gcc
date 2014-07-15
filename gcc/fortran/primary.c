@@ -2665,11 +2665,16 @@ gfc_match_rvalue (gfc_expr **result)
   bool implicit_char;
   gfc_ref *ref;
 
-  /* %LOC() is a valid rvalue; treat it as the intrinsic function LOC() */
-  m = gfc_match ("%%loc");
-  if (m == MATCH_YES)
-      strcpy (name, "loc");
-  else
+  m = MATCH_NO;
+  if (gfc_option.flag_loc_rval)
+  {
+    /* Let %LOC() act as a valid rvalue; treat it like GFC_ISYM_LOC */
+    m = gfc_match ("%%loc");
+    if (m == MATCH_YES)
+        strcpy (name, "loc");
+  }
+
+  if (m != MATCH_YES)
   {
       m = gfc_match_name (name);
       if (m != MATCH_YES)
