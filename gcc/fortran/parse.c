@@ -2374,6 +2374,7 @@ parse_structure (void)
 
     gfc_new_block->component_access = ACCESS_PUBLIC;
     compiling_type = 1;
+    seen_field = 0;
 
     while (compiling_type)
     {
@@ -2422,8 +2423,7 @@ parse_structure (void)
     sym = gfc_current_block ();
     gfc_traverse_components (sym, check_component, (void *)sym);
 
-    if (!seen_field)
-        sym->attr.zero_comp = 1;
+    sym->attr.zero_comp = !seen_field;
 
     pop_state ();
 
@@ -2452,6 +2452,7 @@ parse_map (void)
 
     gfc_new_block->component_access = ACCESS_PUBLIC;
     compiling_type = 1;
+    seen_field = 0;
 
     while (compiling_type)
     {
@@ -2499,8 +2500,7 @@ parse_map (void)
     sym = gfc_current_block ();
     gfc_traverse_components (sym, check_component, (void *)sym);
 
-    if (!seen_field)
-        sym->attr.zero_comp = 1;
+    sym->attr.zero_comp = !seen_field;
 
     /* So parse_union can add this structure to its list of maps */
     gfc_new_block = gfc_current_block ();
