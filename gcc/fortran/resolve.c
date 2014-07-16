@@ -13302,6 +13302,11 @@ resolve_symbol (gfc_symbol *sym)
     return;
   sym->resolved = 1;
 
+  /* No symbol will ever have union type; only components can be unions.
+     Union type declaration symbols have type BT_UNKNOWN but flavor FL_UNION
+     (just like derived type declaration symbols have flavor FL_DERIVED). */
+  gcc_assert (sym->ts.type != BT_UNION);
+
   if (sym->attr.artificial)
     return;
 

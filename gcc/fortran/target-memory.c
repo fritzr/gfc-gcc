@@ -293,6 +293,9 @@ gfc_target_encode_expr (gfc_expr *source, unsigned char *buffer,
   if (source == NULL)
     return 0;
 
+  /* Assumed no union will end up here. */
+  gcc_assert (source->ts.type != BT_UNION);
+
   if (source->expr_type == EXPR_ARRAY)
     return encode_array (source, buffer, buffer_size);
 

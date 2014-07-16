@@ -4968,6 +4968,9 @@ gfc_type_compatible (gfc_typespec *ts1, gfc_typespec *ts2)
   bool is_derived1 = (ts1->type == BT_DERIVED);
   bool is_derived2 = (ts2->type == BT_DERIVED);
 
+  /* Assumed no union will end up here. */
+  gcc_assert (ts1->type != BT_UNION && ts2->type != BT_UNION);
+
   if (is_class1
       && ts1->u.derived->components
       && ts1->u.derived->components->ts.u.derived->attr.unlimited_polymorphic)
