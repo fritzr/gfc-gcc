@@ -2370,7 +2370,7 @@ gfc_get_union_type (gfc_component *un)
 tree gfc_get_derived_type (gfc_symbol *);
 
 static gfc_try
-build_derived_comp (gfc_component *c, void *)
+build_derived_comp (gfc_component *c, void *data ATTRIBUTE_UNUSED)
 {
   if (c->ts.type != BT_DERIVED && c->ts.type != BT_CLASS)
     return SUCCESS;

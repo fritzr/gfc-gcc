@@ -778,7 +778,7 @@ copy_vtab_proc_comps (gfc_symbol *declared, gfc_symbol *vtype)
 static bool has_finalizer_component (gfc_symbol *);
 
 static gfc_try
-has_finalizer (gfc_component *c, void *)
+has_finalizer (gfc_component *c, void *data ATTRIBUTE_UNUSED)
 {
   if (c->ts.type == BT_DERIVED && c->ts.u.derived->f2k_derived
       && c->ts.u.derived->f2k_derived->finalizers)
@@ -2494,7 +2494,7 @@ cleanup:
 }
 
 static gfc_try
-is_finalizable (gfc_component *c, void *)
+is_finalizable (gfc_component *c, void *data ATTRIBUTE_UNUSED)
 {
     if (c->ts.type == BT_DERIVED
 	&& !c->attr.pointer && !c->attr.proc_pointer && !c->attr.allocatable

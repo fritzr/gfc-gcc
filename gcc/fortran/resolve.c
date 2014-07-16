@@ -6964,7 +6964,7 @@ static int
 derived_inaccessible (gfc_symbol *);
 
 static gfc_try
-inaccessible (gfc_component *c, void *)
+inaccessible (gfc_component *c, void *data ATTRIBUTE_UNUSED)
 {
     if (c->ts.type == BT_DERIVED && derived_inaccessible (c->ts.u.derived))
       return FAILURE;
@@ -13271,7 +13271,7 @@ resolve_fl_parameter (gfc_symbol *sym)
 }
 
 static gfc_try
-has_initializer (gfc_component *c, void *)
+has_initializer (gfc_component *c, void *data ATTRIBUTE_UNUSED)
 {
     /* Return FAILURE if c has an initializer (stops iteration) */
     return c->initializer ? FAILURE : SUCCESS;

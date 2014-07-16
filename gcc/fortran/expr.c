@@ -4005,7 +4005,7 @@ gfc_check_assign_symbol (gfc_symbol *sym, gfc_component *comp, gfc_expr *rvalue)
 }
 
 static gfc_try
-has_default_initializer (gfc_component *c, void *)
+has_default_initializer (gfc_component *c, void *data ATTRIBUTE_UNUSED)
 {
     if (c->ts.type == BT_DERIVED)
       {
