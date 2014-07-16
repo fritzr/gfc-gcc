@@ -7453,7 +7453,7 @@ alloc_component (gfc_component *c, void *data)
   int rank;
   alloc_comp_data *d = (alloc_comp_data *)data;
   
-  cmp_has_alloc_comps = (c->ts.type == BT_DERIVED || c->ts.type == BT_CLASS)
+  cmp_has_alloc_comps = (gfc_bt_struct (c->ts.type) || c->ts.type == BT_CLASS)
                         && c->ts.u.derived->attr.alloc_comp;
 
   cdecl = c->backend_decl;

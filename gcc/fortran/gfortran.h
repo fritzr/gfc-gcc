@@ -51,6 +51,12 @@ along with GCC; see the file COPYING3.  If not see
 
 #define gfc_is_whitespace(c) ((c==' ') || (c=='\t'))
 
+/* Common macros to check structure-like types and flavors, since things like
+   STRUCTURES, MAPs and UNIONs are often treated similarly. */
+
+#define gfc_bt_struct(t) ((t) == BT_DERIVED || (t) == BT_UNION)
+#define gfc_fl_is_derived(f) ((f) == FL_UNION || (f) == FL_DERIVED)
+
 /* Stringization.  */
 #define stringize(x) expand_macro(x)
 #define expand_macro(x) # x

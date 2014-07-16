@@ -6050,7 +6050,7 @@ get_declared_from_expr (gfc_ref **class_ref, gfc_ref **new_ref,
 	continue;
 
       if ((ref->u.c.component->ts.type == BT_CLASS
-	     || (check_types && ref->u.c.component->ts.type == BT_DERIVED))
+	     || (check_types && gfc_bt_struct (ref->u.c.component->ts.type)))
 	  && ref->u.c.component->attr.flavor != FL_PROCEDURE)
 	{
 	  declared = ref->u.c.component->ts.u.derived;
@@ -6355,7 +6355,7 @@ resolve_typebound_function (gfc_expr* e)
   declared = get_declared_from_expr (&class_ref, &new_ref, e, true);
 
   /* Weed out cases of the ultimate component being a derived type.  */
-  if ((class_ref && class_ref->u.c.component->ts.type == BT_DERIVED)
+  if ((class_ref && gfc_bt_struct (class_ref->u.c.component->ts.type))
 	 || (!class_ref && st->n.sym->ts.type != BT_CLASS))
     {
       gfc_free_ref_list (new_ref);
@@ -6484,7 +6484,7 @@ resolve_typebound_subroutine (gfc_code *code)
   get_declared_from_expr (&class_ref, &new_ref, code->expr1, true);
 
   /* Weed out cases of the ultimate component being a derived type.  */
-  if ((class_ref && class_ref->u.c.component->ts.type == BT_DERIVED)
+  if ((class_ref && gfc_bt_struct (class_ref->u.c.component->ts.type))
 	 || (!class_ref && st->n.sym->ts.type != BT_CLASS))
     {
       gfc_free_ref_list (new_ref);
@@ -7442,7 +7442,7 @@ resolve_allocate_expr (gfc_expr *e, gfc_code *code)
       gfc_typespec ts;
       gfc_expr *init_e;
 
-      if (code->ext.alloc.ts.type == BT_DERIVED)
+      if (gfc_bt_struct (code->ext.alloc.ts.type))
 	ts = code->ext.alloc.ts;
       else
 	ts = e->ts;
@@ -7450,7 +7450,7 @@ resolve_allocate_expr (gfc_expr *e, gfc_code *code)
       if (ts.type == BT_CLASS)
 	ts = ts.u.derived->components->ts;
 
-      if (ts.type == BT_DERIVED && (init_e = gfc_default_initializer (&ts,
+      if (gfc_bt_struct (ts.type) && (init_e = gfc_default_initializer (&ts,
                                                                       false)))
 	{
 	  gfc_code *init_st = gfc_get_code ();
@@ -7567,7 +7567,7 @@ check_symbols:
 	  sym = a->expr->symtree->n.sym;
 
 	  /* TODO - check derived type components.  */
-	  if (sym->ts.type == BT_DERIVED || sym->ts.type == BT_CLASS)
+	  if (gfc_bt_struct (sym->ts.type) || sym->ts.type == BT_CLASS)
 	    continue;
 
 	  if ((ar->start[i] != NULL

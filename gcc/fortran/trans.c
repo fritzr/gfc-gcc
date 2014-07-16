@@ -1041,7 +1041,7 @@ gfc_build_final_call (gfc_typespec ts, gfc_expr *final_wrapper, gfc_expr *var,
   if (POINTER_TYPE_P (TREE_TYPE (final_fndecl)))
     final_fndecl = build_fold_indirect_ref_loc (input_location, final_fndecl);
 
-  if (ts.type == BT_DERIVED)
+  if (gfc_bt_struct (ts.type))
     {
       tree elem_size;
 
@@ -1186,7 +1186,7 @@ gfc_deallocate_scalar_with_status (tree pointer, tree status, bool can_fail,
   gfc_start_block (&non_null);
 
   /* Free allocatable components.  */
-  if (ts.type == BT_DERIVED && ts.u.derived->attr.alloc_comp)
+  if (gfc_bt_struct (ts.type) && ts.u.derived->attr.alloc_comp)
     {
       tmp = build_fold_indirect_ref_loc (input_location, pointer);
       tmp = gfc_deallocate_alloc_comp (ts.u.derived, tmp, 0);

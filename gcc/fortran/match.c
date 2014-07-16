@@ -155,9 +155,9 @@ gfc_match_member_sep(gfc_symbol *sym)
     /* We may be given either a derived type variable or the derived type
        declaration itself (which actually contains the components); 
        if this is a member access we need the latter to check components. */
-    if(sym->attr.flavor == FL_DERIVED)
+    if(gfc_fl_is_derived (sym->attr.flavor))
         tsym = sym;
-    else if(sym->ts.type == BT_DERIVED)
+    else if(gfc_bt_struct (sym->ts.type))
         tsym = sym->ts.u.derived;
     else
         return MATCH_NO;
@@ -199,7 +199,7 @@ gfc_match_member_sep(gfc_symbol *sym)
     /* Match accesses to existing derived-type components for 
        derived-type vars: "x.y.z" = (x->y)->z */
     c = gfc_find_component(tsym, name, false, true);
-    if (c && (c->ts.type == BT_DERIVED || c->ts.type == BT_CLASS))
+    if (c && (gfc_bt_struct (c->ts.type) || c->ts.type == BT_CLASS))
         goto yes;
 
     /* If y is not a component or has no members, try intrinsic operators. */
@@ -5552,7 +5552,7 @@ select_intrinsic_set_tmp (gfc_typespec *ts)
   gfc_symtree *tmp;
   int charlen = 0;
 
-  if (ts->type == BT_CLASS || ts->type == BT_DERIVED)
+  if (ts->type == BT_CLASS || gfc_bt_struct (ts->type))
     return NULL;
 
   if (select_type_stack->selector->ts.type == BT_CLASS

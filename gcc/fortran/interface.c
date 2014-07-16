@@ -446,17 +446,17 @@ gfc_compare_derived_types (gfc_symbol *derived1, gfc_symbol *derived2)
 
       /* Make sure that link lists do not put this function into an
 	 endless recursive loop!  */
-      if (!(dt1->ts.type == BT_DERIVED && derived1 == dt1->ts.u.derived)
-	    && !(dt2->ts.type == BT_DERIVED && derived2 == dt2->ts.u.derived)
+      if (!(gfc_bt_struct (dt1->ts.type) && derived1 == dt1->ts.u.derived)
+	    && !(gfc_bt_struct (dt2->ts.type) && derived2 == dt2->ts.u.derived)
 	    && gfc_compare_types (&dt1->ts, &dt2->ts) == 0)
 	return 0;
 
-      else if ((dt1->ts.type == BT_DERIVED && derived1 == dt1->ts.u.derived)
-		&& !(dt1->ts.type == BT_DERIVED && derived1 == dt1->ts.u.derived))
+      else if ((gfc_bt_struct (dt1->ts.type) && derived1 == dt1->ts.u.derived)
+		&& !(gfc_bt_struct (dt1->ts.type) && derived1 == dt1->ts.u.derived))
 	return 0;
 
-      else if (!(dt1->ts.type == BT_DERIVED && derived1 == dt1->ts.u.derived)
-		&& (dt1->ts.type == BT_DERIVED && derived1 == dt1->ts.u.derived))
+      else if (!(gfc_bt_struct (dt1->ts.type) && derived1 == dt1->ts.u.derived)
+		&& (gfc_bt_struct (dt1->ts.type) && derived1 == dt1->ts.u.derived))
 	return 0;
 
       dt1 = dt1->next;
@@ -495,10 +495,10 @@ gfc_compare_types (gfc_typespec *ts1, gfc_typespec *ts2)
     return 1;
 
   if (ts1->type != ts2->type
-      && ((ts1->type != BT_DERIVED && ts1->type != BT_CLASS)
-	  || (ts2->type != BT_DERIVED && ts2->type != BT_CLASS)))
+      && ((!gfc_bt_struct (ts1->type) && ts1->type != BT_CLASS)
+	  || (!gfc_bt_struct (ts2->type) && ts2->type != BT_CLASS)))
     return 0;
-  if (ts1->type != BT_DERIVED && ts1->type != BT_CLASS)
+  if (!gfc_bt_struct (ts1->type) && ts1->type != BT_CLASS)
     return (ts1->kind == ts2->kind);
 
   /* Compare derived types.  */

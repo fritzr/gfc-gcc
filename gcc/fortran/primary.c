@@ -2475,7 +2475,7 @@ gfc_convert_to_structure_constructor (gfc_expr *e, gfc_symbol *sym, gfc_expr **c
           if (comp && comp == sym->components
                 && sym->attr.extension
 		&& comp_tail->val
-                && (comp_tail->val->ts.type != BT_DERIVED
+                && (!gfc_bt_struct (comp_tail->val->ts.type)
                       ||
                     comp_tail->val->ts.u.derived != this_comp->ts.u.derived))
             {

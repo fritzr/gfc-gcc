@@ -5841,7 +5841,7 @@ gfc_trans_alloc_subarray_assign (tree dest, gfc_component * cm,
   gfc_add_modify (&block, dest, se.expr);
 
   /* Deal with arrays of derived types with allocatable components.  */
-  if (cm->ts.type == BT_DERIVED
+  if (gfc_bt_struct (cm->ts.type)
 	&& cm->ts.u.derived->attr.alloc_comp)
     tmp = gfc_copy_alloc_comp (cm->ts.u.derived,
 			       se.expr, dest,
@@ -6028,7 +6028,7 @@ gfc_trans_subcomponent_assign (tree dest, gfc_component * cm, gfc_expr * expr)
 	  gfc_add_expr_to_block (&block, tmp);
 	}
     }
-  else if (expr->ts.type == BT_DERIVED)
+  else if (gfc_bt_struct (cm->ts.type))
     {
       if (expr->expr_type != EXPR_STRUCTURE)
 	{
@@ -6061,6 +6061,7 @@ gfc_trans_subcomponent_assign (tree dest, gfc_component * cm, gfc_expr * expr)
     }
   return gfc_finish_block (&block);
 }
+
 typedef struct {
     gfc_constructor *c;
     stmtblock_t *block;
@@ -6879,7 +6880,7 @@ gfc_trans_scalar_assign (gfc_se * lse, gfc_se * rse, gfc_typespec ts,
       gfc_trans_string_copy (&block, llen, lse->expr, ts.kind, rlen,
 			     rse->expr, ts.kind);
     }
-  else if (ts.type == BT_DERIVED && ts.u.derived->attr.alloc_comp)
+  else if (gfc_bt_struct (ts.type) && ts.u.derived->attr.alloc_comp)
     {
       cond = NULL_TREE;
 
@@ -6922,7 +6923,7 @@ gfc_trans_scalar_assign (gfc_se * lse, gfc_se * rse, gfc_typespec ts,
 	  gfc_add_expr_to_block (&block, tmp);
 	}
     }
-  else if (ts.type == BT_DERIVED || ts.type == BT_CLASS)
+  else if (gfc_bt_struct (ts.type) || ts.type == BT_CLASS)
     {
       gfc_add_block_to_block (&block, &lse->pre);
       gfc_add_block_to_block (&block, &rse->pre);

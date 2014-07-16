@@ -1641,7 +1641,8 @@ simplify_const_ref (gfc_expr *p)
 
 	    case AR_FULL:
 	      if (p->ref->next != NULL
-		  && (p->ts.type == BT_CHARACTER || p->ts.type == BT_DERIVED))
+		  && (p->ts.type == BT_CHARACTER 
+                      || gfc_bt_struct (p->ts.type)))
 		{
 		  for (c = gfc_constructor_first (p->value.constructor);
 		       c; c = gfc_constructor_next (c))
@@ -1651,7 +1652,7 @@ simplify_const_ref (gfc_expr *p)
 			return FAILURE;
 		    }
 
-		  if (p->ts.type == BT_DERIVED
+		  if (gfc_bt_struct (p->ts.type)
 			&& p->ref->next
 			&& (c = gfc_constructor_first (p->value.constructor)))
 		    {
@@ -2214,7 +2215,7 @@ check_alloc_comp_init (gfc_expr *e)
   gfc_constructor *ctor;
 
   gcc_assert (e->expr_type == EXPR_STRUCTURE);
-  gcc_assert (e->ts.type == BT_DERIVED);
+  gcc_assert (gfc_bt_struct (e->ts.type));
 
   ctor = gfc_constructor_first (e->value.constructor);
   return gfc_traverse_components (e->ts.u.derived, check_alloc, (void *)&ctor);
@@ -4007,7 +4008,7 @@ gfc_check_assign_symbol (gfc_symbol *sym, gfc_component *comp, gfc_expr *rvalue)
 static gfc_try
 has_default_initializer (gfc_component *c, void *data ATTRIBUTE_UNUSED)
 {
-    if (c->ts.type == BT_DERIVED)
+    if (gfc_bt_struct (c->ts.type))
       {
         if (!c->attr.pointer
 	     && gfc_has_default_initializer (c->ts.u.derived))
@@ -4036,7 +4037,7 @@ gfc_has_default_initializer (gfc_symbol *der)
 static gfc_try
 free_default_initializer (gfc_component *c, void *data ATTRIBUTE_UNUSED)
 {
-  if (c->ts.type == BT_DERIVED)
+  if (gfc_bt_struct (c->ts.type))
     {
       if (!c->attr.pointer)
         gfc_free_derived_initializer (c->ts.u.derived);
@@ -4106,7 +4107,7 @@ add_constructor (gfc_component *comp, void *data)
   return SUCCESS;
 }
 
-/* Get an expression for a default initializer.  */
+/* Get an expression for a default initializer of a derived typespec.  */
 
 gfc_expr *
 gfc_default_initializer (gfc_typespec *ts)

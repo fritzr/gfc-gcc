@@ -3915,7 +3915,7 @@ verify_bind_c_derived_type (gfc_symbol *derived_sym)
         }
       
       /* BIND(C) derived types must have interoperable components.  */
-      if (curr_comp->ts.type == BT_DERIVED
+      if (gfc_bt_struct (curr_comp->ts.type)
 	  && curr_comp->ts.u.derived->ts.is_iso_c != 1 
           && curr_comp->ts.u.derived != derived_sym)
         {
