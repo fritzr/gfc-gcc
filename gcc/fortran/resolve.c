@@ -9921,6 +9921,8 @@ count_nonscalar_tba (gfc_component *c, void *countp)
     int t_depth = 0;
     int c_depth = *(int *)countp;
 
+    /* TODO: recurse into maps of BT_UNION variables */
+
     if ((c->ts.type != BT_DERIVED
         || c->attr.pointer
         || c->attr.allocatable
@@ -10069,6 +10071,8 @@ generate_component_assignments (gfc_code **code, gfc_namespace *ns)
   for (; comp1; comp1 = comp1->next, comp2 = comp2->next)
     {
       bool inout = false;
+
+      /* TODO: recurse into maps of BT_UNION components */
 
       /* The intrinsic assignment does the right thing for pointers
 	 of all kinds and allocatable components.  */
@@ -12564,6 +12568,8 @@ check_defined_assign (gfc_component *c, void *data)
 {
     gfc_symbol *derived = (gfc_symbol *)data;
 
+    /* TODO: Handle BT_UNION components */
+
     if (c->ts.type != BT_DERIVED
         || c->attr.pointer
         || c->attr.allocatable
@@ -14525,6 +14531,7 @@ sequence_type (gfc_typespec ts)
 
   switch (ts.type)
   {
+    case BT_UNION:
     case BT_DERIVED:
 
       if (ts.u.derived->components == NULL)
@@ -14612,6 +14619,8 @@ resolve_equivalence_derived (gfc_symbol *derived, gfc_symbol *sym, gfc_expr *e)
 
   for (; c ; c = c->next)
     {
+      /* TODO: Handle BT_UNION components */
+
       if (c->ts.type == BT_DERIVED
 	  && (resolve_equivalence_derived (c->ts.u.derived, sym, e) == FAILURE))
 	return FAILURE;

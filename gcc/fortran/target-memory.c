@@ -107,6 +107,7 @@ gfc_element_size (gfc_expr *e)
 
     case BT_HOLLERITH:
       return e->representation.length;
+    case BT_UNION:
     case BT_DERIVED:
     case BT_CLASS:
       {
@@ -618,6 +619,11 @@ gfc_target_interpret_expr (unsigned char *buffer, size_t buffer_size,
       gcc_assert (result->representation.length >= 0);
       break;
 
+    /* TODO: Handle BT_UNION */
+    case BT_UNION:
+      gfc_warning_now ("Union binary representation unimplemented");
+      break;
+
     default:
       gfc_internal_error ("Invalid expression in gfc_target_interpret_expr.");
       break;
@@ -666,6 +672,8 @@ comp_to_char (gfc_component *cmp, void *data)
   comp_to_char_data *d = (comp_to_char_data *)data;
 
   gcc_assert (cmp->backend_decl);
+
+  /* TODO: Handle BT_UNION components */
 
   if (d->c->expr)
     {
