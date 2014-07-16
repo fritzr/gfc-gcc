@@ -2219,6 +2219,8 @@ static const mstring bt_types[] = {
     minit ("COMPLEX", BT_COMPLEX),
     minit ("LOGICAL", BT_LOGICAL),
     minit ("CHARACTER", BT_CHARACTER),
+    minit ("HOLLERITH", BT_HOLLERITH),
+    minit ("UNION", BT_UNION),
     minit ("DERIVED", BT_DERIVED),
     minit ("CLASS", BT_CLASS),
     minit ("PROCEDURE", BT_PROCEDURE),
