@@ -932,10 +932,9 @@ typedef struct
 
   union
   {
-    struct gfc_symbol *derived;	/* For derived types only.  */
+    struct gfc_symbol *derived;	/* For derived types or unions.  */
     gfc_charlen *cl;		/* For character types only.  */
     int pad;			/* For hollerith types only.  */
-    struct gfc_symbol *union_t; /* Pointer to union decl. for union types. */
   }
   u;
 

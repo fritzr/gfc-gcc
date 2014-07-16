@@ -2022,7 +2022,7 @@ gfc_traverse_components_head (gfc_component *p, compfunc tfunc, void *data)
          map (however deeply nested) are referenced as members of the parent
          structure.  For example; x.a may refer to x->U->M->U->M->a. */
       if (p->ts.type == BT_UNION)
-        for (map = p->ts.u.union_t->components; map; map = map->next)
+        for (map = p->ts.u.derived->components; map; map = map->next)
           if (gfc_traverse_components_head (map->ts.u.derived->components,
                 tfunc, data) == FAILURE)
             return FAILURE;
@@ -2087,6 +2087,7 @@ gfc_find_component (gfc_symbol *sym, const char *name,
 	}
     }
 
+  /* Look in the parent type. */
   if (p == NULL
 	&& sym->attr.extension
 	&& sym->components->ts.type == BT_DERIVED)

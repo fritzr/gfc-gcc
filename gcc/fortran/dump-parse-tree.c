@@ -111,7 +111,7 @@ show_typespec (gfc_typespec *ts)
       break;
 
     case BT_UNION:
-      fprintf (dumpfile, "%s", ts->u.union_t->name);
+      fprintf (dumpfile, "%s", ts->u.derived->name);
       break;
 
     case BT_CHARACTER:

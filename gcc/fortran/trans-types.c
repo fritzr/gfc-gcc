@@ -1101,7 +1101,7 @@ gfc_typenode_for_spec (gfc_typespec * spec)
       break;
 
     case BT_UNION:
-      basetype = gfc_get_union_type (spec->u.union_t);
+      basetype = gfc_get_union_type (spec->u.derived);
       break;
 
     case BT_DERIVED:
@@ -2284,7 +2284,7 @@ copy_components (gfc_symbol *to, gfc_symbol *from, bool from_gsym)
       else if (from_cm->ts.type == BT_CHARACTER)
 	to_cm->ts.u.cl->backend_decl = from_cm->ts.u.cl->backend_decl;
       else if (from_cm->ts.type == BT_UNION)
-        gfc_get_union_type (to_cm->ts.u.union_t);
+        gfc_get_union_type (to_cm->ts.u.derived);
     }
 }
 

@@ -505,9 +505,6 @@ gfc_compare_types (gfc_typespec *ts1, gfc_typespec *ts2)
   if (gfc_type_compatible (ts1, ts2))
     return 1;
 
-  if (ts1->type == BT_UNION && ts2->type == BT_UNION)
-    return gfc_compare_derived_types (ts1->u.union_t ,ts2->u.union_t);
-
   return gfc_compare_derived_types (ts1->u.derived ,ts2->u.derived);
 }
 
