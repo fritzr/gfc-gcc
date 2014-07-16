@@ -2159,79 +2159,6 @@ error:
   return error_flag;
 }
 
-static void parse_map (void);
-
-/* Parse a union component definition within a structure/derived-type 
-   definition. */
-
-static void
-parse_union (void)
-{
-    int compiling;
-    gfc_statement st;
-    gfc_state_data s;
-    gfc_component *c;
-    gfc_symbol *un;
-
-    accept_statement(ST_UNION);
-    push_state (&s, COMP_UNION, gfc_new_block);
-    un = gfc_new_block;
-
-    compiling = 1;
-
-    while (compiling)
-    {
-      st = next_statement ();
-      /* Only MAP declarations valid within a union. */
-      switch (st)
-        {
-        case ST_NONE:
-          unexpected_eof ();
-
-        case ST_MAP:
-          accept_statement (ST_MAP);
-          parse_map ();
-          /* Add a component to the union for each map. */
-          if (gfc_add_component (un, gfc_new_block->name, &c) == FAILURE)
-          {
-            gfc_internal_error ("failed to create map component '%s'", 
-                gfc_new_block->name);
-            reject_statement ();
-            return;
-          }
-          c->ts.type = BT_DERIVED;
-          c->ts.u.derived = gfc_new_block;
-          un->attr.zero_comp = 0;
-          break;
-
-        case ST_END_UNION:
-          compiling = 0;
-          accept_statement (ST_END_UNION);
-          break;
-
-        default:
-          gfc_error ("Unexpected statement at %C; only MAP blocks are valid in"
-                     " a UNION block");
-          reject_statement ();
-          break;
-        }
-    }
-
-    /* TODO: Post-processing on the resulting component including setting up
-       common storage areas for each map (?) */
-
-    /* Add the union as a component in its parent structure. */
-    pop_state ();
-    if (gfc_add_component (gfc_current_block (), un->name, &c) == FAILURE)
-    {
-      gfc_internal_error ("failed to create union component '%s'", un->name);
-      reject_statement ();
-      return;
-    }
-    c->ts.type = BT_UNION;
-    c->ts.u.union_t = un;
-}
-
 static gfc_try
 check_component (gfc_component *c, void *data)
 {
@@ -2347,6 +2274,80 @@ check_component (gfc_component *c, void *data)
     sym->attr.private_comp = 1;
 
   return SUCCESS;
+}
+
+static void parse_map (void);
+
+/* Parse a union component definition within a structure/derived-type 
+   definition. */
+
+static void
+parse_union (void)
+{
+    int compiling;
+    gfc_statement st;
+    gfc_state_data s;
+    gfc_component *c;
+    gfc_symbol *un;
+
+    accept_statement(ST_UNION);
+    push_state (&s, COMP_UNION, gfc_new_block);
+    un = gfc_new_block;
+
+    compiling = 1;
+
+    while (compiling)
+    {
+      st = next_statement ();
+      /* Only MAP declarations valid within a union. */
+      switch (st)
+        {
+        case ST_NONE:
+          unexpected_eof ();
+
+        case ST_MAP:
+          accept_statement (ST_MAP);
+          parse_map ();
+          /* Add a component to the union for each map. */
+          if (gfc_add_component (un, gfc_new_block->name, &c) == FAILURE)
+          {
+            gfc_internal_error ("failed to create map component '%s'", 
+                gfc_new_block->name);
+            reject_statement ();
+            return;
+          }
+          c->ts.type = BT_DERIVED;
+          c->ts.u.derived = gfc_new_block;
+          un->attr.zero_comp = 0;
+          break;
+
+        case ST_END_UNION:
+          compiling = 0;
+          accept_statement (ST_END_UNION);
+          break;
+
+        default:
+          gfc_error ("Unexpected statement at %C; only MAP blocks are valid in"
+                     " a UNION block");
+          reject_statement ();
+          break;
+        }
+    }
+
+    /* TODO: Post-processing on the resulting component including setting up
+       common storage areas for each map (?) */
+    gfc_traverse_components (un, check_component, (void *)un);
+
+    /* Add the union as a component in its parent structure. */
+    pop_state ();
+    if (gfc_add_component (gfc_current_block (), un->name, &c) == FAILURE)
+    {
+      gfc_internal_error ("failed to create union component '%s'", un->name);
+      reject_statement ();
+      return;
+    }
+    c->ts.type = BT_UNION;
+    c->ts.u.derived = un;
 }
 
 /* Parse a structure definition. */
