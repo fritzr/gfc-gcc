@@ -1823,7 +1823,7 @@ match_pointer_init (gfc_expr **init, int procptr)
 {
   match m;
 
-  if (gfc_pure (NULL) && !gfc_is_derived(gfc_state_stack->state))
+  if (gfc_pure (NULL) && !gfc_comp_is_derived(gfc_state_stack->state))
     {
       gfc_error ("Initialization of pointer at %C is not allowed in "
 		 "a PURE procedure");
@@ -2065,7 +2065,7 @@ variable_decl (int elem)
      For components of derived types, it is not true, so we don't
      create a symbol for those yet.  If we fail to create the symbol,
      bail out.  */
-  if (!gfc_is_derived (gfc_current_state ())
+  if (!gfc_comp_is_derived (gfc_current_state ())
       && build_sym (name, cl, cl_deferred, &as, &var_locus) == FAILURE)
     {
       m = MATCH_ERROR;
@@ -2105,7 +2105,7 @@ variable_decl (int elem)
       /* For derived type components, read the initializer as a special
          expression and let the rest of this function apply the initializer
          as usual. */
-      else if (gfc_is_derived (gfc_current_state ()))
+      else if (gfc_comp_is_derived (gfc_current_state ()))
       {
         m = gfc_match_clist_expr (&initializer, &current_ts, as);
         if (m == MATCH_NO)
@@ -2156,7 +2156,7 @@ variable_decl (int elem)
 	    }
 
 	  if (current_attr.flavor != FL_PARAMETER && gfc_pure (NULL)
-	      && !gfc_is_derived (gfc_state_stack->state))
+	      && !gfc_comp_is_derived (gfc_state_stack->state))
 	    {
 	      gfc_error ("Initialization of variable at %C is not allowed in "
 			 "a PURE procedure");
@@ -2164,7 +2164,7 @@ variable_decl (int elem)
 	    }
 
 	  if (current_attr.flavor != FL_PARAMETER
-	      && !gfc_is_derived(gfc_state_stack->state))
+	      && !gfc_comp_is_derived(gfc_state_stack->state))
 	    gfc_unset_implicit_pure (gfc_current_ns->proc_name);
 
 	  if (m != MATCH_YES)
@@ -2173,7 +2173,7 @@ variable_decl (int elem)
     }
 
   if (initializer != NULL && current_attr.allocatable
-	&& gfc_is_derived (gfc_current_state ()))
+	&& gfc_comp_is_derived (gfc_current_state ()))
     {
       gfc_error ("Initialization of allocatable component at %C is not "
 		 "allowed");
@@ -2184,7 +2184,7 @@ variable_decl (int elem)
   /* Add the initializer.  Note that it is fine if initializer is
      NULL here, because we sometimes also need to check if a
      declaration *must* have an initialization expression.  */
-  if (!gfc_is_derived (gfc_current_state ()))
+  if (!gfc_comp_is_derived (gfc_current_state ()))
     t = add_init_expr_to_sym (name, &initializer, &var_locus);
   else
     {
@@ -2766,7 +2766,7 @@ gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
 	{
 	  if ((m = gfc_match ("*)")) != MATCH_YES)
 	    return m;
-	  if (gfc_is_derived (gfc_current_state ()))
+	  if (gfc_comp_is_derived (gfc_current_state ()))
 	    {
 	      gfc_error ("Assumed type at %C is not allowed for components");
 	      return MATCH_ERROR;
@@ -2892,7 +2892,7 @@ gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
       /* Match ad-hoc STRUCTURE declarations; only valid within another
          derived/structure declaration. */
       m = gfc_match (" structure");
-      if (m == MATCH_YES && gfc_is_derived (gfc_current_state ()))
+      if (m == MATCH_YES && gfc_comp_is_derived (gfc_current_state ()))
       {
           m = gfc_match_structure_decl ();
           if (m == MATCH_YES)
@@ -3836,7 +3836,7 @@ match_attr_spec (void)
       if (seen[d] == 0)
 	continue;
 
-      if (gfc_is_derived (gfc_current_state ())
+      if (gfc_comp_is_derived (gfc_current_state ())
 	  && d != DECL_DIMENSION && d != DECL_CODIMENSION
 	  && d != DECL_POINTER   && d != DECL_PRIVATE
 	  && d != DECL_PUBLIC && d != DECL_CONTIGUOUS && d != DECL_NONE)
@@ -3868,7 +3868,7 @@ match_attr_spec (void)
 	    attr = "PRIVATE";
 	  else
 	    attr = "PUBLIC";
-	  if (gfc_is_derived (gfc_current_state ())
+	  if (gfc_comp_is_derived (gfc_current_state ())
 	      && gfc_state_stack->previous
 	      && gfc_state_stack->previous->state == COMP_MODULE)
 	    {
@@ -4439,7 +4439,7 @@ gfc_match_data_decl (void)
     return m;
 
   if ((current_ts.type == BT_DERIVED || current_ts.type == BT_CLASS)
-	&& !gfc_is_derived(gfc_current_state ()))
+	&& !gfc_comp_is_derived(gfc_current_state ()))
     {
       sym = gfc_use_derived (current_ts.u.derived);
 
@@ -4468,7 +4468,7 @@ gfc_match_data_decl (void)
       && !current_ts.u.derived->attr.zero_comp)
     {
 
-      if (current_attr.pointer && gfc_is_derived (gfc_current_state ()))
+      if (current_attr.pointer && gfc_comp_is_derived (gfc_current_state ()))
 	goto ok;
 
       gfc_find_symbol (current_ts.u.derived->name,
@@ -7831,7 +7831,7 @@ gfc_match_union (void)
 
     old_loc = gfc_current_locus;
 
-    if (!gfc_is_derived (gfc_current_state ()))
+    if (!gfc_comp_is_derived (gfc_current_state ()))
     {
         gfc_current_locus = old_loc;
         gfc_error ("UNION statement at %C illegal outside of structure "
@@ -7885,7 +7885,7 @@ gfc_match_structure_decl (void)
     if (m != MATCH_YES)
     {
         /* Non-nested structure declarations require a structure name. */
-        if (!gfc_is_derived (gfc_current_state ()))
+        if (!gfc_comp_is_derived (gfc_current_state ()))
         {
             gfc_error ("Structure name expected in non-nested structure "
                        "declaration at %C");
@@ -7900,7 +7900,7 @@ gfc_match_structure_decl (void)
         snprintf (name, GFC_MAX_SYMBOL_LEN + 1, "sS$%u", gfc_structure_id++);
     }
     /* No field list allowed after non-nested structure declaration. */
-    if (!gfc_is_derived (gfc_current_state ()) && gfc_match_eos () != MATCH_YES)
+    if (!gfc_comp_is_derived (gfc_current_state ()) && gfc_match_eos () != MATCH_YES)
     {
         gfc_error ("Field list at %C illegal in non-nested structure "
                    "declaration");
@@ -7944,7 +7944,7 @@ gfc_match_derived_decl (void)
   match is_type_attr_spec = MATCH_NO;
   bool seen_attr = false;
 
-  if (gfc_is_derived (gfc_current_state ()))
+  if (gfc_comp_is_derived (gfc_current_state ()))
     return MATCH_NO;
 
   name[0] = '\0';

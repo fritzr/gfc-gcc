@@ -61,7 +61,7 @@ extern gfc_state_data *gfc_state_stack;
 #define gfc_current_state() (gfc_state_stack->state)
 
 /* STRUCTURE and TYPE are treated similarly, so these are common checks. */
-#define gfc_is_derived(s) \
+#define gfc_comp_is_derived(s) \
     (((s) == COMP_DERIVED) || ((s) == COMP_STRUCTURE) || ((s) == COMP_MAP))
 
 int gfc_check_do_variable (gfc_symtree *);
