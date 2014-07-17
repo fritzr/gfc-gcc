@@ -6311,7 +6311,7 @@ resolve_typebound_function (gfc_expr* e)
 	 is present.  */
       ts = expr->ts;
       declared = ts.u.derived;
-      c = gfc_find_component (declared, "_vptr", true, true);
+      c = gfc_find_component (declared, "_vptr", true, true, NULL);
       if (c->ts.u.derived == NULL)
 	c->ts.u.derived = gfc_find_derived_vtab (declared);
 
@@ -6362,7 +6362,7 @@ resolve_typebound_function (gfc_expr* e)
       return resolve_compcall (e, NULL);
     }
 
-  c = gfc_find_component (declared, "_data", true, true);
+  c = gfc_find_component (declared, "_data", true, true, NULL);
   declared = c->ts.u.derived;
 
   /* Treat the call as if it is a typebound procedure, in order to roll
@@ -6439,7 +6439,7 @@ resolve_typebound_subroutine (gfc_code *code)
 	 that any delays in resolution are corrected and that the vtab
 	 is present.  */
       declared = expr->ts.u.derived;
-      c = gfc_find_component (declared, "_vptr", true, true);
+      c = gfc_find_component (declared, "_vptr", true, true, NULL);
       if (c->ts.u.derived == NULL)
 	c->ts.u.derived = gfc_find_derived_vtab (declared);
 
@@ -12414,7 +12414,7 @@ resolve_typebound_procedure (gfc_symtree* stree)
     }
 
   /* See if there's a name collision with a component directly in this type.  */
-  if (gfc_find_component (resolve_bindings_derived, stree->name, true, true))
+  if (gfc_find_component (resolve_bindings_derived, stree->name, true, true, NULL))
   {
     gfc_error ("Procedure '%s' at %L has the same name as a component of"
                " '%s'",
@@ -12423,7 +12423,7 @@ resolve_typebound_procedure (gfc_symtree* stree)
   }
 
   /* Try to find a name collision with an inherited component.  */
-  if (super_type && gfc_find_component (super_type, stree->name, true, true))
+  if (super_type && gfc_find_component (super_type, stree->name, true, true, NULL))
     {
       gfc_error ("Procedure '%s' at %L has the same name as an inherited"
 		 " component of '%s'",
@@ -13075,8 +13075,8 @@ resolve_fl_derived (gfc_symbol *sym)
   if (sym->attr.is_class && sym->ts.u.derived == NULL)
     {
       /* Fix up incomplete CLASS symbols.  */
-      gfc_component *data = gfc_find_component (sym, "_data", true, true);
-      gfc_component *vptr = gfc_find_component (sym, "_vptr", true, true);
+      gfc_component *data = gfc_find_component (sym, "_data", true, true, NULL);
+      gfc_component *vptr = gfc_find_component (sym, "_vptr", true, true, NULL);
 
       /* Nothing more to do for unlimited polymorphic entities.  */
       if (data->ts.u.derived->attr.unlimited_polymorphic)

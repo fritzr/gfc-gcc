@@ -2349,11 +2349,25 @@ gfc_get_union_type (gfc_symbol *un)
     {
         gcc_assert (map->ts.type == BT_DERIVED); /* TODO: ? FL_MAP */
 
+        /* The map's type node, which is defined within this union's context. */
         map_type = gfc_get_derived_type (map->ts.u.derived);
+        TYPE_CONTEXT (map_type) = typenode;
+
+        /* The map field's declaration. */
         map_field = gfc_add_field_to_struct(typenode, get_identifier(map->name),
                                             map_type, &chain);
-        TYPE_CONTEXT (map_type) = typenode;
+        if (map->loc.lb)
+          gfc_set_decl_location (map_field, &map->loc);
+        else if (un->declared_at.lb)
+          gfc_set_decl_location (map_field, &un->declared_at);
+
+        DECL_PACKED (map_field) |= TYPE_PACKED (typenode);
         DECL_NAMELESS(map_field) = true;
+
+        /* We should never clobber another backend declaration for this map,
+           because each map component is unique. */
+        gcc_assert (!map->backend_decl);
+        map->backend_decl = map_field;
     }
 
     un->backend_decl = typenode;

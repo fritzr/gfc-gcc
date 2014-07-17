@@ -75,7 +75,7 @@ insert_component_ref (gfc_typespec *ts, gfc_ref **ref, const char * const name)
   new_ref->type = REF_COMPONENT;
   new_ref->next = *ref;
   new_ref->u.c.sym = type_sym;
-  new_ref->u.c.component = gfc_find_component (type_sym, name, true, true);
+  new_ref->u.c.component = gfc_find_component (type_sym, name, true, true, NULL);
   gcc_assert (new_ref->u.c.component);
 
   if (new_ref->next)
@@ -223,7 +223,7 @@ gfc_add_component_ref (gfc_expr *e, const char *name)
   (*tail)->next = next;
   (*tail)->type = REF_COMPONENT;
   (*tail)->u.c.sym = derived;
-  (*tail)->u.c.component = gfc_find_component (derived, name, true, true);
+  (*tail)->u.c.component = gfc_find_component (derived, name, true, true, NULL);
   gcc_assert((*tail)->u.c.component);
   if (!next)
     e->ts = (*tail)->u.c.component->ts;
@@ -702,7 +702,7 @@ add_proc_comp (gfc_symbol *vtype, const char *name, gfc_typebound_proc *tb)
   if (tb->non_overridable)
     return;
 
-  c = gfc_find_component (vtype, name, true, true);
+  c = gfc_find_component (vtype, name, true, true, NULL);
 
   if (c == NULL)
     {
@@ -760,7 +760,7 @@ static gfc_try
 copy_vtab_proc (gfc_component *cmp, void *vp)
 {
     gfc_symbol *vtype = (gfc_symbol *)vp;
-    if (gfc_find_component (vtype, cmp->name, true, true) == NULL)
+    if (gfc_find_component (vtype, cmp->name, true, true, NULL) == NULL)
         add_proc_comp (vtype, cmp->name, cmp->tb);
     return SUCCESS;
 }
@@ -941,7 +941,7 @@ finalize_component (gfc_expr *expr, gfc_symbol *derived, gfc_component *comp,
       gfc_component *c;
 
       vtab = gfc_find_derived_vtab (comp->ts.u.derived);
-      c = gfc_find_component (vtab->ts.u.derived, "_final", true, true);
+      c = gfc_find_component (vtab->ts.u.derived, "_final", true, true, NULL);
 
       gcc_assert (c);
       final_wrap = XCNEW (gfc_code);

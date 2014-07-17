@@ -1854,7 +1854,7 @@ gfc_add_component (gfc_symbol *sym, const char *name,
 {
   gfc_component *p, *tail;
 
-  if ((p = gfc_find_component (sym, name, true, true)) != NULL)
+  if ((p = gfc_find_component (sym, name, true, true, NULL)) != NULL)
     {
       gfc_error ("Component '%s' at %C already declared at %L",
                  name, &p->loc);
@@ -1866,7 +1866,7 @@ gfc_add_component (gfc_symbol *sym, const char *name,
       tail = p;
 
   if (sym->attr.extension
-	&& gfc_find_component (sym->components->ts.u.derived, name, true, true))
+	&& gfc_find_component (sym->components->ts.u.derived, name, true, true, NULL))
     {
       gfc_error ("Component '%s' at %C already in the parent type "
 		 "at %L", name, &sym->components->ts.u.derived->declared_at);
@@ -1990,18 +1990,26 @@ bad:
 }
 
 /* Traverse the components of sym by calling tfunc(c, data) for each
-   component c associated with sym.
+   component c associated with sym. Sym may be a union/derived type
+   definition or variable.
+
    If a call to tfunc() returns FAILURE, stops traversal. Otherwise tfunc()
    should return SUCCESS. This function returns FAILURE when sym is NULL or
-   tfunc(c,*) returns FAILURE for some component c (SUCCESS otherwise). */
+   tfunc(c,*) returns FAILURE for some component c (SUCCESS otherwise).
+
+   It is up to the traversal function to handle derived type/union components,
+   which may have subcomponents. */
 
 gfc_try
 gfc_traverse_components (gfc_symbol *sym, compfunc tfunc, void *data)
 {
+  if (!tfunc) return FAILURE;
+
   if (sym == NULL)
     return FAILURE;
 
-  sym = gfc_use_derived (sym);
+  if (sym->attr.flavor != FL_DERIVED && sym->attr.flavor != FL_UNION)
+    sym = sym->ts.u.derived;
 
   if (sym == NULL)
     return FAILURE;
@@ -2009,55 +2017,48 @@ gfc_traverse_components (gfc_symbol *sym, compfunc tfunc, void *data)
   return gfc_traverse_components_head (sym->components, tfunc, data);
 }
 
+/* As with gfc_traverse_components, but given a component with no context. */
+
 gfc_try
 gfc_traverse_components_head (gfc_component *p, compfunc tfunc, void *data)
 {
-  gfc_component *map;
+  if (!tfunc) return FAILURE;
+
   for (; p; p = p->next)
-    {
-      if (tfunc && tfunc (p, data) == FAILURE)
-        return FAILURE;
-      /* If component is a union, search recursively through its maps.
-         in Fortran, because unions/maps are anonymous, any symbols within a
-         map (however deeply nested) are referenced as members of the parent
-         structure.  For example; x.a may refer to x->U->M->U->M->a. */
-      if (p->ts.type == BT_UNION)
-        for (map = p->ts.u.derived->components; map; map = map->next)
-          if (gfc_traverse_components_head (map->ts.u.derived->components,
-                tfunc, data) == FAILURE)
-            return FAILURE;
-    }
+    if (tfunc (p, data) == FAILURE)
+      return FAILURE;
   return SUCCESS;
 }
+   
 
-typedef struct {
-    const char *name;
-    gfc_component *matched;
-} component_search;
 
-static gfc_try
-match_component (gfc_component *c, void *sv)
-{
-    component_search *s = (component_search *)sv;
-    if (strcmp (s->name, c->name) == 0)
-    {
-        s->matched = c;
-        return FAILURE; /* Stop search. */
-    }
-    return SUCCESS; /* Continue search. */
-}
 
 /* Given a derived type node and a component name, try to locate the
    component structure.  Returns the NULL pointer if the component is
    not found or the components are private.  If noaccess is set, no access
-   checks are done.  */
+   checks are done. Unless silent is set, a gfc_error is generated when the
+   component cannot be found or accessed.
+   
+   If ref is not NULL, *ref is set to represent the chain of components
+   required to get to the ultimate component.
+
+   If the component is simply a direct subcomponent, or is inherited from a
+   parent derived type in the given derived type, this is a single ref with its
+   component set to the returned component.
+
+   Otherwise, *ref is constructed as a chain of subcomponents. This occurs
+   when the component is found through an implicit chain of nested union and
+   map components. Unions and maps are "anonymous" substructures in FORTRAN
+   which cannot be explicitly referenced, but the reference chain must be
+   considered as in C for backend translation to correctly compute layouts.
+   (For example, x.a may refer to x->(UNION)->(MAP)->(UNION)->(MAP)->a). */
 
 gfc_component *
 gfc_find_component (gfc_symbol *sym, const char *name,
-		    bool noaccess, bool silent)
+		    bool noaccess, bool silent, gfc_ref **ref)
 {
-  gfc_component *p;
-  component_search c;
+  gfc_component *p, *check, *m;
+  gfc_ref *sref = NULL, *tmp = NULL;
 
   if (name == NULL || sym == NULL)
     return NULL;
@@ -2067,10 +2068,47 @@ gfc_find_component (gfc_symbol *sym, const char *name,
   if (sym == NULL)
     return NULL;
 
-  c.name = name;
-  c.matched = NULL;
-  gfc_traverse_components (sym, match_component, (void *)&c);
-  p = c.matched;
+  if (ref) *ref = NULL;
+  for (p = sym->components; p; p = p->next)
+  {
+    /* Nest search into union's maps. */
+    if (p->ts.type == BT_UNION)
+    {
+      for (m = p->ts.u.derived->components; m; m = m->next)
+      {
+        check = gfc_find_component (m->ts.u.derived, name, noaccess, true,
+                                    &tmp);
+        if (check == NULL)
+          continue;
+
+        /* Found it somewhere in m; chain the refs together. */
+        if (ref)
+        {
+          /* Union ref. */
+          sref = gfc_get_ref ();
+          sref->type = REF_COMPONENT;
+          sref->u.c.component = p;
+          sref->u.c.sym = p->ts.u.derived;
+          /* Map ref. */
+          sref->next = gfc_get_ref ();
+          sref->next->type = REF_COMPONENT;
+          sref->next->u.c.component = m;
+          sref->next->u.c.sym = m->ts.u.derived;
+          sref->next->next = tmp;
+
+          *ref = sref;
+        }
+        /* Other checks (such as access) were done in the recursive calls.
+           Now we are done! */
+        return check;
+      }
+
+    }
+    else if (strcmp (p->name, name) == 0)
+      break;
+
+    continue;
+  }
 
   if (p && sym->attr.use_assoc && !noaccess)
     {
@@ -2089,11 +2127,12 @@ gfc_find_component (gfc_symbol *sym, const char *name,
 
   /* Look in the parent type. */
   if (p == NULL
+        && sym->attr.flavor == FL_DERIVED
 	&& sym->attr.extension
 	&& sym->components->ts.type == BT_DERIVED)
     {
       p = gfc_find_component (sym->components->ts.u.derived, name,
-			      noaccess, silent);
+			      noaccess, silent, ref);
       /* Do not overwrite the error.  */
       if (p == NULL)
 	return p;
@@ -2102,6 +2141,25 @@ gfc_find_component (gfc_symbol *sym, const char *name,
   if (p == NULL && !silent)
     gfc_error ("'%s' at %C is not a member of the '%s' structure",
 	       name, sym->name);
+
+  /* Component was found; build the ultimate component reference. */
+  if (p != NULL && ref)
+  {
+    tmp = gfc_get_ref ();
+    tmp->type = REF_COMPONENT;
+    tmp->u.c.component = p;
+    tmp->u.c.sym = sym;
+    /* Link the final component ref to the end of the chain of subrefs. */
+    if (sref)
+    {
+      *ref = sref;
+      for (; sref->next; sref = sref->next)
+        ;
+      sref->next = tmp;
+    }
+    else
+      *ref = tmp;
+  }
 
   return p;
 }

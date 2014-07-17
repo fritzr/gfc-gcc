@@ -1623,7 +1623,7 @@ conv_parent_component_references (gfc_se * se, gfc_ref * ref)
   c = ref->u.c.component;
 
   /* Return if the component is in the parent type.  */
-  if (gfc_find_component (dt, c->name, true, true))
+  if (gfc_find_component (dt, c->name, true, true, NULL))
       return;
 
   /* Build a gfc_ref to recursively call gfc_conv_component_ref.  */

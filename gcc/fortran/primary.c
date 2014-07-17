@@ -1764,7 +1764,7 @@ gfc_match_varspec (gfc_expr *primary, int equiv_flag, bool sub_flag,
 		   bool ppc_arg)
 {
   char name[GFC_MAX_SYMBOL_LEN + 1];
-  gfc_ref *substring, *tail;
+  gfc_ref *substring, *tail, *tmp;
   gfc_component *component;
   gfc_symbol *sym = primary->symtree->n.sym;
   match m;
@@ -1940,15 +1940,16 @@ gfc_match_varspec (gfc_expr *primary, int equiv_flag, bool sub_flag,
 	  break;
 	}
 
-      component = gfc_find_component (sym, name, false, false);
+      component = gfc_find_component (sym, name, false, false, &tmp);
       if (component == NULL)
-	return MATCH_ERROR;
+        return MATCH_ERROR;
 
-      tail = extend_ref (primary, tail);
-      tail->type = REF_COMPONENT;
-
-      tail->u.c.component = component;
-      tail->u.c.sym = sym;
+      /* Extend the reference chain through the determined ref. */
+      if (primary->ref == NULL)
+        primary->ref = tmp;
+      else
+        tail->next = tmp;
+      tail = tmp;
 
       primary->ts = component->ts;
 
@@ -2427,11 +2428,11 @@ gfc_convert_to_structure_constructor (gfc_expr *e, gfc_symbol *sym, gfc_expr **c
       /* Find the current component in the structure definition and check
 	     its access is not private.  */
       if (comp)
-	this_comp = gfc_find_component (sym, comp->name, false, false);
+	this_comp = gfc_find_component (sym, comp->name, false, false, NULL);
       else
 	{
 	  this_comp = gfc_find_component (sym, (const char *)comp_tail->name,
-					  false, false);
+					  false, false, NULL);
 	  comp = NULL; /* Reset needed!  */
 	}
 
