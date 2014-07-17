@@ -65,18 +65,18 @@ along with GCC; see the file COPYING3.  If not see
 static void
 insert_component_ref (gfc_typespec *ts, gfc_ref **ref, const char * const name)
 {
+  gfc_component *component;
   gfc_symbol *type_sym;
   gfc_ref *new_ref;
 
   gcc_assert (ts->type == BT_DERIVED || ts->type == BT_CLASS);
   type_sym = ts->u.derived;
 
-  new_ref = gfc_get_ref ();
-  new_ref->type = REF_COMPONENT;
-  new_ref->next = *ref;
-  new_ref->u.c.sym = type_sym;
-  new_ref->u.c.component = gfc_find_component (type_sym, name, true, true, NULL);
+  component = gfc_find_component (type_sym, name, true, true, &new_ref);
   gcc_assert (new_ref->u.c.component);
+  while (new_ref->next)
+    new_ref = new_ref->next;
+  new_ref->next = *ref;
 
   if (new_ref->next)
     {
@@ -199,6 +199,7 @@ gfc_fix_class_refs (gfc_expr *e)
 void
 gfc_add_component_ref (gfc_expr *e, const char *name)
 {
+  gfc_component *c;
   gfc_ref **tail = &(e->ref);
   gfc_ref *next = NULL;
   gfc_symbol *derived = e->symtree->n.sym->ts.u.derived;
@@ -219,14 +220,10 @@ gfc_add_component_ref (gfc_expr *e, const char *name)
     }
   if (*tail != NULL && strcmp (name, "_data") == 0)
     next = *tail;
-  (*tail) = gfc_get_ref();
-  (*tail)->next = next;
-  (*tail)->type = REF_COMPONENT;
-  (*tail)->u.c.sym = derived;
-  (*tail)->u.c.component = gfc_find_component (derived, name, true, true, NULL);
-  gcc_assert((*tail)->u.c.component);
+  c = gfc_find_component (derived, name, true, true, tail);
+  gcc_assert (c);
   if (!next)
-    e->ts = (*tail)->u.c.component->ts;
+    e->ts = c->ts;
 }
 
 
