@@ -12591,7 +12591,9 @@ check_defined_assign (gfc_component *c, void *data)
 {
     gfc_symbol *derived = (gfc_symbol *)data;
 
-    if (gfc_bt_struct (c->ts.type)
+    /* TODO: Handle BT_UNION components */
+
+    if (!gfc_bt_struct (c->ts.type)
         || c->attr.pointer
         || c->attr.allocatable
         || c->attr.proc_pointer_comp
