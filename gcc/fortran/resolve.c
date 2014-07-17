@@ -9921,9 +9921,7 @@ count_nonscalar_tba (gfc_component *c, void *countp)
     int t_depth = 0;
     int c_depth = *(int *)countp;
 
-    /* TODO: recurse into maps of BT_UNION variables */
-
-    if ((c->ts.type != BT_DERIVED
+    if ((gfc_bt_struct (c->ts.type)
         || c->attr.pointer
         || c->attr.allocatable
         || c->attr.proc_pointer_comp
