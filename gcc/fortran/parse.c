@@ -2159,6 +2159,10 @@ error:
   return error_flag;
 }
 
+/* Set attributes for the parent symbol (gfc_symbol*)data based on the
+   attributes of a component, and raise errors if conflicting attributes
+   are found for the component. */
+
 static gfc_try
 check_component (gfc_component *c, void *data)
 {
