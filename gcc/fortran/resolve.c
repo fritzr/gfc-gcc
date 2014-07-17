@@ -10008,9 +10008,172 @@ static int component_assignment_level = 0;
 static gfc_code *tmp_head = NULL, *tmp_tail = NULL;
 
 static void
+generate_derived_component_assignments (gfc_code **code, gfc_namespace *ns,
+    gfc_code **this_code, gfc_code **head, gfc_code **tail, gfc_expr **t1,
+    gfc_symbol *d1, gfc_symbol *d2)
+{
+  gfc_component *comp1, *comp2, *map1, *map2;
+
+  comp1 = d1->components;
+  comp2 = d2->components;
+
+  for (; comp1; comp1 = comp1->next, comp2 = comp2->next)
+  {
+    bool inout = false;
+
+    /* For unions, just recurse into the maps. */
+    if (comp1->ts.type == BT_UNION)
+    {
+      map1 = comp1->ts.u.derived->components;
+      map2 = comp2->ts.u.derived->components;
+      for (; map1; map1 = map1->next, map2 = map2->next)
+      {
+        generate_derived_component_assignments (code, ns,
+            this_code, head, tail, t1, map1->ts.u.derived, map2->ts.u.derived);
+      }
+      continue;
+    }
+
+    /* The intrinsic assignment does the right thing for pointers
+       of all kinds and allocatable components.  */
+    if (comp1->ts.type != BT_DERIVED
+        || comp1->attr.pointer
+        || comp1->attr.allocatable
+        || comp1->attr.proc_pointer_comp
+        || comp1->attr.class_pointer
+        || comp1->attr.proc_pointer)
+      continue;
+
+    /* Make an assigment for this component.  */
+    *this_code = build_assignment (EXEC_ASSIGN,
+                                  (*code)->expr1, (*code)->expr2,
+                                  comp1, comp2, (*code)->loc);
+
+    /* Convert the assignment if there is a defined assignment for
+       this type.  Otherwise, using the call from resolve_code,
+       recurse into its components.  */
+    resolve_code (*this_code, ns);
+
+    if ((*this_code)->op == EXEC_ASSIGN_CALL)
+      {
+        gfc_formal_arglist *dummy_args;
+        gfc_symbol *rsym;
+        /* Check that there is a typebound defined assignment.  If not,
+           then this must be a module defined assignment.  We cannot
+           use the defined_assign_comp attribute here because it must
+           be this derived type that has the defined assignment and not
+           a parent type.  */
+        if (!(comp1->ts.u.derived->f2k_derived
+              && comp1->ts.u.derived->f2k_derived
+                                      ->tb_op[INTRINSIC_ASSIGN]))
+          {
+            gfc_free_statements (*this_code);
+            *this_code = NULL;
+            continue;
+          }
+
+        /* If the first argument of the subroutine has intent INOUT
+           a temporary must be generated and used instead.  */
+        rsym = (*this_code)->resolved_sym;
+        dummy_args = gfc_sym_get_dummy_args (rsym);
+        if (dummy_args
+            && dummy_args->sym->attr.intent == INTENT_INOUT)
+          {
+            gfc_code *temp_code;
+            inout = true;
+
+            /* Build the temporary required for the assignment and put
+               it at the head of the generated code.  */
+            if (!*t1)
+              {
+                *t1 = get_temp_from_expr ((*code)->expr1, ns);
+                temp_code = build_assignment (EXEC_ASSIGN,
+                                              *t1, (*code)->expr1,
+                              NULL, NULL, (*code)->loc);
+
+                /* For allocatable LHS, check whether it is allocated.  Note
+                   that allocatable components with defined assignment are
+                   not yet support.  See PR 57696.  */
+                if ((*code)->expr1->symtree->n.sym->attr.allocatable)
+                  {
+                    gfc_code *block;
+                    gfc_expr *e =
+                      gfc_lval_expr_from_sym ((*code)->expr1->symtree->n.sym);
+                    block = gfc_get_code ();
+                    block->op = EXEC_IF;
+                    block->block = gfc_get_code ();
+                    block->block->op = EXEC_IF;
+                    block->block->expr1
+                        = gfc_build_intrinsic_call (ns,
+                                  GFC_ISYM_ALLOCATED, "allocated",
+                                  (*code)->loc, 1, e);
+                    block->block->next = temp_code;
+                    temp_code = block;
+                  }
+                add_code_to_chain (&temp_code, &tmp_head, &tmp_tail);
+              }
+
+            /* Replace the first actual arg with the component of the
+               temporary.  */
+            gfc_free_expr ((*this_code)->ext.actual->expr);
+            (*this_code)->ext.actual->expr = gfc_copy_expr (*t1);
+            add_comp_ref ((*this_code)->ext.actual->expr, comp1);
+
+            /* If the LHS variable is allocatable and wasn't allocated and
+               the temporary is allocatable, pointer assign the address of
+               the freshly allocated LHS to the temporary.  */
+            if ((*code)->expr1->symtree->n.sym->attr.allocatable
+                && gfc_expr_attr ((*code)->expr1).allocatable)
+              {
+                gfc_code *block;
+                gfc_expr *cond;
+
+                cond = gfc_get_expr ();
+                cond->ts.type = BT_LOGICAL;
+                cond->ts.kind = gfc_default_logical_kind;
+                cond->expr_type = EXPR_OP;
+                cond->where = (*code)->loc;
+                cond->value.op.op = INTRINSIC_NOT;
+                cond->value.op.op1 = gfc_build_intrinsic_call (ns,
+                                        GFC_ISYM_ALLOCATED, "allocated",
+                                        (*code)->loc, 1, gfc_copy_expr (*t1));
+                block = gfc_get_code ();
+                block->op = EXEC_IF;
+                block->block = gfc_get_code ();
+                block->block->op = EXEC_IF;
+                block->block->expr1 = cond;
+                block->block->next = build_assignment (EXEC_POINTER_ASSIGN,
+                                      *t1, (*code)->expr1,
+                                      NULL, NULL, (*code)->loc);
+                add_code_to_chain (&block, head, tail);
+              }
+          }
+      }
+    else if ((*this_code)->op == EXEC_ASSIGN && !(*this_code)->next)
+      {
+        /* Don't add intrinsic assignments since they are already
+           effected by the intrinsic assignment of the structure.  */
+        gfc_free_statements (*this_code);
+        (*this_code) = NULL;
+        continue;
+      }
+
+    add_code_to_chain (this_code, head, tail);
+
+    if (*t1 && inout)
+      {
+        /* Transfer the value to the final result.  */
+        *this_code = build_assignment (EXEC_ASSIGN,
+                                      (*code)->expr1, *t1,
+                                      comp1, comp2, (*code)->loc);
+        add_code_to_chain (this_code, head, tail);
+      }
+  }
+}
+
+static void
 generate_component_assignments (gfc_code **code, gfc_namespace *ns)
 {
-  gfc_component *comp1, *comp2;
   gfc_code *this_code = NULL, *head = NULL, *tail = NULL;
   gfc_expr *t1;
   int error_count, depth;
@@ -10064,151 +10227,11 @@ generate_component_assignments (gfc_code **code, gfc_namespace *ns)
       add_code_to_chain (&this_code, &head, &tail);
     }
 
-  comp1 = (*code)->expr1->ts.u.derived->components;
-  comp2 = (*code)->expr2->ts.u.derived->components;
-
   t1 = NULL;
-  for (; comp1; comp1 = comp1->next, comp2 = comp2->next)
-    {
-      bool inout = false;
 
-      /* TODO: recurse into maps of BT_UNION components */
-
-      /* The intrinsic assignment does the right thing for pointers
-	 of all kinds and allocatable components.  */
-      if (comp1->ts.type != BT_DERIVED
-	  || comp1->attr.pointer
-	  || comp1->attr.allocatable
-	  || comp1->attr.proc_pointer_comp
-	  || comp1->attr.class_pointer
-	  || comp1->attr.proc_pointer)
-	continue;
-
-      /* Make an assigment for this component.  */
-      this_code = build_assignment (EXEC_ASSIGN,
-				    (*code)->expr1, (*code)->expr2,
-				    comp1, comp2, (*code)->loc);
-
-      /* Convert the assignment if there is a defined assignment for
-	 this type.  Otherwise, using the call from resolve_code,
-	 recurse into its components.  */
-      resolve_code (this_code, ns);
-
-      if (this_code->op == EXEC_ASSIGN_CALL)
-	{
-	  gfc_formal_arglist *dummy_args;
-	  gfc_symbol *rsym;
-	  /* Check that there is a typebound defined assignment.  If not,
-	     then this must be a module defined assignment.  We cannot
-	     use the defined_assign_comp attribute here because it must
-	     be this derived type that has the defined assignment and not
-	     a parent type.  */
-	  if (!(comp1->ts.u.derived->f2k_derived
-		&& comp1->ts.u.derived->f2k_derived
-					->tb_op[INTRINSIC_ASSIGN]))
-	    {
-	      gfc_free_statements (this_code);
-	      this_code = NULL;
-	      continue;
-	    }
-
-	  /* If the first argument of the subroutine has intent INOUT
-	     a temporary must be generated and used instead.  */
-	  rsym = this_code->resolved_sym;
-	  dummy_args = gfc_sym_get_dummy_args (rsym);
-	  if (dummy_args
-	      && dummy_args->sym->attr.intent == INTENT_INOUT)
-	    {
-	      gfc_code *temp_code;
-	      inout = true;
-
-	      /* Build the temporary required for the assignment and put
-		 it at the head of the generated code.  */
-	      if (!t1)
-		{
-		  t1 = get_temp_from_expr ((*code)->expr1, ns);
-		  temp_code = build_assignment (EXEC_ASSIGN,
-						t1, (*code)->expr1,
-				NULL, NULL, (*code)->loc);
-
-		  /* For allocatable LHS, check whether it is allocated.  Note
-		     that allocatable components with defined assignment are
-		     not yet support.  See PR 57696.  */
-		  if ((*code)->expr1->symtree->n.sym->attr.allocatable)
-		    {
-		      gfc_code *block;
-		      gfc_expr *e =
-			gfc_lval_expr_from_sym ((*code)->expr1->symtree->n.sym);
-		      block = gfc_get_code ();
-		      block->op = EXEC_IF;
-		      block->block = gfc_get_code ();
-		      block->block->op = EXEC_IF;
-		      block->block->expr1
-			  = gfc_build_intrinsic_call (ns,
-				    GFC_ISYM_ALLOCATED, "allocated",
-				    (*code)->loc, 1, e);
-		      block->block->next = temp_code;
-		      temp_code = block;
-		    }
-		  add_code_to_chain (&temp_code, &tmp_head, &tmp_tail);
-		}
-
-	      /* Replace the first actual arg with the component of the
-		 temporary.  */
-	      gfc_free_expr (this_code->ext.actual->expr);
-	      this_code->ext.actual->expr = gfc_copy_expr (t1);
-	      add_comp_ref (this_code->ext.actual->expr, comp1);
-
-	      /* If the LHS variable is allocatable and wasn't allocated and
-                 the temporary is allocatable, pointer assign the address of
-                 the freshly allocated LHS to the temporary.  */
-	      if ((*code)->expr1->symtree->n.sym->attr.allocatable
-		  && gfc_expr_attr ((*code)->expr1).allocatable)
-		{
-		  gfc_code *block;
-		  gfc_expr *cond;
-
-		  cond = gfc_get_expr ();
-		  cond->ts.type = BT_LOGICAL;
-		  cond->ts.kind = gfc_default_logical_kind;
-		  cond->expr_type = EXPR_OP;
-		  cond->where = (*code)->loc;
-		  cond->value.op.op = INTRINSIC_NOT;
-		  cond->value.op.op1 = gfc_build_intrinsic_call (ns,
-					  GFC_ISYM_ALLOCATED, "allocated",
-					  (*code)->loc, 1, gfc_copy_expr (t1));
-		  block = gfc_get_code ();
-		  block->op = EXEC_IF;
-		  block->block = gfc_get_code ();
-		  block->block->op = EXEC_IF;
-		  block->block->expr1 = cond;
-		  block->block->next = build_assignment (EXEC_POINTER_ASSIGN,
-					t1, (*code)->expr1,
-					NULL, NULL, (*code)->loc);
-		  add_code_to_chain (&block, &head, &tail);
-		}
-	    }
-	}
-      else if (this_code->op == EXEC_ASSIGN && !this_code->next)
-	{
-	  /* Don't add intrinsic assignments since they are already
-	     effected by the intrinsic assignment of the structure.  */
-	  gfc_free_statements (this_code);
-	  this_code = NULL;
-	  continue;
-	}
-
-      add_code_to_chain (&this_code, &head, &tail);
-
-      if (t1 && inout)
-	{
-	  /* Transfer the value to the final result.  */
-	  this_code = build_assignment (EXEC_ASSIGN,
-					(*code)->expr1, t1,
-					comp1, comp2, (*code)->loc);
-	  add_code_to_chain (&this_code, &head, &tail);
-	}
-    }
+  generate_derived_component_assignments (code, ns,
+      &this_code, &head, &tail, &t1,
+      (*code)->expr1->ts.u.derived, (*code)->expr2->ts.u.derived);
 
   /* Put the temporary assignments at the top of the generated code.  */
   if (tmp_head && component_assignment_level == 1)
