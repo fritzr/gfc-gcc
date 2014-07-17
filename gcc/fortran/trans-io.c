@@ -2062,9 +2062,6 @@ transfer_expr (gfc_se * se, gfc_typespec * ts, tree addr_expr, gfc_code * code)
   tree tmp, function, arg2, arg3, expr;
   int kind;
 
-  /* It is assumed that no expression can be union (only components). */
-  gcc_assert (ts->type != BT_UNION);
-
   /* It is possible to get a C_NULL_PTR or C_NULL_FUNPTR expression here if
      the user says something like: print *, 'c_null_ptr: ', c_null_ptr
      We need to translate the expression to a constant if it's either
@@ -2198,6 +2195,7 @@ transfer_expr (gfc_se * se, gfc_typespec * ts, tree addr_expr, gfc_code * code)
 
       break;
 
+    case BT_UNION:
     case BT_DERIVED:
       if (ts->u.derived->components == NULL)
 	return;
