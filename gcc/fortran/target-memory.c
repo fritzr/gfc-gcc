@@ -676,8 +676,6 @@ comp_to_char (gfc_component *cmp, void *data)
 
   gcc_assert (cmp->backend_decl);
 
-  /* TODO: Handle BT_UNION components */
-
   if (d->c->expr)
     {
       ptr = TREE_INT_CST_LOW(DECL_FIELD_OFFSET(cmp->backend_decl))
@@ -703,7 +701,7 @@ expr_to_char (gfc_expr *e, unsigned char *data, unsigned char *chk, size_t len)
     return 0;
 
   /* Handle components recursively.  */
-  if (e->ts.type == BT_DERIVED)
+  if (gfc_bt_struct (e->ts.type))
     {
       comp_to_char_data d;
       d.data = data;
