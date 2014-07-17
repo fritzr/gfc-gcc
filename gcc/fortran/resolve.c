@@ -14649,9 +14649,7 @@ resolve_equivalence_derived (gfc_symbol *derived, gfc_symbol *sym, gfc_expr *e)
 
   for (; c ; c = c->next)
     {
-      /* TODO: Handle BT_UNION components */
-
-      if (c->ts.type == BT_DERIVED
+      if (gfc_bt_struct (c->ts.type)
 	  && (resolve_equivalence_derived (c->ts.u.derived, sym, e) == FAILURE))
 	return FAILURE;
 
