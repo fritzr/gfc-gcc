@@ -65,14 +65,13 @@ along with GCC; see the file COPYING3.  If not see
 static void
 insert_component_ref (gfc_typespec *ts, gfc_ref **ref, const char * const name)
 {
-  gfc_component *component;
   gfc_symbol *type_sym;
   gfc_ref *new_ref;
 
   gcc_assert (ts->type == BT_DERIVED || ts->type == BT_CLASS);
   type_sym = ts->u.derived;
 
-  component = gfc_find_component (type_sym, name, true, true, &new_ref);
+  gfc_find_component (type_sym, name, true, true, &new_ref);
   gcc_assert (new_ref->u.c.component);
   while (new_ref->next)
     new_ref = new_ref->next;
