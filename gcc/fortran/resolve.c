@@ -12414,7 +12414,8 @@ resolve_typebound_procedure (gfc_symtree* stree)
     }
 
   /* See if there's a name collision with a component directly in this type.  */
-  if (gfc_find_component (resolve_bindings_derived, stree->name, true, true, NULL))
+  if (gfc_find_component (resolve_bindings_derived, stree->name, true, true,
+                          NULL))
   {
     gfc_error ("Procedure '%s' at %L has the same name as a component of"
                " '%s'",
@@ -12423,7 +12424,8 @@ resolve_typebound_procedure (gfc_symtree* stree)
   }
 
   /* Try to find a name collision with an inherited component.  */
-  if (super_type && gfc_find_component (super_type, stree->name, true, true, NULL))
+  if (super_type && gfc_find_component (super_type, stree->name, true, true,
+                                        NULL))
     {
       gfc_error ("Procedure '%s' at %L has the same name as an inherited"
 		 " component of '%s'",
