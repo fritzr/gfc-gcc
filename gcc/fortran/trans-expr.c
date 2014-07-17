@@ -5691,11 +5691,7 @@ gfc_conv_initializer (gfc_expr * expr, gfc_typespec * ts, tree type,
     {
       switch (ts->type)
 	{
-        /* TODO: Handle BT_UNION */
         case BT_UNION:
-          gfc_internal_error ("Static initializers unimplemented for unions");
-          return NULL;
-
 	case BT_DERIVED:
 	case BT_CLASS:
 	  gfc_init_se (&se, NULL);
