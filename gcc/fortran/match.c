@@ -199,7 +199,7 @@ gfc_match_member_sep(gfc_symbol *sym)
     /* Match accesses to existing derived-type components for 
        derived-type vars: "x.y.z" = (x->y)->z */
     c = gfc_find_component(tsym, name, false, true);
-    if (c && (gfc_bt_struct (c->ts.type) || c->ts.type == BT_CLASS))
+    if (c && (c->ts.type == BT_DERIVED || c->ts.type == BT_CLASS))
         goto yes;
 
     /* If y is not a component or has no members, try intrinsic operators. */
