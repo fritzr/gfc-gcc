@@ -1854,7 +1854,10 @@ gfc_add_component (gfc_symbol *sym, const char *name,
 {
   gfc_component *p, *tail;
 
-  if ((p = gfc_find_component (sym, name, true, true, NULL)) != NULL)
+  /* Check for existing components with the same name, but not in unions
+     (only maps, which have unique names, are added directly to unions). */
+  if (sym->attr.flavor != FL_UNION 
+      && (p = gfc_find_component (sym, name, true, true, NULL)) != NULL)
     {
       gfc_error ("Component '%s' at %C already declared at %L",
                  name, &p->loc);
@@ -2031,6 +2034,37 @@ gfc_traverse_components_head (gfc_component *p, compfunc tfunc, void *data)
 }
    
 
+static gfc_component *
+find_union_component (gfc_symbol *un, const char *name,
+                      bool noaccess, gfc_ref **ref)
+{
+  gfc_component *m, *check;
+  gfc_ref *sref, *tmp;
+
+  for (m = un->components; m; m = m->next)
+  {
+    check = gfc_find_component (m->ts.u.derived, name, noaccess, true, &tmp);
+    if (check == NULL)
+      continue;
+
+    /* Found it somewhere in m; chain the refs together. */
+    if (ref)
+    {
+      /* Map ref. */
+      sref = gfc_get_ref ();
+      sref->type = REF_COMPONENT;
+      sref->u.c.component = m;
+      sref->u.c.sym = m->ts.u.derived;
+      sref->next = tmp;
+
+      *ref = sref;
+    }
+    /* Other checks (such as access) were done in the recursive calls.
+       Now we are done! */
+    return check;
+  }
+  return NULL;
+}
 
 
 /* Given a derived type node and a component name, try to locate the
@@ -2057,7 +2091,7 @@ gfc_component *
 gfc_find_component (gfc_symbol *sym, const char *name,
 		    bool noaccess, bool silent, gfc_ref **ref)
 {
-  gfc_component *p, *check, *m;
+  gfc_component *p, *check;
   gfc_ref *sref = NULL, *tmp = NULL;
 
   if (name == NULL || sym == NULL)
@@ -2068,41 +2102,28 @@ gfc_find_component (gfc_symbol *sym, const char *name,
   if (sym == NULL)
     return NULL;
 
+  /* Handle UNIONs specially. */
+  if (sym->attr.flavor == FL_UNION)
+    return find_union_component (sym, name, noaccess, ref);
+
   if (ref) *ref = NULL;
   for (p = sym->components; p; p = p->next)
   {
     /* Nest search into union's maps. */
     if (p->ts.type == BT_UNION)
     {
-      for (m = p->ts.u.derived->components; m; m = m->next)
+      check = find_union_component (p->ts.u.derived, name, noaccess, &tmp);
+      if (check != NULL)
       {
-        check = gfc_find_component (m->ts.u.derived, name, noaccess, true,
-                                    &tmp);
-        if (check == NULL)
-          continue;
-
-        /* Found it somewhere in m; chain the refs together. */
-        if (ref)
-        {
-          /* Union ref. */
-          sref = gfc_get_ref ();
-          sref->type = REF_COMPONENT;
-          sref->u.c.component = p;
-          sref->u.c.sym = p->ts.u.derived;
-          /* Map ref. */
-          sref->next = gfc_get_ref ();
-          sref->next->type = REF_COMPONENT;
-          sref->next->u.c.component = m;
-          sref->next->u.c.sym = m->ts.u.derived;
-          sref->next->next = tmp;
-
-          *ref = sref;
-        }
-        /* Other checks (such as access) were done in the recursive calls.
-           Now we are done! */
+        /* Union ref. */
+        sref = gfc_get_ref ();
+        sref->type = REF_COMPONENT;
+        sref->u.c.component = p;
+        sref->u.c.sym = p->ts.u.derived;
+        sref->next = tmp;
+        *ref = sref;
         return check;
       }
-
     }
     else if (strcmp (p->name, name) == 0)
       break;
