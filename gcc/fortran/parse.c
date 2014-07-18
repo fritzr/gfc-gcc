@@ -2389,9 +2389,12 @@ parse_structure (void)
 
         /* Nested structure declarations should be captured as ST_DATA_DECL. */
         case ST_STRUCTURE_DECL:
-          gfc_error ("Missing field list after nested structure declaration "
-                     "at %C");
+          /* Let a more specific error take over. */
+          if (gfc_error_check () == 0)
+            gfc_error ("Syntax error in nested structure declaration at %C");
           reject_statement ();
+          /* Skip the rest of this statement. */
+          gfc_error_recovery ();
           break;
 
         case ST_UNION:
@@ -2466,9 +2469,12 @@ parse_map (void)
 
         /* Nested structure declarations should be captured as ST_DATA_DECL. */
         case ST_STRUCTURE_DECL:
-          gfc_error ("Missing field list after nested structure declaration "
-                     "at %C");
+          /* Let a more specific error make it to decode_statement(). */
+          if (gfc_error_check () == 0)
+            gfc_error ("Syntax error in nested structure declaration at %C");
           reject_statement ();
+          /* Skip the rest of this statement. */
+          gfc_error_recovery ();
           break;
 
         case ST_UNION:
@@ -2540,9 +2546,12 @@ parse_derived (void)
 
         /* Nested structure declarations should be captured as ST_DATA_DECL. */
         case ST_STRUCTURE_DECL:
-          gfc_error ("Missing field list after nested structure declaration "
-                     "at %C");
+          /* Let a more specific error make it to decode_statement(). */
+          if (gfc_error_check () == 0)
+            gfc_error ("Syntax error in nested structure declaration at %C");
           reject_statement ();
+          /* Skip the rest of this statement. */
+          gfc_error_recovery ();
           break;
 
 	case ST_DATA_DECL:
