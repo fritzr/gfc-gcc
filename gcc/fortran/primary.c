@@ -1949,7 +1949,11 @@ gfc_match_varspec (gfc_expr *primary, int equiv_flag, bool sub_flag,
         primary->ref = tmp;
       else
         tail->next = tmp;
-      tail = tmp;
+
+      /* The reference chain may be longer than one hop for union
+         subcomponents; find the new tail. */
+      for (tail = tmp; tail->next; tail = tail->next)
+        ;
 
       primary->ts = component->ts;
 
