@@ -117,7 +117,7 @@ by type.  Explanations are in the following sections.
 @gccoptlist{-fall-intrinsics -fbackslash -fcray-pointer -fd-lines-as-code @gol
 -fd-lines-as-comments @gol
 -fdec -fdec-extended-int -fdec-member-dot -fdec-structure -fdec-math @gol
--fdec-logical-xor -fdec-bitwise-ops @gol
+-fdec-logical-xor -fdec-bitwise-ops -fdec-io @gol
 -fdefault-double-8 -fdefault-integer-8 -fdefault-real-8 -fdollar-ok @gol
 -ffixed-line-length-@var{n} -ffixed-line-length-none -ffree-form @gol
 -ffree-line-length-@var{n} -ffree-line-length-none -fimplicit-none @gol
@@ -239,7 +239,7 @@ These extensions are non-standard and typically ancient.
 The options enabled by this switch are: @option{-fdollar-ok} 
 @option{-fdec-structure} @option{-fdec-member-dot} @option{-fdec-extended-int}
 @option{-fdec-math} @option{-fdec-logical-xor} @option{-fdec-bitwise-ops}
-@option{-fd-lines-as-comments}
+@option{-fd-lines-as-comments} @option{-fdec-io}
 
 @item -fdec-bitwise-ops
 @opindex @code{fdec-bitwise-ops}
@@ -252,6 +252,11 @@ For example, 5 .AND. 4 is converted to IAND(5, 4) and returns 4.
 Enable the DEC extended integer constant format. This format allows integer
 constants with bases between 2 and 36 to be specified in the "base#value"
 format.
+
+@item -fdec-io
+@opindex @code{fdec-io}
+Enable DEC extended IO syntax. This includes the READONLY flag in OPEN
+statements.
 
 @item -fdec-member-dot
 @opindex @code{fdec-member-dot}

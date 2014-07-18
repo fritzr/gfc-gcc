@@ -385,6 +385,10 @@ fdec-extended-int
 Fortran
 Enable extended base#value integer constants
 
+fdec-io
+Fortran
+Enable DEC IO extensions
+
 fdec-logical-xor
 Fortran
 Enable the logical .XOR. operator.

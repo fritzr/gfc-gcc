@@ -2328,6 +2328,7 @@ typedef struct
   int flag_dec_math;
   int flag_dec_logical_xor;
   int flag_dec_bitwise_ops;
+  int flag_dec_io;
   int flag_loc_rval;
 
   int fpe;

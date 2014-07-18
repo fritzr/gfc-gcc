@@ -38,6 +38,7 @@ typedef struct
 io_tag;
 
 static const io_tag
+        tag_readonly    = {"READONLY", " readonly", NULL, BT_UNKNOWN },
 	tag_file	= {"FILE", " file =", " %e", BT_CHARACTER },
 	tag_status	= {"STATUS", " status =", " %e", BT_CHARACTER},
 	tag_e_access	= {"ACCESS", " access =", " %e", BT_CHARACTER},
@@ -1374,6 +1375,40 @@ match_ltag (const io_tag *tag, gfc_st_label ** label)
 }
 
 
+/* Match a flag tag (tag with no var/expr association, such as READONLY).
+   The open object is messed with accordingly. */
+
+static match
+match_dectag (const io_tag *tag, gfc_open *o)
+{
+  match m;
+
+  m = gfc_match (tag->spec);
+  if (m != MATCH_YES)
+    return m;
+
+  if (!gfc_option.flag_dec_io)
+  {
+    gfc_error ("%s is a DEC extension at %C, re-compile with"
+               "-fdec-io to enable");
+    return MATCH_ERROR;
+  }
+
+  /* Interpret READONLY as ACTION='READ' */
+  if (tag == &tag_readonly)
+  {
+    o->action = gfc_get_character_expr (
+        gfc_default_character_kind, &gfc_current_locus, "read", 5);
+    return MATCH_YES;
+  }
+
+  /* TODO: SHARED */
+  /* if (tag == &tag_shared) */
+
+  return MATCH_NO;
+}
+
+
 /* Resolution of the FORMAT tag, to be called from resolve_tag.  */
 
 static gfc_try
@@ -1617,6 +1652,9 @@ match_open_element (gfc_open *open)
   if (m != MATCH_NO)
     return m;
   m = match_out_tag (&tag_newunit, &open->newunit);
+  if (m != MATCH_NO)
+    return m;
+  m = match_dectag (&tag_readonly, open);
   if (m != MATCH_NO)
     return m;
 
@@ -2258,6 +2296,8 @@ gfc_match_close (void)
   /* Checks on the STATUS specifier.  */
   if (close->status && close->status->expr_type == EXPR_CONSTANT)
     {
+      /* TODO: Protect READONLY from DELETE
+         Implement some of SAVE, PRINT, SUBMIT, PRINT/DELETE, SUBMIT/DELETE */
       static const char *status[] = { "KEEP", "DELETE", NULL };
 
       if (!compare_to_allowed_values ("STATUS", status, NULL, NULL,
