@@ -1662,6 +1662,7 @@ static gfc_try
 build_struct (const char *name, gfc_charlen *cl, gfc_expr **init,
 	      gfc_array_spec **as)
 {
+  gfc_state_data *s;
   gfc_component *c;
   gfc_try t = SUCCESS;
 
@@ -1684,6 +1685,32 @@ build_struct (const char *name, gfc_charlen *cl, gfc_expr **init,
 	  return FAILURE;
 	}
     }
+
+  /* If we are in a nested union/map definition, gfc_add_component will not
+     properly find repeated components because they are implicitly chained.
+     Since union and map blocks are not actually linked as components of their
+     parent structures until after they are parsed, we must traverse up the
+     parse stack until we find the top level structure declaration, searching
+     for the component in each block along the way. */
+  s = gfc_state_stack;
+  if (s->state == COMP_UNION || s->state == COMP_MAP)
+  {
+    while (s->state == COMP_UNION || s->state == COMP_MAP
+           || gfc_comp_is_derived (s->state))
+    {
+      c = gfc_find_component (s->sym, name, true, true, NULL);
+      if (c != NULL)
+      {
+        gfc_error_now ("Component '%s' at %C already declared at %L",
+                       name, &c->loc);
+        return FAILURE;
+      }
+      /* Break after we've searched the ultimate parent of the current union. */
+      if (s->state == COMP_DERIVED || s->state == COMP_STRUCTURE)
+        break;
+      s = s->previous;
+    }
+  }
 
   if (gfc_add_component (gfc_current_block (), name, &c) == FAILURE)
     return FAILURE;
@@ -7778,7 +7805,11 @@ get_type_decl (const char *msg, const char *name, sym_flavor fl,
       /* Set the hash for the compound name for this type.  */
     sym->hash_value = gfc_hash_value (sym);
 
-  /* Zero components to start; may be updated as comp. decl. are found. */
+  /* Normally the type is expected to have been completely parsed by the time
+     a field declaration with this type is seen. For unions, maps, and nested
+     structure declarations, we need to indicate that it is okay that we
+     haven't seen any components yet. This will be updated after the structure
+     is fully parsed. */
   sym->attr.zero_comp = 1;
 
   if (result) *result = sym;
