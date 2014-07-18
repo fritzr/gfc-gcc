@@ -2289,6 +2289,7 @@ static void
 parse_union (void)
 {
     int compiling;
+    bool seen_map;
     gfc_statement st;
     gfc_state_data s;
     gfc_component *c;
@@ -2298,6 +2299,7 @@ parse_union (void)
     push_state (&s, COMP_UNION, gfc_new_block);
     un = gfc_new_block;
 
+    seen_map = false;
     compiling = 1;
 
     while (compiling)
@@ -2322,7 +2324,7 @@ parse_union (void)
           }
           c->ts.type = BT_DERIVED;
           c->ts.u.derived = gfc_new_block;
-          un->attr.zero_comp = 0;
+          seen_map = true;
           break;
 
         case ST_END_UNION:
@@ -2338,8 +2340,6 @@ parse_union (void)
         }
     }
 
-    /* TODO: Post-processing on the resulting component including setting up
-       common storage areas for each map (?) */
     gfc_traverse_components (un, check_component, (void *)un);
 
     /* Add the union as a component in its parent structure. */
@@ -2352,6 +2352,8 @@ parse_union (void)
     }
     c->ts.type = BT_UNION;
     c->ts.u.derived = un;
+
+    un->attr.zero_comp = !seen_map;
 }
 
 /* Parse a structure definition. */
@@ -2646,8 +2648,7 @@ endType:
   sym = gfc_current_block ();
   gfc_traverse_components (sym, check_component, (void *)sym);
 
-  if (!seen_component)
-    sym->attr.zero_comp = 1;
+  sym->attr.zero_comp = seen_component;
 
   pop_state ();
 }
