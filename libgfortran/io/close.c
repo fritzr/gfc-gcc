@@ -78,6 +78,7 @@ st_close (st_parameter_close *clp)
 	}
       else
 	{
+          /* TODO: Save file if readonly flags set */
 	  if (status == CLOSE_DELETE)
             {
 #if HAVE_UNLINK_OPEN_FILE
