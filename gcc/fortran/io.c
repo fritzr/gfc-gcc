@@ -1382,10 +1382,14 @@ static match
 match_dectag (const io_tag *tag, gfc_open *o)
 {
   match m;
+  locus *where;
+  const int ch_kind = gfc_default_character_kind;
 
   m = gfc_match (tag->spec);
   if (m != MATCH_YES)
     return m;
+
+  where = &gfc_current_locus;
 
   if (!gfc_option.flag_dec_io)
   {
@@ -1397,8 +1401,13 @@ match_dectag (const io_tag *tag, gfc_open *o)
   /* Interpret READONLY as ACTION='READ' */
   if (tag == &tag_readonly)
   {
-    o->action = gfc_get_character_expr (
-        gfc_default_character_kind, &gfc_current_locus, "read", 5);
+    if (o->action)
+    {
+      gfc_error ("Cannot specify READONLY and ACTION together at %C"
+                 "(ACTION specified at %L)", &o->action->where);
+      return MATCH_ERROR;
+    }
+    o->action = gfc_get_character_expr (ch_kind, where, "read", 4);
     return MATCH_YES;
   }
 
