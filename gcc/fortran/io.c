@@ -1411,6 +1411,7 @@ match_dectag (const io_tag *tag, gfc_open *o)
       return MATCH_ERROR;
     }
     o->action = gfc_get_character_expr (ch_kind, where, "read", 4);
+    o->readonly |= 1;
     return MATCH_YES;
   }
 

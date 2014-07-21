@@ -80,15 +80,20 @@ st_close (st_parameter_close *clp)
 	}
       else
 	{
-          /* TODO: Save file if readonly flags set */
 	  if (status == CLOSE_DELETE)
             {
+              if (u->flags.readonly)
+                generate_warning (&clp->common, "STATUS set to DELETE on CLOSE"
+                                  " but file protected by READONLY specifier");
+              else
+              {
 #if HAVE_UNLINK_OPEN_FILE
 	      delete_file (u);
 #else
 	      path = (char *) gfc_alloca (u->file_len + 1);
               unpack_filename (path, u->file, u->file_len);
 #endif
+              }
             }
 	}
 

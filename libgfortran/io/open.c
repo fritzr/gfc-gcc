@@ -737,6 +737,7 @@ st_open (st_parameter_open *opp)
   library_start (&opp->common);
 
   /* Decode options.  */
+  flags.readonly = !(cf & IOPARM_OPEN_HAS_READONLY) ? 0 : opp->readonly;
 
   flags.access = !(cf & IOPARM_OPEN_HAS_ACCESS) ? ACCESS_UNSPECIFIED :
     find_option (&opp->common, opp->access, opp->access_len,

@@ -246,6 +246,7 @@ typedef struct
   CHARACTER2 (asynchronous);
   GFC_INTEGER_4 *newunit;
   CHARACTER1 (share);
+  GFC_INTEGER_4 (readonly);
 }
 st_parameter_open;
 
@@ -501,18 +502,19 @@ typedef struct
   unit_blank blank;
   unit_delim delim;
   unit_form form;
-  int is_notpadded;
   unit_position position;
   unit_status status;
   unit_pad pad;
   unit_convert convert;
-  int has_recl;
   unit_decimal decimal;
   unit_encoding encoding;
   unit_round round;
   unit_sign sign;
   unit_async async;
   unit_share share;
+  int is_notpadded : 1;
+  int has_recl     : 1;
+  int readonly     : 1;
 }
 unit_flags;
 

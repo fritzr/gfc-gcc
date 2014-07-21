@@ -2011,6 +2011,7 @@ typedef struct
   gfc_expr *unit, *file, *status, *access, *form, *recl,
     *blank, *position, *action, *delim, *pad, *iostat, *iomsg, *convert,
     *decimal, *encoding, *round, *sign, *asynchronous, *id, *newunit, *share;
+  int readonly : 1;
   gfc_st_label *err;
 }
 gfc_open;
