@@ -66,6 +66,8 @@ st_close (st_parameter_close *clp)
   u = find_unit (clp->common.unit);
   if (u != NULL)
     {
+      if (close_fcntl (u))
+        generate_error (&clp->common, LIBERROR_OS, "Problem in CLOSE");
       if (u->flags.status == STATUS_SCRATCH)
 	{
 	  if (status == CLOSE_KEEP)

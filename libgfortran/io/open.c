@@ -48,6 +48,13 @@ static const st_option action_opt[] =
   { NULL, 0}
 };
 
+static const st_option share_opt[] =
+{
+  { "denyrw", SHARE_DENYRW },
+  { "denynone", SHARE_DENYNONE },
+  { NULL, 0}
+};
+
 static const st_option blank_opt[] =
 {
   { "null", BLANK_NULL},
@@ -190,6 +197,10 @@ edit_modes (st_parameter_open *opp, gfc_unit * u, unit_flags * flags)
   if (flags->action != ACTION_UNSPECIFIED && u->flags.action != flags->action)
     generate_error (&opp->common, LIBERROR_BAD_OPTION,
 		    "Cannot change ACTION parameter in OPEN statement");
+
+  if (flags->share != SHARE_UNSPECIFIED && u->flags.share != flags->share)
+    generate_error (&opp->common, LIBERROR_BAD_OPTION,
+                    "Cannot change SHARE parameter in OPEN statement");
 
   /* Status must be OLD if present.  */
 
@@ -734,6 +745,10 @@ st_open (st_parameter_open *opp)
   flags.action = !(cf & IOPARM_OPEN_HAS_ACTION) ? ACTION_UNSPECIFIED :
     find_option (&opp->common, opp->action, opp->action_len,
 		 action_opt, "Bad ACTION parameter in OPEN statement");
+
+  flags.share = !(cf & IOPARM_OPEN_HAS_SHARE) ? SHARE_UNSPECIFIED :
+    find_option (&opp->common, opp->share, opp->share_len,
+                 share_opt, "Bad SHARE parameter in OPEN statement");
 
   flags.blank = !(cf & IOPARM_OPEN_HAS_BLANK) ? BLANK_UNSPECIFIED :
     find_option (&opp->common, opp->blank, opp->blank_len,

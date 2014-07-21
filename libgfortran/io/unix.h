@@ -134,6 +134,9 @@ internal_proto(compare_file_filename);
 extern gfc_unit *find_file (const char *file, gfc_charlen_type file_len);
 internal_proto(find_file);
 
+extern int close_fcntl (gfc_unit *);
+internal_proto(close_fcntl);
+
 extern int delete_file (gfc_unit *);
 internal_proto(delete_file);
 

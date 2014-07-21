@@ -209,6 +209,12 @@ typedef enum
 unit_async;
 
 typedef enum
+{ SHARE_DENYRW, SHARE_DENYNONE,
+  SHARE_UNSPECIFIED
+}
+unit_share;
+
+typedef enum
 { SIGN_S, SIGN_SS, SIGN_SP }
 unit_sign_s;
 
@@ -239,6 +245,7 @@ typedef struct
   CHARACTER1 (sign);
   CHARACTER2 (asynchronous);
   GFC_INTEGER_4 *newunit;
+  CHARACTER1 (share);
 }
 st_parameter_open;
 
@@ -505,6 +512,7 @@ typedef struct
   unit_round round;
   unit_sign sign;
   unit_async async;
+  unit_share share;
 }
 unit_flags;
 

@@ -1341,6 +1341,41 @@ regular_file (st_parameter_open *opp, unit_flags *flags)
   return fd;			/* failure */
 }
 
+/* Use fcntl to modify the given file descriptor based on flags.
+   Return value semantics are the same as fcntl.
+   Does not operate on stdin, stdout, or stderr. */
+
+static int
+open_fcntl (int fd, unit_flags *flags)
+{
+  int r = 0;
+  struct flock f;
+
+  if (fd == STDOUT_FILENO || fd == STDERR_FILENO || fd == STDIN_FILENO)
+    return 0;
+
+  f.l_start = 0;
+  f.l_len = 0;
+  f.l_whence = SEEK_SET;
+
+  switch (flags->share)
+  {
+    case SHARE_DENYNONE:
+      f.l_type = F_RDLCK;
+      r |= fcntl (fd, F_SETLK, &f);
+      break;
+    case SHARE_DENYRW:
+      f.l_type = F_WRLCK;
+      r |= fcntl (fd, F_SETLK, &f);
+      break;
+    case SHARE_UNSPECIFIED:
+    default:
+      break;
+  }
+
+  return r;
+}
+
 
 /* open_external()-- Open an external file, unix specific version.
  * Change flags->action if it is ACTION_UNSPECIFIED on entry.
@@ -1373,6 +1408,10 @@ open_external (st_parameter_open *opp, unit_flags *flags)
   if (fd < 0)
     return NULL;
   fd = fix_fd (fd);
+
+  /* Apply any required FCNTL calls to the file descriptor based on flags. */
+  if (open_fcntl (fd, flags) < 0)
+    return NULL;
 
   return fd_to_stream (fd);
 }
@@ -1639,6 +1678,38 @@ flush_all_units (void)
 	}
     }
   while (1);
+}
+
+
+/* Apply any fcntls required based on the unit. */
+
+int
+close_fcntl (gfc_unit *u)
+{
+  int r = 0;
+  unix_stream *s = (unix_stream *)u->s;
+  int fd = s->fd;
+  struct flock f;
+
+  /* Unlock any OS-level locks. */
+  switch (u->flags.share)
+  {
+    case SHARE_DENYRW:
+    case SHARE_DENYNONE:
+      if (fd != STDOUT_FILENO && fd != STDERR_FILENO && fd != STDIN_FILENO)
+      {
+        f.l_start = 0;
+        f.l_len = 0;
+        f.l_whence = SEEK_SET;
+        f.l_type = F_UNLCK;
+        r = fcntl (fd, F_SETLK, &f);
+      }
+    case SHARE_UNSPECIFIED:
+    default:
+      break;
+  }
+
+  return r;
 }
 
 

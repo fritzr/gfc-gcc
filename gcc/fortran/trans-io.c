@@ -1005,6 +1005,10 @@ gfc_trans_open (gfc_code * code)
     mask |= set_parameter_ref (&block, &post_block, var, IOPARM_open_newunit,
 			       p->newunit);
 
+  if (p->share)
+    mask |= set_string (&block, &post_block, var, IOPARM_open_share,
+                        p->share);
+
   set_parameter_const (&block, var, IOPARM_common_flags, mask);
 
   if (p->unit)

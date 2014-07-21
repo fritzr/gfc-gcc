@@ -39,6 +39,9 @@ io_tag;
 
 static const io_tag
         tag_readonly    = {"READONLY", " readonly", NULL, BT_UNKNOWN },
+        tag_shared      = {"SHARED", " shared", NULL, BT_UNKNOWN },
+        tag_noshared    = {"NOSHARED", " noshared", NULL, BT_UNKNOWN },
+        tag_e_share     = {"SHARE", " share =", " %e", BT_CHARACTER },
 	tag_file	= {"FILE", " file =", " %e", BT_CHARACTER },
 	tag_status	= {"STATUS", " status =", " %e", BT_CHARACTER},
 	tag_e_access	= {"ACCESS", " access =", " %e", BT_CHARACTER},
@@ -1411,10 +1414,34 @@ match_dectag (const io_tag *tag, gfc_open *o)
     return MATCH_YES;
   }
 
-  /* TODO: SHARED */
-  /* if (tag == &tag_shared) */
+  /* Interpret SHARED as SHARE='DENYNONE' (read lock) */
+  if (tag == &tag_shared)
+  {
+    if (o->share)
+    {
+      gfc_error ("Duplicate SHARE specification at %C "
+                 "(previously specified at %L)", &o->share->where);
+      return MATCH_ERROR;
+    }
+    o->share = gfc_get_character_expr (ch_kind, where, "denynone", 8);
+    return MATCH_YES;
+  }
 
-  return MATCH_NO;
+  /* Interpret NOSHARED as SHARE='DENYRW' (exclusive lock) */
+  if (tag == &tag_noshared)
+  {
+    if (o->share)
+    {
+      gfc_error ("Duplicate SHARE specification at %C "
+                 "(previously specified at %L)", &o->share->where);
+      return MATCH_ERROR;
+    }
+    o->share = gfc_get_character_expr (ch_kind, where, "denyrw", 6);
+    return MATCH_YES;
+  }
+
+  gfc_internal_error ("match_dectag(): Unhandled tag");
+  return MATCH_ERROR;
 }
 
 
@@ -1663,7 +1690,22 @@ match_open_element (gfc_open *open)
   m = match_out_tag (&tag_newunit, &open->newunit);
   if (m != MATCH_NO)
     return m;
+
+  /* The following are DEC extensions. */
+  m = match_etag (&tag_e_share, &open->share);
+  if (gfc_option.flag_dec_io && m != MATCH_NO)
+    return m;
+  else if (m != MATCH_NO)
+  {
+    gfc_error ("%s is a DEC extension at %C, re-compile with"
+               "-fdec-io to enable", tag_e_share.name);
+    return MATCH_ERROR;
+  }
+
   m = match_dectag (&tag_readonly, open);
+  if (m != MATCH_NO)
+    return m;
+  m = match_dectag (&tag_shared, open);
   if (m != MATCH_NO)
     return m;
 
@@ -1699,6 +1741,7 @@ gfc_free_open (gfc_open *open)
   gfc_free_expr (open->convert);
   gfc_free_expr (open->asynchronous);
   gfc_free_expr (open->newunit);
+  gfc_free_expr (open->share);
   free (open);
 }
 
@@ -1729,6 +1772,7 @@ gfc_resolve_open (gfc_open *open)
   RESOLVE_TAG (&tag_e_sign, open->sign);
   RESOLVE_TAG (&tag_convert, open->convert);
   RESOLVE_TAG (&tag_newunit, open->newunit);
+  RESOLVE_TAG (&tag_e_share, open->share);
 
   if (gfc_reference_st_label (open->err, ST_LABEL_TARGET) == FAILURE)
     return FAILURE;
@@ -2114,6 +2158,17 @@ gfc_match_open (void)
       && mpz_sgn (open->recl->value.integer) != 1)
     {
       warn_or_error ("RECL in OPEN statement at %C must be positive");
+    }
+
+  /* Checks on the SHARE specifier. */
+  if (open->share && open->share->expr_type == EXPR_CONSTANT)
+    {
+      static const char *share[] = { "DENYNONE", "DENYRW", NULL };
+
+      if (!compare_to_allowed_values ("SHARE", share, NULL, NULL,
+                                      open->share->value.character.string,
+                                      "OPEN", warn))
+        goto cleanup;
     }
 
   /* Checks on the STATUS specifier.  */
