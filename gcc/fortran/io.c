@@ -1390,7 +1390,7 @@ match_dectag (const io_tag *tag, gfc_open *o)
   if (!gfc_option.flag_dec_io)
   {
     gfc_error ("%s is a DEC extension at %C, re-compile with"
-               "-fdec-io to enable");
+               "-fdec-io to enable", tag->name);
     return MATCH_ERROR;
   }
 
