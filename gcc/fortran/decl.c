@@ -7885,6 +7885,8 @@ gfc_match_union (void)
     if (get_type_decl ("Union", name, FL_UNION, NULL, &sym) == FAILURE)
       return MATCH_ERROR;
 
+    sym->attr.sequence = 1;
+
     gfc_new_block = sym;
 
     return MATCH_YES;
