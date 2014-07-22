@@ -2116,12 +2116,15 @@ gfc_find_component (gfc_symbol *sym, const char *name,
       if (check != NULL)
       {
         /* Union ref. */
-        sref = gfc_get_ref ();
-        sref->type = REF_COMPONENT;
-        sref->u.c.component = p;
-        sref->u.c.sym = p->ts.u.derived;
-        sref->next = tmp;
-        *ref = sref;
+        if (ref)
+        {
+          sref = gfc_get_ref ();
+          sref->type = REF_COMPONENT;
+          sref->u.c.component = p;
+          sref->u.c.sym = p->ts.u.derived;
+          sref->next = tmp;
+          *ref = sref;
+        }
         return check;
       }
     }
