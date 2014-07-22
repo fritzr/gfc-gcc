@@ -2363,16 +2363,26 @@ tree
 gfc_get_union_type (gfc_symbol *un)
 {
     gfc_component *map = NULL;
-    tree map_type = NULL, map_field = NULL;
+    tree typenode = NULL, map_type = NULL, map_field = NULL;
     tree *chain = NULL;
 
-    tree typenode = make_node (UNION_TYPE);
-    TYPE_NAME (typenode) = get_identifier (un->name);
+    if (un->backend_decl)
+    {
+      if (TYPE_FIELDS (un->backend_decl) || un->attr.proc_pointer_comp)
+        return un->backend_decl;
+      else
+        typenode = un->backend_decl;
+    }
+    else
+    {
+      typenode = make_node (UNION_TYPE);
+      TYPE_NAME (typenode) = get_identifier (un->name);
+    }
 
     /* Add each contained MAP as a field. */
     for (map = un->components; map; map = map->next)
     {
-        gcc_assert (map->ts.type == BT_DERIVED); /* TODO: ? FL_MAP */
+        gcc_assert (map->ts.type == BT_DERIVED);
 
         /* The map's type node, which is defined within this union's context. */
         map_type = gfc_get_derived_type (map->ts.u.derived);
@@ -2391,8 +2401,8 @@ gfc_get_union_type (gfc_symbol *un)
 
         /* We should never clobber another backend declaration for this map,
            because each map component is unique. */
-        gcc_assert (!map->backend_decl);
-        map->backend_decl = map_field;
+        if (!map->backend_decl)
+          map->backend_decl = map_field;
     }
 
     un->backend_decl = typenode;
