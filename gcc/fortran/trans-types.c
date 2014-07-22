@@ -2260,6 +2260,25 @@ gfc_add_field_to_struct (tree context, tree name, tree type, tree **chain)
   return decl;
 }
 
+static void copy_components (gfc_symbol *, gfc_symbol *, bool);
+
+static void
+copy_union_components (gfc_symbol *to, gfc_symbol *from, bool from_gsym)
+{
+  gfc_component *to_map   =   to->components,
+                *from_map = from->components;
+
+  /* The same union types get the same backend declarations. */
+  to->backend_decl = from->backend_decl;
+
+  /* Ensure each map is copied. */
+  for (; to_map; to_map = to_map->next, from_map = from_map->next)
+  {
+    to_map->backend_decl = from_map->backend_decl;
+    copy_components (to_map->ts.u.derived, from_map->ts.u.derived, from_gsym);
+  }
+}
+
 static void
 copy_components (gfc_symbol *to, gfc_symbol *from, bool from_gsym)
 {
@@ -2284,7 +2303,8 @@ copy_components (gfc_symbol *to, gfc_symbol *from, bool from_gsym)
       else if (from_cm->ts.type == BT_CHARACTER)
 	to_cm->ts.u.cl->backend_decl = from_cm->ts.u.cl->backend_decl;
       else if (from_cm->ts.type == BT_UNION)
-        gfc_get_union_type (to_cm->ts.u.derived);
+        copy_union_components (to_cm->ts.u.derived, from_cm->ts.u.derived,
+            from_gsym);
     }
 }
 
@@ -2299,8 +2319,13 @@ gfc_copy_dt_decls_ifequal (gfc_symbol *from, gfc_symbol *to,
   if (from == to)
     return 1;
 
-  if (from->backend_decl == NULL
-	|| !gfc_compare_derived_types (from, to))
+  if (from->backend_decl == NULL)
+    return 0;
+  
+  if (from->attr.flavor == FL_DERIVED && !gfc_compare_derived_types (from, to))
+    return 0;
+
+  if (from->attr.flavor == FL_UNION && !gfc_compare_union_types (from, to))
     return 0;
 
   to->backend_decl = from->backend_decl;
