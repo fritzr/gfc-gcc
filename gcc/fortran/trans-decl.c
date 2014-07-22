@@ -693,14 +693,15 @@ gfc_get_module_backend_decl (gfc_symbol *sym)
 	  st->n.sym = sym;
 	  sym->refs++;
 	}
-      else if (sym->attr.flavor == FL_DERIVED)
+      else if (sym->attr.flavor == FL_DERIVED || sym->attr.flavor == FL_UNION)
 	{
 	  if (s && s->attr.flavor == FL_PROCEDURE)
 	    {
 	      gfc_interface *intr;
 	      gcc_assert (s->attr.generic);
 	      for (intr = s->generic; intr; intr = intr->next)
-		if (intr->sym->attr.flavor == FL_DERIVED)
+		if (intr->sym->attr.flavor == FL_DERIVED
+                    || intr->sym->attr.flavor == FL_UNION)
 		  {
 		    s = intr->sym;
 		    break;
@@ -708,7 +709,12 @@ gfc_get_module_backend_decl (gfc_symbol *sym)
     	    }
 
 	  if (!s->backend_decl)
-	    s->backend_decl = gfc_get_derived_type (s);
+          {
+            if (s->attr.flavor == FL_DERIVED)
+              s->backend_decl = gfc_get_derived_type (s);
+            else if (s->attr.flavor == FL_UNION)
+              s->backend_decl = gfc_get_union_type (s);
+          }
 	  gfc_copy_dt_decls_ifequal (s, sym, true);
 	  return true;
 	}
