@@ -12631,6 +12631,8 @@ check_defined_assignments (gfc_symbol *derived)
 
 /* Resolve a component (for resolve_fl_derived0). */
 
+static gfc_try resolve_fl_union (gfc_symbol *);
+
 static gfc_try
 resolve_component (gfc_component *c, void *data)
 {
@@ -12971,6 +12973,9 @@ resolve_component (gfc_component *c, void *data)
       return FAILURE;
     }
 
+  if (c->ts.type == BT_UNION && resolve_fl_union (c->ts.u.derived) == FAILURE)
+      return FAILURE;
+
   /* Ensure that all the derived type components are put on the
      derived type list; even in formal namespaces, where derived type
      pointer components might not have been declared.  */
@@ -12989,6 +12994,27 @@ resolve_component (gfc_component *c, void *data)
   if (c->initializer && !sym->attr.vtype
       && gfc_check_assign_symbol (sym, c, c->initializer) == FAILURE)
     return FAILURE;
+
+  return SUCCESS;
+}
+
+/* Resolve the components of a union type. */
+
+static gfc_try
+resolve_fl_union (gfc_symbol *sym)
+{
+  gfc_component *map;
+
+  gcc_assert (sym->attr.flavor == FL_UNION);
+
+  for (map = sym->components; map; map = map->next)
+  {
+    if (resolve_component (map, (void *)sym) == FAILURE)
+      return FAILURE;
+  }
+
+  if (sym->components)
+    add_dt_to_dt_list (sym);
 
   return SUCCESS;
 }
@@ -13399,6 +13425,9 @@ resolve_symbol (gfc_symbol *sym)
     }
 
   if (sym->attr.flavor == FL_DERIVED && resolve_fl_derived (sym) == FAILURE)
+    return;
+
+  if (sym->attr.flavor == FL_UNION && resolve_fl_union (sym) == FAILURE)
     return;
 
   /* Symbols that are module procedures with results (functions) have
