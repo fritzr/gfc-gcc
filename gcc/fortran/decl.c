@@ -2705,10 +2705,10 @@ done:
   return MATCH_YES;
 }
 
-/* Matches a RECORD declaration (DEC extension). */
+/* Matches a RECORD declaration. */
 
 static match
-gfc_match_record_decl(char *name)
+match_record_decl(char *name)
 {
     locus old_loc;
     old_loc = gfc_current_locus;
@@ -2910,7 +2910,7 @@ gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
   else
     {
       /* Match RECORD declarations. */
-      m = gfc_match_record_decl (name);
+      m = match_record_decl (name);
       if (m == MATCH_YES) {
           ts->type = BT_DERIVED;
           goto derived;
@@ -7798,7 +7798,7 @@ get_type_decl (const char *msg, const char *name, sym_flavor fl,
     return FAILURE;
 
   /* Construct the f2k_derived namespace if it is not yet there.  */
-  if (!sym->f2k_derived)
+  if (fl == FL_DERIVED && !sym->f2k_derived)
     sym->f2k_derived = gfc_get_namespace (NULL, 0);
 
   if (!sym->hash_value)
