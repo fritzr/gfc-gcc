@@ -7743,11 +7743,17 @@ gfc_get_type_attr_spec (symbol_attribute *attr, char *name)
    type to be created, and the flavor to add to the resulting symbol. */
 
 static gfc_try
-get_type_decl (const char *msg, const char *name, sym_flavor fl,
+get_type_decl (const char *msg, const char *name, sym_flavor fl, locus *decl,
                gfc_symbol **gensym_result, gfc_symbol **result)
 {
   gfc_symbol *sym, *gensym;
   gfc_interface *intr = NULL, *head;
+  locus where;
+
+  if (decl)
+    where = *decl;
+  else
+    where = gfc_current_locus;
 
   if (gfc_get_symbol (name, NULL, &gensym))
     return FAILURE;
@@ -7786,11 +7792,12 @@ get_type_decl (const char *msg, const char *name, sym_flavor fl,
     head = gensym->generic;
     intr = gfc_get_interface ();
     intr->sym = sym;
-    intr->where = gfc_current_locus;
-    intr->sym->declared_at = gfc_current_locus;
+    intr->where = where;
+    intr->sym->declared_at = where;
     intr->next = head;
     gensym->generic = intr;
     gensym->attr.if_source = IFSRC_DECL;
+    gensym->declared_at = where;
   }
 
   if (sym->attr.flavor != fl
@@ -7845,7 +7852,7 @@ gfc_match_map (void)
     /* Make up a unique name for the map to store it in the symbol table. */
     snprintf (name, GFC_MAX_SYMBOL_LEN + 1, "mM$%u", gfc_map_id++);
 
-    if (get_type_decl ("Map", name, FL_DERIVED, NULL, &sym) == FAILURE)
+    if (get_type_decl ("Map", name, FL_STRUCT, &old_loc, NULL, &sym) == FAILURE)
       return MATCH_ERROR;
 
     /* Structures always act like derived-types with the SEQUENCE attribute */
@@ -7882,7 +7889,8 @@ gfc_match_union (void)
     }
 
     snprintf (name, GFC_MAX_SYMBOL_LEN + 1, "uU$%u", gfc_union_id++);
-    if (get_type_decl ("Union", name, FL_UNION, NULL, &sym) == FAILURE)
+    if (get_type_decl ("Union", name, FL_UNION, &old_loc, NULL, &sym)
+        == FAILURE)
       return MATCH_ERROR;
 
     /* Structures always act like derived-types with the SEQUENCE attribute */
@@ -7916,6 +7924,7 @@ gfc_match_structure_decl (void)
     char name[GFC_MAX_SYMBOL_LEN + 1];
     gfc_symbol *sym;
     match m;
+    locus where;
 
     if(!gfc_option.flag_dec_structure)
     {
@@ -7944,6 +7953,7 @@ gfc_match_structure_decl (void)
            and add components. */
         snprintf (name, GFC_MAX_SYMBOL_LEN + 1, "sS$%u", gfc_structure_id++);
     }
+    where = gfc_current_locus;
     /* No field list allowed after non-nested structure declaration. */
     if (!gfc_comp_is_derived (gfc_current_state ()) && gfc_match_eos () != MATCH_YES)
     {
@@ -7960,7 +7970,8 @@ gfc_match_structure_decl (void)
       return MATCH_ERROR;
     }
 
-    if (get_type_decl ("Structure", name, FL_DERIVED, NULL, &sym) == FAILURE)
+    if (get_type_decl ("Structure", name, FL_STRUCT, &where, NULL, &sym)
+        == FAILURE)
       return MATCH_ERROR;
 
     /* TODO: Allow bind(c) ? */
@@ -7988,6 +7999,7 @@ gfc_match_derived_decl (void)
   match m;
   match is_type_attr_spec = MATCH_NO;
   bool seen_attr = false;
+  locus where;
 
   if (gfc_comp_is_derived (gfc_current_state ()))
     return MATCH_NO;
@@ -8021,7 +8033,11 @@ gfc_match_derived_decl (void)
       return MATCH_ERROR;
     }
 
-  m = gfc_match (" %n%t", name);
+  m = gfc_match (" %n", name);
+  if (m != MATCH_YES)
+    return m;
+  where = gfc_current_locus;
+  m = gfc_match_eos ();
   if (m != MATCH_YES)
     return m;
 
@@ -8033,7 +8049,8 @@ gfc_match_derived_decl (void)
       return MATCH_ERROR;
     }
 
-  if (get_type_decl ("Derived type", name, FL_DERIVED, &gensym, &sym)==FAILURE)
+  if (get_type_decl ("Derived type", name, FL_DERIVED, &where, &gensym, &sym)
+      == FAILURE)
     return MATCH_ERROR;
 
   if (attr.access != ACCESS_UNKNOWN
