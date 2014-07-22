@@ -2918,6 +2918,7 @@ gfc_try gfc_ref_dimen_size (gfc_array_ref *, int dimen, mpz_t *, mpz_t *);
 
 /* interface.c -- FIXME: some of these should be in symbol.c */
 void gfc_free_interface (gfc_interface *);
+int gfc_compare_union_types (gfc_symbol *, gfc_symbol *);
 int gfc_compare_derived_types (gfc_symbol *, gfc_symbol *);
 int gfc_compare_types (gfc_typespec *, gfc_typespec *);
 int gfc_compare_interfaces (gfc_symbol*, gfc_symbol*, const char *, int, int,
