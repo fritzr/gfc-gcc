@@ -1944,6 +1944,19 @@ variable_decl (int elem)
 
   var_locus = gfc_current_locus;
 
+  /* Ensure variable name does not conflict with another entity. 
+     TODO: Allow variables to share names with FL_STRUCT declarations. */
+  sym = NULL;
+  gfc_find_symbol (name, gfc_current_ns, 1, &sym);
+  if (sym != NULL && (sym->ts.type != BT_UNKNOWN
+      || (sym->attr.flavor != FL_UNKNOWN && sym->generic)))
+  {
+    gfc_error ("Declaration of '%s' at %C conflicts with entity declared at %L"
+               , name, &sym->declared_at);
+    m = MATCH_ERROR;
+    goto cleanup;
+  }
+
   /* Now we could see the optional array spec. or character length.  */
   m = gfc_match_array_spec (&as, true, true);
   if (m == MATCH_ERROR)
