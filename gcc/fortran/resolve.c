@@ -520,7 +520,7 @@ static void
 find_arglists (gfc_symbol *sym)
 {
   if (sym->attr.if_source == IFSRC_UNKNOWN || sym->ns != gfc_current_ns
-      || sym->attr.flavor == FL_DERIVED)
+      || gfc_fl_struct (sym->attr.flavor))
     return;
 
   resolve_formal_arglist (sym);
@@ -1496,7 +1496,7 @@ is_illegal_recursion (gfc_symbol* sym, gfc_namespace* context)
   gfc_namespace* real_context;
 
   if (sym->attr.flavor == FL_PROGRAM
-      || sym->attr.flavor == FL_DERIVED)
+      || gfc_fl_struct (sym->attr.flavor))
     return false;
 
   gcc_assert (sym->attr.flavor == FL_PROCEDURE);
@@ -2465,7 +2465,7 @@ resolve_generic_f (gfc_expr *expr)
 generic:
       if (!intr)
 	for (intr = sym->generic; intr; intr = intr->next)
-	  if (intr->sym->attr.flavor == FL_DERIVED)
+	  if (gfc_fl_struct (intr->sym->attr.flavor))
 	    break;
 
       if (sym->ns->parent == NULL)
@@ -10801,7 +10801,7 @@ resolve_bind_c_comms (gfc_symtree *comm_block_tree)
 static void
 resolve_bind_c_derived_types (gfc_symbol *derived_sym)
 {
-  if (derived_sym != NULL && derived_sym->attr.flavor == FL_DERIVED
+  if (derived_sym != NULL && gfc_fl_struct (derived_sym->attr.flavor)
       && derived_sym->attr.is_bind_c == 1)
     verify_bind_c_derived_type (derived_sym);
 
@@ -10818,7 +10818,7 @@ gfc_verify_binding_labels (gfc_symbol *sym)
   int has_error = 0;
 
   if (sym != NULL && sym->attr.is_bind_c && sym->attr.is_iso_c == 0
-      && sym->attr.flavor != FL_DERIVED && sym->binding_label)
+      && !gfc_fl_struct (sym->attr.flavor) && sym->binding_label)
     {
       gfc_gsymbol *bind_c_sym;
 
@@ -11271,7 +11271,7 @@ resolve_fl_variable_derived (gfc_symbol *sym, int no_init_flag)
       gfc_find_symbol (sym->ts.u.derived->name, sym->ns, 0, &s);
       if (s && s->attr.generic)
 	s = gfc_find_dt_in_generic (s);
-      if (s && s->attr.flavor != FL_DERIVED)
+      if (s && !gfc_fl_struct (s->attr.flavor))
 	{
 	  gfc_error ("The type '%s' cannot be host associated at %L "
 		     "because it is blocked by an incompatible object "
@@ -13424,7 +13424,7 @@ resolve_symbol (gfc_symbol *sym)
       return;
     }
 
-  if (sym->attr.flavor == FL_DERIVED && resolve_fl_derived (sym) == FAILURE)
+  if (gfc_fl_struct (sym->attr.flavor) && resolve_fl_derived (sym) == FAILURE)
     return;
 
   if (sym->attr.flavor == FL_UNION && resolve_fl_union (sym) == FAILURE)
@@ -13647,7 +13647,7 @@ resolve_symbol (gfc_symbol *sym)
      interoperability when a variable is declared of that type.  */
   if (sym->attr.is_bind_c && sym->attr.implicit_type == 0 &&
       sym->attr.use_assoc == 0 && sym->attr.dummy == 0 &&
-      sym->attr.flavor != FL_PROCEDURE && sym->attr.flavor != FL_DERIVED)
+      sym->attr.flavor != FL_PROCEDURE && !gfc_fl_struct (sym->attr.flavor))
     {
       gfc_try t = SUCCESS;
 
@@ -14588,9 +14588,7 @@ sequence_type (gfc_typespec ts)
 
   switch (ts.type)
   {
-    case BT_UNION:
-    case BT_DERIVED:
-
+    case_struct_bt:
       if (ts.u.derived->components == NULL)
 	return SEQ_NONDEFAULT;
 

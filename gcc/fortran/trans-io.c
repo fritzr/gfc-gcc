@@ -2201,8 +2201,7 @@ transfer_expr (gfc_se * se, gfc_typespec * ts, tree addr_expr, gfc_code * code)
 
       break;
 
-    case BT_UNION:
-    case BT_DERIVED:
+    case_struct_bt:
       if (ts->u.derived->components == NULL)
 	return;
 

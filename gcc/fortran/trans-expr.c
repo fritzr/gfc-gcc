@@ -5690,9 +5690,8 @@ gfc_conv_initializer (gfc_expr * expr, gfc_typespec * ts, tree type,
     {
       switch (ts->type)
 	{
-        case BT_UNION:
-	case BT_DERIVED:
 	case BT_CLASS:
+        case_struct_bt:
 	  gfc_init_se (&se, NULL);
 	  if (ts->type == BT_CLASS && expr->expr_type == EXPR_NULL)
 	    gfc_conv_structure (&se, gfc_class_null_initializer(ts, expr), 1);
@@ -7929,8 +7928,7 @@ copyable_array_p (gfc_expr * expr)
     case BT_CHARACTER:
       return false;
 
-    case BT_UNION:
-    case BT_DERIVED:
+    case_struct_bt:
       return !expr->ts.u.derived->attr.alloc_comp;
 
     default:

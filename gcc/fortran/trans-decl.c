@@ -693,15 +693,14 @@ gfc_get_module_backend_decl (gfc_symbol *sym)
 	  st->n.sym = sym;
 	  sym->refs++;
 	}
-      else if (sym->attr.flavor == FL_DERIVED || sym->attr.flavor == FL_UNION)
+      else if (gfc_fl_struct (sym->attr.flavor))
 	{
 	  if (s && s->attr.flavor == FL_PROCEDURE)
 	    {
 	      gfc_interface *intr;
 	      gcc_assert (s->attr.generic);
 	      for (intr = s->generic; intr; intr = intr->next)
-		if (intr->sym->attr.flavor == FL_DERIVED
-                    || intr->sym->attr.flavor == FL_UNION)
+		if (gfc_fl_struct (intr->sym->attr.flavor))
 		  {
 		    s = intr->sym;
 		    break;
@@ -710,10 +709,10 @@ gfc_get_module_backend_decl (gfc_symbol *sym)
 
 	  if (!s->backend_decl)
           {
-            if (s->attr.flavor == FL_DERIVED)
-              s->backend_decl = gfc_get_derived_type (s);
-            else if (s->attr.flavor == FL_UNION)
+            if (s->attr.flavor == FL_UNION)
               s->backend_decl = gfc_get_union_type (s);
+            else if (gfc_fl_struct (s->attr.flavor))
+              s->backend_decl = gfc_get_derived_type (s);
           }
 	  gfc_copy_dt_decls_ifequal (s, sym, true);
 	  return true;
@@ -4052,7 +4051,7 @@ gfc_create_module_variable (gfc_symbol * sym)
       && sym->ts.type == BT_DERIVED)
     sym->backend_decl = gfc_typenode_for_spec (&(sym->ts));
 
-  if (sym->attr.flavor == FL_DERIVED
+  if (gfc_fl_struct (sym->attr.flavor)
       && sym->backend_decl
       && TREE_CODE (sym->backend_decl) == RECORD_TYPE)
     {
@@ -4289,8 +4288,7 @@ check_constant_initializer (gfc_expr *expr, gfc_typespec *ts, bool array,
     }
   else switch (ts->type)
     {
-    case BT_UNION:
-    case BT_DERIVED:
+    case_struct_bt:
       if (expr->expr_type != EXPR_STRUCTURE)
 	return false;
       c = gfc_constructor_first (expr->value.constructor);

@@ -107,9 +107,8 @@ gfc_element_size (gfc_expr *e)
 
     case BT_HOLLERITH:
       return e->representation.length;
-    case BT_UNION:
-    case BT_DERIVED:
     case BT_CLASS:
+    case_struct_bt:
       {
 	/* Determine type size without clobbering the typespec for ISO C
 	   binding types.  */
@@ -622,7 +621,7 @@ gfc_target_interpret_expr (unsigned char *buffer, size_t buffer_size,
       gcc_assert (result->representation.length >= 0);
       break;
 
-    /* TODO: Handle BT_UNION */
+    /* TODO: Handle BT_UNION ? */
     case BT_UNION:
       gfc_warning_now ("Union binary representation unimplemented");
       break;

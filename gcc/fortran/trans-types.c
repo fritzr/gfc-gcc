@@ -2322,10 +2322,10 @@ gfc_copy_dt_decls_ifequal (gfc_symbol *from, gfc_symbol *to,
   if (from->backend_decl == NULL)
     return 0;
   
-  if (from->attr.flavor == FL_DERIVED && !gfc_compare_derived_types (from, to))
+  if (from->attr.flavor == FL_UNION && !gfc_compare_union_types (from, to))
     return 0;
 
-  if (from->attr.flavor == FL_UNION && !gfc_compare_union_types (from, to))
+  if (gfc_fl_struct (from->attr.flavor) && !gfc_compare_derived_types (from, to))
     return 0;
 
   to->backend_decl = from->backend_decl;

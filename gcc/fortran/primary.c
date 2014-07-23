@@ -2012,7 +2012,7 @@ gfc_match_varspec (gfc_expr *primary, int equiv_flag, bool sub_flag,
 
 check_substring:
   unknown = false;
-  if (primary->ts.type == BT_UNKNOWN && sym->attr.flavor != FL_DERIVED)
+  if (primary->ts.type == BT_UNKNOWN && !gfc_fl_struct (sym->attr.flavor))
     {
       if (gfc_get_default_type (sym->name, sym->ns)->type == BT_CHARACTER)
        {
@@ -2581,7 +2581,7 @@ gfc_match_structure_constructor (gfc_symbol *sym, gfc_expr **result)
   e->symtree = symtree;
   e->expr_type = EXPR_FUNCTION;
 
-  gcc_assert (sym->attr.flavor == FL_DERIVED
+  gcc_assert (gfc_fl_struct (sym->attr.flavor)
 	      && symtree->n.sym->attr.flavor == FL_PROCEDURE);
   e->value.function.esym = sym;
   e->symtree->n.sym->attr.generic = 1;
@@ -2805,6 +2805,7 @@ gfc_match_rvalue (gfc_expr **result)
 
       break;
 
+    case FL_STRUCT:
     case FL_DERIVED:
       sym = gfc_use_derived (sym);
       if (sym == NULL)
@@ -3112,7 +3113,7 @@ gfc_match_rvalue (gfc_expr **result)
       e->symtree = symtree;
       e->expr_type = EXPR_FUNCTION;
 
-      if (sym->attr.flavor == FL_DERIVED)
+      if (gfc_fl_struct (sym->attr.flavor))
 	{
 	  e->value.function.esym = sym;
 	  e->symtree->n.sym->attr.generic = 1;

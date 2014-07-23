@@ -881,7 +881,7 @@ add_true_name (gfc_symbol *sym)
 
   t = XCNEW (true_name);
   t->sym = sym;
-  if (sym->attr.flavor == FL_DERIVED)
+  if (gfc_fl_struct (sym->attr.flavor))
     t->name = dt_upper_string (sym->name);
   else
     t->name = sym->name;
@@ -903,7 +903,7 @@ build_tnt (gfc_symtree *st)
   build_tnt (st->left);
   build_tnt (st->right);
 
-  if (st->n.sym->attr.flavor == FL_DERIVED)
+  if (gfc_fl_struct (st->n.sym->attr.flavor))
     name = dt_upper_string (st->n.sym->name);
   else
     name = st->n.sym->name;
@@ -3092,7 +3092,7 @@ fix_mio_expr (gfc_expr *e)
       if (e->symtree->n.sym && check_unique_name (e->symtree->name))
 	{
           const char *name = e->symtree->n.sym->name;
-	  if (e->symtree->n.sym->attr.flavor == FL_DERIVED)
+	  if (gfc_fl_struct (e->symtree->n.sym->attr.flavor))
 	    name = dt_upper_string (name);
 	  ns_st = gfc_find_symtree (gfc_current_ns->sym_root, name);
 	}
@@ -3783,7 +3783,7 @@ mio_symbol (gfc_symbol *sym)
   
   mio_integer (&(sym->intmod_sym_id));
 
-  if (sym->attr.flavor == FL_DERIVED)
+  if (gfc_fl_struct (sym->attr.flavor))
     mio_integer (&(sym->hash_value));
 
   mio_rparen ();
@@ -4545,7 +4545,7 @@ read_module (void)
 	 can be used in expressions in the module.  To avoid the module loading
 	 failing, we need to associate the module's component pointer indexes
 	 with the existing symbol's component pointers.  */
-      if (sym->attr.flavor == FL_DERIVED)
+      if (gfc_fl_struct (sym->attr.flavor))
 	{
 	  /* First seek to the symbol's component list.  */
 	  mio_lparen (); /* symbol opening.  */
@@ -5064,7 +5064,7 @@ write_symbol (int n, gfc_symbol *sym)
 
   mio_integer (&n);
 
-  if (sym->attr.flavor == FL_DERIVED)
+  if (gfc_fl_struct (sym->attr.flavor))
     {
       const char *name;
       name = dt_upper_string (sym->name);

@@ -40,7 +40,7 @@ const mstring flavors[] =
   minit ("VARIABLE", FL_VARIABLE), minit ("PARAMETER", FL_PARAMETER),
   minit ("LABEL", FL_LABEL), minit ("PROCEDURE", FL_PROCEDURE),
   minit ("DERIVED", FL_DERIVED), minit ("NAMELIST", FL_NAMELIST),
-  minit ("UNION", FL_UNION),
+  minit ("UNION", FL_UNION), minit ("STRUCTURE", FL_STRUCT),
   minit (NULL, -1)
 };
 
@@ -429,8 +429,8 @@ check_conflict (symbol_attribute *attr, const char *name, locus *where)
 	  case FL_BLOCK_DATA:
 	  case FL_MODULE:
 	  case FL_LABEL:
-	  case FL_DERIVED:
 	  case FL_PARAMETER:
+          case_struct_fl:
             a1 = gfc_code2string (flavors, attr->flavor);
             a2 = save;
 	    goto conflict;
@@ -695,7 +695,7 @@ check_conflict (symbol_attribute *attr, const char *name, locus *where)
 
       break;
 
-    case FL_DERIVED:
+    case_struct_fl:
       conf2 (dummy);
       conf2 (pointer);
       conf2 (target);
@@ -1455,7 +1455,7 @@ gfc_add_flavor (symbol_attribute *attr, sym_flavor f, const char *name,
 {
 
   if ((f == FL_PROGRAM || f == FL_BLOCK_DATA || f == FL_MODULE
-       || f == FL_PARAMETER || f == FL_LABEL || f == FL_DERIVED
+       || f == FL_PARAMETER || f == FL_LABEL || gfc_fl_struct (f)
        || f == FL_NAMELIST) && check_used (attr, name, where))
     return FAILURE;
 
@@ -1690,7 +1690,7 @@ gfc_add_type (gfc_symbol *sym, gfc_typespec *ts, locus *where)
   if (flavor == FL_PROGRAM || flavor == FL_BLOCK_DATA || flavor == FL_MODULE
       || flavor == FL_LABEL
       || (flavor == FL_PROCEDURE && sym->attr.subroutine)
-      || flavor == FL_DERIVED || flavor == FL_NAMELIST)
+      || gfc_fl_struct (flavor) || flavor == FL_NAMELIST)
     {
       gfc_error ("Symbol '%s' at %L cannot have a type", sym->name, where);
       return FAILURE;
@@ -1854,9 +1854,10 @@ gfc_add_component (gfc_symbol *sym, const char *name,
 {
   gfc_component *p, *tail;
 
-  /* Check for existing components with the same name, but not in unions
-     (only maps, which have unique names, are added directly to unions). */
-  if (sym->attr.flavor != FL_UNION 
+  /* Check for existing components with the same name, but not for union
+     components or containers. Unions and maps are anonymous so they have
+     unique internal names which will never conflict. */
+  if (sym->attr.flavor != FL_UNION
       && (p = gfc_find_component (sym, name, true, true, NULL)) != NULL)
     {
       gfc_error ("Component '%s' at %C already declared at %L",
@@ -1959,7 +1960,7 @@ gfc_use_derived (gfc_symbol *sym)
       return NULL;
     }
 
-  if (s == NULL || s->attr.flavor != FL_DERIVED)
+  if (s == NULL || !gfc_fl_struct (s->attr.flavor))
     goto bad;
 
   /* Get rid of symbol sym, translating all references to s.  */
@@ -2011,7 +2012,7 @@ gfc_traverse_components (gfc_symbol *sym, compfunc tfunc, void *data)
   if (sym == NULL)
     return FAILURE;
 
-  if (sym->attr.flavor != FL_DERIVED && sym->attr.flavor != FL_UNION)
+  if (!gfc_fl_struct (sym->attr.flavor))
     sym = sym->ts.u.derived;
 
   if (sym == NULL)
@@ -3253,7 +3254,7 @@ gfc_restore_last_undo_checkpoint (void)
 	  /* The derived type is saved in the symtree with the first
 	     letter capitalized; the all lower-case version to the
 	     derived type contains its associated generic function.  */
-	  if (p->attr.flavor == FL_DERIVED)
+	  if (gfc_fl_struct (p->attr.flavor))
 	    gfc_delete_symtree (&p->ns->sym_root, gfc_get_string ("%c%s",
                         (char) TOUPPER ((unsigned char) p->name[0]),
                         &p->name[1]));
@@ -5122,12 +5123,12 @@ gfc_find_dt_in_generic (gfc_symbol *sym)
 {
   gfc_interface *intr = NULL;
 
-  if (!sym || sym->attr.flavor == FL_DERIVED)
+  if (!sym || gfc_fl_struct (sym->attr.flavor))
     return sym;
 
   if (sym->attr.generic)
     for (intr = sym->generic; intr; intr = intr->next)
-      if (intr->sym->attr.flavor == FL_DERIVED)
+      if (gfc_fl_struct (intr->sym->attr.flavor))
         break;
   return intr ? intr->sym : NULL;
 }

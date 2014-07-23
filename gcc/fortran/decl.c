@@ -376,13 +376,13 @@ match_data_constant (gfc_expr **result)
 
   if (sym == NULL
       || (sym->attr.flavor != FL_PARAMETER
-	  && (!dt_sym || dt_sym->attr.flavor != FL_DERIVED)))
+	  && (!dt_sym || !gfc_fl_struct (dt_sym->attr.flavor))))
     {
       gfc_error ("Symbol '%s' must be a PARAMETER in DATA statement at %C",
 		 name);
       return MATCH_ERROR;
     }
-  else if (dt_sym && dt_sym->attr.flavor == FL_DERIVED)
+  else if (dt_sym && gfc_fl_struct (dt_sym->attr.flavor))
     return gfc_match_structure_constructor (dt_sym, result);
 
   /* Check to see if the value is an initialization array expression.  */
@@ -2750,8 +2750,9 @@ gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
   gfc_symbol *sym, *dt_sym;
   match m;
   char c;
-  bool seen_deferred_kind, matched_type;
+  bool seen_deferred_kind, matched_type, matched_struct = false;
   const char *dt_name;
+  sym_flavor flavor;
 
   /* A belt and braces check that the typespec is correctly being treated
      as a deferred characteristic association.  */
@@ -2929,6 +2930,7 @@ gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
               strcpy (name, gfc_new_block->name);
               ts->type = BT_DERIVED;
               /* ts->u.derived = gfc_new_block */
+              matched_struct = true;
               goto derived;
           }
       }
@@ -3077,9 +3079,13 @@ derived:
 
   gfc_set_sym_referenced (dt_sym);
 
-  if (dt_sym->attr.flavor != FL_DERIVED
-      && gfc_add_flavor (&dt_sym->attr, FL_DERIVED, sym->name, NULL)
-			 == FAILURE)
+  flavor = FL_DERIVED;
+  if (matched_struct
+      || sym->attr.flavor == FL_STRUCT || dt_sym->attr.flavor == FL_STRUCT)
+    flavor = FL_STRUCT;
+
+  if (dt_sym->attr.flavor != flavor
+      && gfc_add_flavor (&dt_sym->attr, flavor, sym->name, NULL) == FAILURE)
     return MATCH_ERROR;
 
   ts->u.derived = dt_sym;
@@ -4504,7 +4510,7 @@ gfc_match_data_decl (void)
 
       /* Any symbol that we find had better be a type definition
 	 which has its components defined.  */
-      if (sym != NULL && sym->attr.flavor == FL_DERIVED
+      if (sym != NULL && gfc_fl_struct (sym->attr.flavor)
 	  && (current_ts.u.derived->components != NULL
 	      || current_ts.u.derived->attr.zero_comp))
 	goto ok;

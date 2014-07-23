@@ -54,8 +54,12 @@ along with GCC; see the file COPYING3.  If not see
 /* Common macros to check structure-like types and flavors, since things like
    STRUCTURES, MAPs and UNIONs are often treated similarly. */
 
-#define gfc_bt_struct(t) ((t) == BT_DERIVED || (t) == BT_UNION)
-#define gfc_fl_is_derived(f) ((f) == FL_UNION || (f) == FL_DERIVED)
+#define gfc_bt_struct(t) \
+  ((t) == BT_DERIVED || (t) == BT_UNION)
+#define gfc_fl_struct(f) \
+  ((f) == FL_DERIVED || (f) == FL_UNION || (f) == FL_STRUCT)
+#define case_struct_bt case BT_DERIVED: case BT_UNION
+#define case_struct_fl case FL_DERIVED: case FL_UNION: case FL_STRUCT
 
 /* Stringization.  */
 #define stringize(x) expand_macro(x)
@@ -242,12 +246,12 @@ typedef enum
 interface_type;
 
 /* Symbol flavors: these are all mutually exclusive.
-   10 elements = 4 bits.  */
+   12 elements = 4 bits.  */
 typedef enum sym_flavor
 {
   FL_UNKNOWN = 0, FL_PROGRAM, FL_BLOCK_DATA, FL_MODULE, FL_VARIABLE,
   FL_PARAMETER, FL_LABEL, FL_PROCEDURE, FL_DERIVED, FL_NAMELIST,
-  FL_UNION, FL_VOID
+  FL_UNION, FL_STRUCT, FL_VOID
 }
 sym_flavor;
 

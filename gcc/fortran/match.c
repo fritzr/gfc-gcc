@@ -155,9 +155,9 @@ gfc_match_member_sep(gfc_symbol *sym)
     /* We may be given either a derived type variable or the derived type
        declaration itself (which actually contains the components); 
        if this is a member access we need the latter to check components. */
-    if(gfc_fl_is_derived (sym->attr.flavor))
+    if (gfc_fl_struct (sym->attr.flavor))
         tsym = sym;
-    else if(gfc_bt_struct (sym->ts.type))
+    else if (gfc_bt_struct (sym->ts.type))
         tsym = sym->ts.u.derived;
     else
         return MATCH_NO;
@@ -2250,7 +2250,7 @@ match_derived_type_spec (gfc_typespec *ts)
   if (derived && derived->attr.flavor == FL_PROCEDURE && derived->attr.generic)
     derived = gfc_find_dt_in_generic (derived);
 
-  if (derived && derived->attr.flavor == FL_DERIVED)
+  if (derived && gfc_fl_struct (derived->attr.flavor))
     {
       ts->type = BT_DERIVED;
       ts->u.derived = derived;

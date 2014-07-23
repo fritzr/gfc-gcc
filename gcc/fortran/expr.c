@@ -331,12 +331,11 @@ gfc_copy_expr (gfc_expr *p)
 	    }
 	  break;
 
-        case BT_UNION:
 	case BT_HOLLERITH:
 	case BT_LOGICAL:
-	case BT_DERIVED:
 	case BT_CLASS:
 	case BT_ASSUMED:
+        case_struct_bt:
 	  break;		/* Already done.  */
 
 	case BT_PROCEDURE:
@@ -4030,7 +4029,7 @@ has_default_initializer (gfc_component *c, void *data ATTRIBUTE_UNUSED)
 bool
 gfc_has_default_initializer (gfc_symbol *der)
 {
-  gcc_assert (der->attr.flavor == FL_DERIVED);
+  gcc_assert (gfc_fl_struct (der->attr.flavor));
   return gfc_traverse_components (der, has_default_initializer, NULL) == FAILURE;
 }
 
@@ -4061,7 +4060,7 @@ free_default_initializer (gfc_component *c, void *data ATTRIBUTE_UNUSED)
 void
 gfc_free_derived_initializer (gfc_symbol *der)
 {
-  gcc_assert (der->attr.flavor == FL_DERIVED);
+  gcc_assert (gfc_fl_struct (der->attr.flavor));
   gfc_traverse_components (der, free_default_initializer, NULL);
 }
 
