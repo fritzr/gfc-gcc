@@ -406,8 +406,8 @@ resolve_fixups (fixup_t *f, void *gp)
    to convert the symtree name of a derived-type to the symbol name or to
    the name of the associated generic function.  */
 
-static const char *
-dt_lower_string (const char *name)
+const char *
+gfc_dt_lower_string (const char *name)
 {
   if (name[0] != (char) TOLOWER ((unsigned char) name[0]))
     return gfc_get_string ("%c%s", (char) TOLOWER ((unsigned char) name[0]),
@@ -421,8 +421,8 @@ dt_lower_string (const char *name)
    symtree/symbol name of the associated generic function start with a lower-
    case character.  */
 
-static const char *
-dt_upper_string (const char *name)
+const char *
+gfc_dt_upper_string (const char *name)
 {
   if (name[0] != (char) TOUPPER ((unsigned char) name[0]))
     return gfc_get_string ("%c%s", (char) TOUPPER ((unsigned char) name[0]),
@@ -724,7 +724,7 @@ find_use_name_n (const char *name, int *inst, bool interface)
 
   /* For derived types.  */
   if (name[0] != (char) TOLOWER ((unsigned char) name[0]))
-    low_name = dt_lower_string (name);
+    low_name = gfc_dt_lower_string (name);
 
   i = 0;
   for (u = gfc_rename_list; u; u = u->next)
@@ -753,7 +753,7 @@ find_use_name_n (const char *name, int *inst, bool interface)
     {
       if (u->local_name[0] == '\0')
 	return name;
-      return dt_upper_string (u->local_name);
+      return gfc_dt_upper_string (u->local_name);
     }
 
   return (u->local_name[0] != '\0') ? u->local_name : name;
@@ -882,7 +882,7 @@ add_true_name (gfc_symbol *sym)
   t = XCNEW (true_name);
   t->sym = sym;
   if (gfc_fl_struct (sym->attr.flavor))
-    t->name = dt_upper_string (sym->name);
+    t->name = gfc_dt_upper_string (sym->name);
   else
     t->name = sym->name;
 
@@ -904,7 +904,7 @@ build_tnt (gfc_symtree *st)
   build_tnt (st->right);
 
   if (gfc_fl_struct (st->n.sym->attr.flavor))
-    name = dt_upper_string (st->n.sym->name);
+    name = gfc_dt_upper_string (st->n.sym->name);
   else
     name = st->n.sym->name;
 
@@ -3093,7 +3093,7 @@ fix_mio_expr (gfc_expr *e)
 	{
           const char *name = e->symtree->n.sym->name;
 	  if (gfc_fl_struct (e->symtree->n.sym->attr.flavor))
-	    name = dt_upper_string (name);
+	    name = gfc_dt_upper_string (name);
 	  ns_st = gfc_find_symtree (gfc_current_ns->sym_root, name);
 	}
 
@@ -4314,7 +4314,7 @@ load_needed (pointer_info *p)
 				 1, &ns->proc_name);
 
       sym = gfc_new_symbol (p->u.rsym.true_name, ns);
-      sym->name = dt_lower_string (p->u.rsym.true_name);
+      sym->name = gfc_dt_lower_string (p->u.rsym.true_name);
       sym->module = gfc_get_string (p->u.rsym.module);
       if (p->u.rsym.binding_label)
 	sym->binding_label = IDENTIFIER_POINTER (get_identifier 
@@ -4681,7 +4681,7 @@ read_module (void)
 		{
 		  info->u.rsym.sym = gfc_new_symbol (info->u.rsym.true_name,
 						     gfc_current_ns);
-		  info->u.rsym.sym->name = dt_lower_string (info->u.rsym.true_name);
+		  info->u.rsym.sym->name = gfc_dt_lower_string (info->u.rsym.true_name);
 		  sym = info->u.rsym.sym;
 		  sym->module = gfc_get_string (info->u.rsym.module);
 
@@ -5067,7 +5067,7 @@ write_symbol (int n, gfc_symbol *sym)
   if (gfc_fl_struct (sym->attr.flavor))
     {
       const char *name;
-      name = dt_upper_string (sym->name);
+      name = gfc_dt_upper_string (sym->name);
       mio_pool_string (&name);
     }
   else
@@ -5878,7 +5878,7 @@ create_derived_type (const char *name, const char *modname,
   sym->attr.function = 1;
   sym->attr.generic = 1;
 
-  gfc_get_sym_tree (dt_upper_string (sym->name),
+  gfc_get_sym_tree (gfc_dt_upper_string (sym->name),
 		    gfc_current_ns, &tmp_symtree, false);
   dt_sym = tmp_symtree->n.sym;
   dt_sym->name = gfc_get_string (sym->name);

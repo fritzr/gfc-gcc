@@ -3255,10 +3255,8 @@ gfc_restore_last_undo_checkpoint (void)
 	     letter capitalized; the all lower-case version to the
 	     derived type contains its associated generic function.  */
 	  if (gfc_fl_struct (p->attr.flavor))
-	    gfc_delete_symtree (&p->ns->sym_root, gfc_get_string ("%c%s",
-                        (char) TOUPPER ((unsigned char) p->name[0]),
-                        &p->name[1]));
-	  else
+	    gfc_delete_symtree (&p->ns->sym_root,gfc_dt_upper_string (p->name));
+          else
 	    gfc_delete_symtree (&p->ns->sym_root, p->name);
 
 	  gfc_release_symbol (p);
@@ -4687,9 +4685,7 @@ generate_isocbinding_symbol (const char *mod_name, iso_c_binding_symbol s,
 	  gfc_component *tmp_comp = NULL;
 	  char comp_name[(GFC_MAX_SYMBOL_LEN * 2) + 1];
 
-	  hidden_name = gfc_get_string ("%c%s",
-			    (char) TOUPPER ((unsigned char) tmp_sym->name[0]),
-                            &tmp_sym->name[1]);
+	  hidden_name = gfc_dt_upper_string (tmp_sym->name);
 
 	  /* Generate real derived type.  */
 	  tmp_symtree = gfc_find_symtree (gfc_current_ns->sym_root,

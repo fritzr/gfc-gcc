@@ -3018,9 +3018,7 @@ derived:
      stored in a symtree with the first letter of the name capitalized; the
      symtree with the all lower-case name contains the associated
      generic function.  */
-  dt_name = gfc_get_string ("%c%s",
-			    (char) TOUPPER ((unsigned char) name[0]),
-			    (const char*)&name[1]);
+  dt_name = gfc_dt_upper_string (name);
   sym = NULL;
   dt_sym = NULL;
   if (ts->kind != -1)
@@ -3459,9 +3457,7 @@ gfc_match_import (void)
 		 letter of the name capitalized; the symtree with the all
 		 lower-case name contains the associated generic function. */
 	      st = gfc_new_symtree (&gfc_current_ns->sym_root,
-			gfc_get_string ("%c%s",
-				(char) TOUPPER ((unsigned char) name[0]),
-				&name[1]));
+                                    gfc_dt_upper_string (name));
 	      st->n.sym = sym;
 	      sym->refs++;
 	      sym->attr.imported = 1;
@@ -7804,9 +7800,7 @@ get_type_decl (const char *msg, const char *name, sym_flavor fl, locus *decl,
   if (!sym)
   {
     /* Use upper case to save the actual derived-type symbol.  */
-    gfc_get_symbol (gfc_get_string ("%c%s",
-                    (char) TOUPPER ((unsigned char) gensym->name[0]),
-                    &gensym->name[1]), NULL, &sym);
+    gfc_get_symbol (gfc_dt_upper_string (gensym->name), NULL, &sym);
     sym->name = gfc_get_string (gensym->name);
     head = gensym->generic;
     intr = gfc_get_interface ();

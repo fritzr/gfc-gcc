@@ -473,8 +473,7 @@ get_unique_type_string (char *string, gfc_symbol *derived)
   if (derived->attr.unlimited_polymorphic)
     strcpy (dt_name, "STAR");
   else
-    strcpy (dt_name, derived->name);
-  dt_name[0] = TOUPPER (dt_name[0]);
+    strcpy (dt_name, gfc_dt_upper_string (derived->name));
   if (derived->attr.unlimited_polymorphic)
     sprintf (string, "_%s", dt_name);
   else if (derived->module)
