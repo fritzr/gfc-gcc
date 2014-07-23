@@ -3153,7 +3153,7 @@ gfc_match_rvalue (gfc_expr **result)
 static match
 match_variable (gfc_expr **result, int equiv_flag, int host_flag)
 {
-  gfc_symbol *sym;
+  gfc_symbol *sym, *dt_sym;
   gfc_symtree *st;
   gfc_expr *expr;
   locus where, old_loc;
@@ -3252,6 +3252,19 @@ match_variable (gfc_expr **result, int equiv_flag, int host_flag)
       if (sym->attr.proc_pointer
 	  || replace_hidden_procptr_result (&sym, &st) == SUCCESS)
 	break;
+
+      /* Check for generic symbols representing derived types for a nicer
+         error message. */
+      if (sym->generic && (dt_sym = gfc_find_dt_in_generic (sym)))
+      {
+        if (dt_sym->attr.flavor == FL_DERIVED)
+          gfc_error ("Derived type '%s' cannot be used as a variable at %C",
+                     sym->name);
+        else
+          gfc_error ("Structure type '%s' cannot be used as a variable at %C",
+                     sym->name);
+        return MATCH_ERROR;
+      }
 
       /* Fall through to error */
 
