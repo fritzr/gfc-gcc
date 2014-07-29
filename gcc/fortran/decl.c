@@ -1944,12 +1944,14 @@ variable_decl (int elem)
 
   var_locus = gfc_current_locus;
 
-  /* Ensure variable name does not conflict with another entity. 
-     TODO: Allow variables to share names with FL_STRUCT declarations. */
+  /* Ensure variable name does not conflict with another entity.
+     Note that STRUCTURE types (unlike derived types) have no generic symbol
+     accessible from user-level code therefore will not conflict here. */
   sym = NULL;
   gfc_find_symbol (name, gfc_current_ns, 1, &sym);
-  if (sym != NULL && (sym->ts.type != BT_UNKNOWN
-      || (sym->attr.flavor != FL_UNKNOWN && sym->generic)))
+  if (sym != NULL && sym->attr.flavor != FL_STRUCT
+      && (sym->ts.type != BT_UNKNOWN
+          || (sym->attr.flavor != FL_UNKNOWN && sym->generic)))
   {
     gfc_error ("Declaration of '%s' at %C conflicts with entity declared at %L"
                , name, &sym->declared_at);
@@ -2721,7 +2723,7 @@ done:
 /* Matches a RECORD declaration. */
 
 static match
-match_record_decl(char *name)
+match_record_decl(const char *name)
 {
     locus old_loc;
     old_loc = gfc_current_locus;
@@ -2763,9 +2765,8 @@ gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
   gfc_symbol *sym, *dt_sym;
   match m;
   char c;
-  bool seen_deferred_kind, matched_type, matched_struct = false;
+  bool seen_deferred_kind, matched_type;
   const char *dt_name;
-  sym_flavor flavor;
 
   /* A belt and braces check that the typespec is correctly being treated
      as a deferred characteristic association.  */
@@ -2920,14 +2921,39 @@ gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
     m = gfc_match_char (')');
 
   if (m == MATCH_YES)
-      ts->type = BT_DERIVED;
+  {
+    ts->type = BT_DERIVED;
+    /* Don't need all the extra derived-type stuff for structures. */
+    if (gfc_find_symbol (gfc_dt_upper_string (name), NULL, 1, &sym))
+    {
+      gfc_error ("Type name '%s' at %C is ambiguous", name);
+      return MATCH_ERROR;
+    }
+    if (sym && sym->attr.flavor == FL_STRUCT)
+    {
+      ts->u.derived = sym;
+      return MATCH_YES;
+    }
+  }
   else
     {
       /* Match RECORD declarations. */
       m = match_record_decl (name);
-      if (m == MATCH_YES) {
-          ts->type = BT_DERIVED;
-          goto derived;
+      if (m == MATCH_YES)
+      {
+        ts->type = BT_DERIVED;
+        /* Don't need all the extra derived-type stuff for structures. */
+        if (gfc_find_symbol (gfc_dt_upper_string (name), NULL, 1, &sym))
+        {
+          gfc_error ("Type name '%s' at %C is ambiguous", name);
+          return MATCH_ERROR;
+        }
+        if (sym && sym->attr.flavor == FL_STRUCT)
+        {
+          ts->u.derived = sym;
+          return MATCH_YES;
+        }
+        goto derived;
       }
 
       /* Match ad-hoc STRUCTURE declarations; only valid within another
@@ -2935,17 +2961,15 @@ gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
       m = gfc_match (" structure");
       if (m == MATCH_YES && gfc_comp_is_derived (gfc_current_state ()))
       {
-          m = gfc_match_structure_decl ();
-          if (m == MATCH_YES)
-          {
-              /* gfc_new_block updated by match_structure_decl() */
-              name[0] = '\0';
-              strcpy (name, gfc_new_block->name);
-              ts->type = BT_DERIVED;
-              /* ts->u.derived = gfc_new_block */
-              matched_struct = true;
-              goto derived;
-          }
+        m = gfc_match_structure_decl ();
+        if (m == MATCH_YES)
+        {
+          /* gfc_new_block updated by match_structure_decl() */
+          ts->type = BT_DERIVED;
+          ts->u.derived = gfc_new_block;
+          return MATCH_YES;
+        }
+        return MATCH_ERROR;
       }
 
       /* Match CLASS declarations.  */
@@ -2997,18 +3021,28 @@ gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
     }
 
 derived:
+  /* TODO: Possibly make a struct: label for FL_STRUCT types? 
+     They are handled quite differently from FL_DERIVED because they don't
+     have to worry about the generic procedure variable with a lowercase name.
+     Then we need to worry about whether the name matches a dt or a struct. */
+
+  dt_name = gfc_dt_upper_string (name);
   /* Defer association of the derived type until the end of the
      specification block.  However, if the derived type can be
      found, add it to the typespec.  */
   if (gfc_matching_function)
     {
       ts->u.derived = NULL;
-      if (gfc_current_state () != COMP_INTERFACE
-	    && !gfc_find_symbol (name, NULL, 1, &sym) && sym)
+      if (gfc_current_state () != COMP_INTERFACE)
+      {
+        if (!gfc_find_symbol (name, NULL, 1, &sym) && sym)
 	{
 	  sym = gfc_find_dt_in_generic (sym);
 	  ts->u.derived = sym;
 	}
+        else if (!gfc_find_symbol (dt_name, NULL, 1, &sym) && sym)
+          ts->u.derived = sym;
+      }
       return MATCH_YES;
     }
 
@@ -3018,7 +3052,6 @@ derived:
      stored in a symtree with the first letter of the name capitalized; the
      symtree with the all lower-case name contains the associated
      generic function.  */
-  dt_name = gfc_dt_upper_string (name);
   sym = NULL;
   dt_sym = NULL;
   if (ts->kind != -1)
@@ -3051,7 +3084,8 @@ derived:
     }
 
   if ((sym->attr.flavor != FL_UNKNOWN
-       && !(sym->attr.flavor == FL_PROCEDURE && sym->attr.generic))
+       && !(sym->attr.flavor == FL_PROCEDURE && sym->attr.generic)
+       && !sym->attr.flavor == FL_STRUCT)
       || sym->attr.subroutine)
     {
       gfc_error ("Type name '%s' at %C conflicts with previously declared "
@@ -3090,13 +3124,8 @@ derived:
 
   gfc_set_sym_referenced (dt_sym);
 
-  flavor = FL_DERIVED;
-  if (matched_struct
-      || sym->attr.flavor == FL_STRUCT || dt_sym->attr.flavor == FL_STRUCT)
-    flavor = FL_STRUCT;
-
-  if (dt_sym->attr.flavor != flavor
-      && gfc_add_flavor (&dt_sym->attr, flavor, sym->name, NULL) == FAILURE)
+  if (dt_sym->attr.flavor != FL_DERIVED && dt_sym->attr.flavor != FL_STRUCT
+      && gfc_add_flavor (&dt_sym->attr, FL_DERIVED, sym->name, NULL) == FAILURE)
     return MATCH_ERROR;
 
   ts->u.derived = dt_sym;
@@ -7751,18 +7780,18 @@ gfc_get_type_attr_spec (symbol_attribute *attr, char *name)
 }
 
 /* Common function for type declaration blocks similar to derived types, such
-   as STRUCTURES and MAPs. Creates a generic symbol entry for the derived type
-   in *gensym_result, and the actual type declaration in *result. (ignored
-   if NULL). 
+   as STRUCTURES and MAPs. Unlike derived types, a structure type
+   does NOT have a generic symbol matching the name given by the user.
+   STRUCTUREs can share names with variables and PARAMETERs so we must allow
+   for the creation of an independent symbol.
    Other parameters are a message to prefix errors with, the name of the new 
    type to be created, and the flavor to add to the resulting symbol. */
 
 static gfc_try
-get_type_decl (const char *msg, const char *name, sym_flavor fl, locus *decl,
-               gfc_symbol **gensym_result, gfc_symbol **result)
+get_struct_decl (const char *name, sym_flavor fl, locus *decl,
+                 gfc_symbol **result)
 {
-  gfc_symbol *sym, *gensym;
-  gfc_interface *intr = NULL, *head;
+  gfc_symbol *sym;
   locus where;
 
   if (decl)
@@ -7770,56 +7799,29 @@ get_type_decl (const char *msg, const char *name, sym_flavor fl, locus *decl,
   else
     where = gfc_current_locus;
 
-  if (gfc_get_symbol (name, NULL, &gensym))
+  if (gfc_get_symbol (name, NULL, &sym))
     return FAILURE;
 
-  if (!gensym->attr.generic && gensym->ts.type != BT_UNKNOWN)
-  {
-    gfc_error ("%s name '%s' at %C already has a basic type of %s", 
-        msg, gensym->name, gfc_typename (&gensym->ts));
-    return FAILURE;
-  }
+  sym->declared_at = where;
 
-  if (!gensym->attr.generic
-    && gfc_add_generic (&gensym->attr, gensym->name, NULL) == FAILURE)
-    return FAILURE;
-
-  if (!gensym->attr.function
-    && gfc_add_function (&gensym->attr, gensym->name, NULL) == FAILURE)
-    return FAILURE;
-
-  sym = gfc_find_dt_in_generic (gensym);
+  gcc_assert (name[0] == (char) TOUPPER (name[0]));
 
   if (sym && (sym->components != NULL || sym->attr.zero_comp))
   {
-    gfc_error ("%s definition of '%s' at %C has already been defined", 
-        msg, sym->name);
+    gfc_error ("Type definition of '%s' at %C was already defined at %L", 
+               sym->name, &sym->declared_at);
     return FAILURE;
   }
 
   if (!sym)
   {
-    /* Use upper case to save the actual derived-type symbol.  */
-    gfc_get_symbol (gfc_dt_upper_string (gensym->name), NULL, &sym);
-    sym->name = gfc_get_string (gensym->name);
-    head = gensym->generic;
-    intr = gfc_get_interface ();
-    intr->sym = sym;
-    intr->where = where;
-    intr->sym->declared_at = where;
-    intr->next = head;
-    gensym->generic = intr;
-    gensym->attr.if_source = IFSRC_DECL;
-    gensym->declared_at = where;
+    gfc_internal_error ("Failed to create structure type '%s' at %C", name);
+    return FAILURE;
   }
 
   if (sym->attr.flavor != fl
       && gfc_add_flavor (&sym->attr, fl, sym->name, NULL) == FAILURE)
     return FAILURE;
-
-  /* Construct the f2k_derived namespace if it is not yet there.  */
-  if (fl == FL_DERIVED && !sym->f2k_derived)
-    sym->f2k_derived = gfc_get_namespace (NULL, 0);
 
   if (!sym->hash_value)
       /* Set the hash for the compound name for this type.  */
@@ -7832,8 +7834,10 @@ get_type_decl (const char *msg, const char *name, sym_flavor fl, locus *decl,
      is fully parsed. */
   sym->attr.zero_comp = 1;
 
+  /* Structures always act like derived-types with the SEQUENCE attribute */
+  gfc_add_sequence (&sym->attr, sym->name, NULL);
+
   if (result) *result = sym;
-  if (gensym_result) *gensym_result = gensym;
 
   return SUCCESS;
 }
@@ -7863,13 +7867,10 @@ gfc_match_map (void)
     }
 
     /* Make up a unique name for the map to store it in the symbol table. */
-    snprintf (name, GFC_MAX_SYMBOL_LEN + 1, "mM$%u", gfc_map_id++);
+    snprintf (name, GFC_MAX_SYMBOL_LEN + 1, "MM$%u", gfc_map_id++);
 
-    if (get_type_decl ("Map", name, FL_STRUCT, &old_loc, NULL, &sym) == FAILURE)
+    if (get_struct_decl (name, FL_STRUCT, &old_loc, &sym) == FAILURE)
       return MATCH_ERROR;
-
-    /* Structures always act like derived-types with the SEQUENCE attribute */
-    gfc_add_sequence (&sym->attr, sym->name, NULL);
 
     gfc_new_block = sym;
 
@@ -7901,13 +7902,9 @@ gfc_match_union (void)
         return MATCH_ERROR;
     }
 
-    snprintf (name, GFC_MAX_SYMBOL_LEN + 1, "uU$%u", gfc_union_id++);
-    if (get_type_decl ("Union", name, FL_UNION, &old_loc, NULL, &sym)
-        == FAILURE)
+    snprintf (name, GFC_MAX_SYMBOL_LEN + 1, "UU$%u", gfc_union_id++);
+    if (get_struct_decl (name, FL_UNION, &old_loc, &sym) == FAILURE)
       return MATCH_ERROR;
-
-    /* Structures always act like derived-types with the SEQUENCE attribute */
-    gfc_add_sequence (&sym->attr, sym->name, NULL);
 
     gfc_new_block = sym;
 
@@ -7935,6 +7932,7 @@ gfc_match_structure_decl (void)
     /* Counter used to give anonymous structures unique internal names. */
     int gfc_structure_id = 0;
     char name[GFC_MAX_SYMBOL_LEN + 1];
+    gfc_interface *intr;
     gfc_symbol *sym;
     match m;
     locus where;
@@ -7964,7 +7962,7 @@ gfc_match_structure_decl (void)
            and setting gfc_new_symbol, which is immediately used by
            parse_structure () and variable_decl () to add fields of this type
            and add components. */
-        snprintf (name, GFC_MAX_SYMBOL_LEN + 1, "sS$%u", gfc_structure_id++);
+        snprintf (name, GFC_MAX_SYMBOL_LEN + 1, "SS$%u", gfc_structure_id++);
     }
     where = gfc_current_locus;
     /* No field list allowed after non-nested structure declaration. */
@@ -7983,17 +7981,18 @@ gfc_match_structure_decl (void)
       return MATCH_ERROR;
     }
 
-    if (get_type_decl ("Structure", name, FL_STRUCT, &where, NULL, &sym)
-        == FAILURE)
+    sprintf (name, gfc_dt_upper_string (name));
+    if (get_struct_decl (name, FL_STRUCT, &where, &sym) == FAILURE)
       return MATCH_ERROR;
 
-    /* TODO: Allow bind(c) ? */
-
-    /* Structures act like derived-types with the SEQUENCE attribute */
-    gfc_add_sequence (&sym->attr, sym->name, NULL);
+    intr = gfc_get_interface ();
+    intr->sym = sym;
+    intr->where = where;
+    sym->generic = intr;
+    sym->attr.if_source = IFSRC_DECL;
+    sym->attr.generic = 1;
 
     gfc_new_block = sym;
-
     return MATCH_YES;
 }
 
@@ -8007,6 +8006,7 @@ gfc_match_derived_decl (void)
   char name[GFC_MAX_SYMBOL_LEN + 1];
   char parent[GFC_MAX_SYMBOL_LEN + 1];
   symbol_attribute attr;
+  gfc_interface *intr, *head;
   gfc_symbol *sym, *gensym;
   gfc_symbol *extended;
   match m;
@@ -8062,9 +8062,67 @@ gfc_match_derived_decl (void)
       return MATCH_ERROR;
     }
 
-  if (get_type_decl ("Derived type", name, FL_DERIVED, &where, &gensym, &sym)
-      == FAILURE)
+  if (gfc_get_symbol (name, NULL, &gensym))
     return MATCH_ERROR;
+
+  if (!gensym->attr.generic && gensym->ts.type != BT_UNKNOWN)
+  {
+    gfc_error ("Derived type name '%s' at %C already has a basic type of %s", 
+               gensym->name, gfc_typename (&gensym->ts));
+    return MATCH_ERROR;
+  }
+
+  if (!gensym->attr.generic
+    && gfc_add_generic (&gensym->attr, gensym->name, NULL) == FAILURE)
+    return MATCH_ERROR;
+
+  if (!gensym->attr.function
+    && gfc_add_function (&gensym->attr, gensym->name, NULL) == FAILURE)
+    return MATCH_ERROR;
+
+  sym = gfc_find_dt_in_generic (gensym);
+
+  if (sym && (sym->components != NULL || sym->attr.zero_comp))
+  {
+    gfc_error ("Derived type definition of '%s' at %C has already been defined",
+               sym->name);
+    return MATCH_ERROR;
+  }
+
+  if (!sym)
+  {
+    /* Use upper case to save the actual derived-type symbol.  */
+    gfc_get_symbol (gfc_dt_upper_string (gensym->name), NULL, &sym);
+    sym->name = gfc_get_string (gensym->name);
+    head = gensym->generic;
+    intr = gfc_get_interface ();
+    intr->sym = sym;
+    intr->where = where;
+    intr->sym->declared_at = where;
+    intr->next = head;
+    gensym->generic = intr;
+    gensym->attr.if_source = IFSRC_DECL;
+    gensym->declared_at = where;
+  }
+
+  if (sym->attr.flavor != FL_DERIVED
+      && gfc_add_flavor (&sym->attr, FL_DERIVED, sym->name, NULL) == FAILURE)
+    return MATCH_ERROR;
+
+  /* Construct the f2k_derived namespace if it is not yet there.  */
+  if (!sym->f2k_derived)
+    sym->f2k_derived = gfc_get_namespace (NULL, 0);
+
+  if (!sym->hash_value)
+      /* Set the hash for the compound name for this type.  */
+    sym->hash_value = gfc_hash_value (sym);
+
+  /* Normally the type is expected to have been completely parsed by the time
+     a field declaration with this type is seen. For unions, maps, and nested
+     structure declarations, we need to indicate that it is okay that we
+     haven't seen any components yet. This will be updated after the structure
+     is fully parsed. */
+  sym->attr.zero_comp = 1;
 
   if (attr.access != ACCESS_UNKNOWN
       && gfc_add_access (&sym->attr, attr.access, sym->name, NULL) == FAILURE)
