@@ -1889,6 +1889,27 @@ match_pointer_init (gfc_expr **init, int procptr)
 
 
 static gfc_try
+check_variable_name (char *name)
+{
+  gfc_symbol *sym;
+  /* Ensure variable name does not conflict with another entity.
+     Note that STRUCTURE types (unlike derived types) have no generic symbol
+     accessible from user-level code therefore will not conflict here. */
+  gfc_find_symbol (name, gfc_current_ns, 1, &sym);
+  if (sym && !sym->attr.implicit_type && sym->attr.flavor != FL_STRUCT
+      && (sym->ts.type != BT_UNKNOWN 
+          || (sym->attr.flavor == FL_PROCEDURE && sym->generic))
+      && !gfc_compare_types (&sym->ts, &current_ts))
+  {
+    gfc_error ("Declaration of '%s' at %C conflicts with entity declared at %L"
+               , name, &sym->declared_at);
+    return FAILURE;
+  }
+  return SUCCESS;
+}
+
+
+static gfc_try
 check_function_name (char *name)
 {
   /* In functions that have a RESULT variable defined, the function name always
@@ -1943,21 +1964,6 @@ variable_decl (int elem)
     goto cleanup;
 
   var_locus = gfc_current_locus;
-
-  /* Ensure variable name does not conflict with another entity.
-     Note that STRUCTURE types (unlike derived types) have no generic symbol
-     accessible from user-level code therefore will not conflict here. */
-  sym = NULL;
-  gfc_find_symbol (name, gfc_current_ns, 1, &sym);
-  if (sym != NULL && sym->attr.flavor != FL_STRUCT
-      && (sym->ts.type != BT_UNKNOWN
-          || (sym->attr.flavor != FL_UNKNOWN && sym->generic)))
-  {
-    gfc_error ("Declaration of '%s' at %C conflicts with entity declared at %L"
-               , name, &sym->declared_at);
-    m = MATCH_ERROR;
-    goto cleanup;
-  }
 
   /* Now we could see the optional array spec. or character length.  */
   m = gfc_match_array_spec (&as, true, true);
@@ -2107,6 +2113,12 @@ variable_decl (int elem)
      For components of derived types, it is not true, so we don't
      create a symbol for those yet.  If we fail to create the symbol,
      bail out.  */
+  if (check_variable_name (name) == FAILURE)
+  {
+    return MATCH_ERROR;
+    goto cleanup;
+  }
+
   if (!gfc_comp_is_derived (gfc_current_state ())
       && build_sym (name, cl, cl_deferred, &as, &var_locus) == FAILURE)
     {
