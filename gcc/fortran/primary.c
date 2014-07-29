@@ -2686,14 +2686,27 @@ gfc_match_rvalue (gfc_expr **result)
         return m;
   }
 
-  if (gfc_find_state (COMP_INTERFACE) == SUCCESS
-      && !gfc_current_ns->has_import_set)
-    i = gfc_get_sym_tree (name, NULL, &symtree, false);
-  else
-    i = gfc_get_ha_sym_tree (name, &symtree);
-
+  /* Check if the symbol exists first */
+  i = gfc_find_sym_tree (name, NULL, 1, &symtree);
   if (i)
     return MATCH_ERROR;
+  /* If not, we do not create it if there is a corresponding structure decl */
+  if (!symtree)
+  {
+    i = gfc_find_sym_tree (gfc_dt_upper_string (name), NULL, 1, &symtree);
+    if (i)
+      return MATCH_ERROR;
+  }
+  if (!symtree || symtree->n.sym->attr.flavor != FL_STRUCT)
+  {
+    if (gfc_find_state (COMP_INTERFACE) == SUCCESS
+        && !gfc_current_ns->has_import_set)
+      i = gfc_get_sym_tree (name, NULL, &symtree, false);
+    else
+      i = gfc_get_ha_sym_tree (name, &symtree);
+    if (i)
+      return MATCH_ERROR;
+  }
 
   sym = symtree->n.sym;
   e = NULL;
@@ -3107,7 +3120,11 @@ gfc_match_rvalue (gfc_expr **result)
       break;
 
     generic_function:
-      gfc_get_sym_tree (name, NULL, &symtree, false);	/* Can't fail */
+      gfc_find_sym_tree (name, NULL, 1, &symtree);
+      if (!symtree)
+        gfc_find_sym_tree (gfc_dt_upper_string (name), NULL, 1, &symtree);
+      if (!symtree || symtree->n.sym->attr.flavor != FL_STRUCT)
+        gfc_get_sym_tree (name, NULL, &symtree, false); /* Can't fail */
 
       e = gfc_get_expr ();
       e->symtree = symtree;
