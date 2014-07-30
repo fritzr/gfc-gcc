@@ -53,6 +53,7 @@ static gfc_typespec current_ts;
 static symbol_attribute current_attr;
 static gfc_array_spec *current_as;
 static int colon_seen;
+static int attr_seen;
 
 /* The current binding label (if any).  */
 static const char* curr_binding_label;
@@ -1942,6 +1943,7 @@ static match
 variable_decl (int elem)
 {
   char name[GFC_MAX_SYMBOL_LEN + 1];
+  static int fill_id = 0;
   gfc_expr *initializer, *char_len;
   gfc_array_spec *as;
   gfc_array_spec *cp_as; /* Extra copy for Cray Pointees.  */
@@ -1959,9 +1961,38 @@ variable_decl (int elem)
   /* When we get here, we've just matched a list of attributes and
      maybe a type and a double colon.  The next thing we expect to see
      is the name of the symbol.  */
-  m = gfc_match_name (name);
+
+  /* If we are parsing a structure, we allow the name of the symbol to
+     be '%FILL', which gives it an anonymous (inaccessible) name. */
+  m = gfc_match ("%%fill");
   if (m != MATCH_YES)
-    goto cleanup;
+  {
+    m = gfc_match_name (name);
+    if (m != MATCH_YES)
+      goto cleanup;
+  }
+  else 
+  {
+    m = MATCH_ERROR;
+    if (!gfc_option.flag_dec_structure)
+    {
+      gfc_error ("%%FILL at %C is an extension, enable with -fdec-structure");
+      goto cleanup;
+    }
+    if (gfc_current_state () != COMP_STRUCTURE)
+    {
+      gfc_error ("Unnamed field at %C only allowed in a STRUCTURE block");
+      goto cleanup;
+    }
+    if (attr_seen)
+    {
+      gfc_error ("Unnamed field at %C may not have attributes");
+      goto cleanup;
+    }
+    /* The unique anonymous name is an invalid fortran identifier. */
+    sprintf (name, "%%FILL%d", fill_id++);
+    m = MATCH_YES;
+  }
 
   var_locus = gfc_current_locus;
 
@@ -2045,6 +2076,14 @@ variable_decl (int elem)
 	  goto cleanup;
 	}
     }
+
+  /* Fill components may not have initializers. */
+  if (name[0] == '%' && gfc_match_eos () != MATCH_YES) 
+  {
+    gfc_error ("Unnamed fields may not have initializers at %C");
+    m = MATCH_ERROR;
+    goto cleanup;
+  }
 
   /*  If this symbol has already shown up in a Cray Pointer declaration,
       then we want to set the type & bail out.  */
@@ -3584,6 +3623,7 @@ match_attr_spec (void)
 
   current_as = NULL;
   colon_seen = 0;
+  attr_seen = 0;
 
   /* See if we get all of the keywords up to the final double colon.  */
   for (d = GFC_DECL_BEGIN; d != GFC_DECL_END; d++)
@@ -3920,6 +3960,8 @@ match_attr_spec (void)
     {
       if (seen[d] == 0)
 	continue;
+      else
+        attr_seen = 1;
 
       if (gfc_comp_is_derived (gfc_current_state ())
 	  && d != DECL_DIMENSION && d != DECL_CODIMENSION
@@ -4120,6 +4162,7 @@ cleanup:
   gfc_current_locus = start;
   gfc_free_array_spec (current_as);
   current_as = NULL;
+  attr_seen = 0;
   return m;
 }
 
