@@ -1175,9 +1175,11 @@ gfc_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_fdec_bitwise_ops:
       gfc_option.flag_dec_bitwise_ops = 1;
+      break;
 
     case OPT_fdec_io:
       gfc_option.flag_dec_io = 1;
+      break;
     }
 
   Fortran_handle_option_auto (&global_options, &global_options_set, 
