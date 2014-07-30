@@ -2113,7 +2113,9 @@ variable_decl (int elem)
      For components of derived types, it is not true, so we don't
      create a symbol for those yet.  If we fail to create the symbol,
      bail out.  */
-  if (check_variable_name (name) == FAILURE)
+  /* Component name checks are done elsewhere. */
+  if (!gfc_comp_is_derived (gfc_current_state ())
+      && check_variable_name (name) == FAILURE)
   {
     return MATCH_ERROR;
     goto cleanup;
