@@ -445,6 +445,10 @@ ff2c
 Fortran
 Use f2c calling convention
 
+ffeed
+Fortran
+Enable form feeds in source
+
 ffixed-form
 Fortran RejectNegative
 Assume that the source file is fixed form

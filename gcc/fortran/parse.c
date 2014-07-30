@@ -817,6 +817,9 @@ next_fixed (void)
 	{
 	case ' ':
 	  break;
+        case '\f':
+          if (gfc_option.flag_feed)
+            break;
 
 	case '0':
 	case '1':

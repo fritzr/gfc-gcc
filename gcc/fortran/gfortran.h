@@ -49,7 +49,8 @@ along with GCC; see the file COPYING3.  If not see
 #define MAX_SUBRECORD_LENGTH 2147483639   /* 2**31-9 */
 
 
-#define gfc_is_whitespace(c) ((c==' ') || (c=='\t'))
+#define gfc_is_whitespace(c) ((c==' ') || (c=='\t') \
+                              || (gfc_option.flag_feed && c=='\f'))
 
 /* Common macros to check structure-like types and flavors, since things like
    STRUCTURES, MAPs and UNIONs are often treated similarly. */
@@ -2335,6 +2336,7 @@ typedef struct
   int flag_dec_bitwise_ops;
   int flag_dec_io;
   int flag_loc_rval;
+  int flag_feed;
 
   int fpe;
   int rtcheck;
