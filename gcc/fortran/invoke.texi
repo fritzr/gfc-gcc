@@ -117,7 +117,7 @@ by type.  Explanations are in the following sections.
 @gccoptlist{-fall-intrinsics -fbackslash -fcray-pointer -fd-lines-as-code @gol
 -fd-lines-as-comments @gol
 -fdec -fdec-extended-int -fdec-member-dot -fdec-structure -fdec-math @gol
--fdec-logical-xor -fdec-bitwise-ops -fdec-io -ffeed @gol
+-fdec-logical-xor -fdec-bitwise-ops -fdec-io fdec-intrinsic-ints -ffeed @gol
 -fdefault-double-8 -fdefault-integer-8 -fdefault-real-8 -fdollar-ok @gol
 -ffixed-line-length-@var{n} -ffixed-line-length-none -ffree-form @gol
 -ffree-line-length-@var{n} -ffree-line-length-none -fimplicit-none @gol
@@ -240,6 +240,11 @@ The options enabled by this switch are: @option{-fdollar-ok}
 @option{-fdec-structure} @option{-fdec-member-dot} @option{-fdec-extended-int}
 @option{-fdec-math} @option{-fdec-logical-xor} @option{-fdec-bitwise-ops}
 @option{-fd-lines-as-comments} @option{-fdec-io} @option{-ffeed}
+@option{fdec-intrinsic-ints}
+
+@item -fdec-intrinsic-ints
+@opindex @code{fdec-intrinsic-ints}
+Enable B/I/J/K kind variants of existing integer functions.
 
 @item -fdec-bitwise-ops
 @opindex @code{fdec-bitwise-ops}

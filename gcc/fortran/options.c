@@ -66,6 +66,7 @@ set_dec_flags (int value)
     gfc_option.flag_dec_logical_xor = value;
     gfc_option.flag_dec_bitwise_ops = value;
     gfc_option.flag_dec_io = value;
+    gfc_option.flag_dec_intrinsic_ints = value;
     gfc_option.flag_feed = value;
 }
 
@@ -1180,6 +1181,10 @@ gfc_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_fdec_io:
       gfc_option.flag_dec_io = 1;
+      break;
+
+    case OPT_fdec_intrinsic_ints:
+      gfc_option.flag_dec_intrinsic_ints = 1;
       break;
 
     case OPT_ffeed:

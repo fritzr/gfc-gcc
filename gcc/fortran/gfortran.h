@@ -2335,6 +2335,7 @@ typedef struct
   int flag_dec_logical_xor;
   int flag_dec_bitwise_ops;
   int flag_dec_io;
+  int flag_dec_intrinsic_ints;
   int flag_loc_rval;
   int flag_feed;
 
