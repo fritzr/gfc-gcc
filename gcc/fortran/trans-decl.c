@@ -711,7 +711,7 @@ gfc_get_module_backend_decl (gfc_symbol *sym)
           {
             if (s->attr.flavor == FL_UNION)
               s->backend_decl = gfc_get_union_type (s);
-            else if (gfc_fl_struct (s->attr.flavor))
+            else
               s->backend_decl = gfc_get_derived_type (s);
           }
 	  gfc_copy_dt_decls_ifequal (s, sym, true);
