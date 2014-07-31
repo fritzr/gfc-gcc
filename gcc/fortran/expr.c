@@ -2190,34 +2190,32 @@ not_numeric:
   return FAILURE;
 }
 
-static gfc_try
-check_alloc (gfc_component *comp, void *data)
-{
-  gfc_constructor **ctor = (gfc_constructor **)data;
-  if (comp->attr.allocatable
-      && (*ctor)->expr->expr_type != EXPR_NULL)
-    {
-      gfc_error("Invalid initialization expression for ALLOCATABLE "
-                "component '%s' in structure constructor at %L",
-                comp->name, &(*ctor)->expr->where);
-      return FAILURE;
-    }
-  *ctor = gfc_constructor_next (*ctor);
-  return SUCCESS;
-}
-
 /* F2003, 7.1.7 (3): In init expression, allocatable components
    must not be data-initialized.  */
 static gfc_try
 check_alloc_comp_init (gfc_expr *e)
 {
+  gfc_component *comp;
   gfc_constructor *ctor;
 
   gcc_assert (e->expr_type == EXPR_STRUCTURE);
-  gcc_assert (gfc_bt_struct (e->ts.type));
+  gcc_assert (e->ts.type == BT_DERIVED);
 
-  ctor = gfc_constructor_first (e->value.constructor);
-  return gfc_traverse_components (e->ts.u.derived, check_alloc, (void *)&ctor);
+  for (comp = e->ts.u.derived->components,
+       ctor = gfc_constructor_first (e->value.constructor);
+       comp; comp = comp->next, ctor = gfc_constructor_next (ctor))
+    {
+      if (comp->attr.allocatable
+          && ctor->expr->expr_type != EXPR_NULL)
+        {
+	  gfc_error("Invalid initialization expression for ALLOCATABLE "
+	            "component '%s' in structure constructor at %L",
+	            comp->name, &ctor->expr->where);
+	  return FAILURE;
+	}
+    }
+
+  return SUCCESS;
 }
 
 static match
@@ -2640,8 +2638,6 @@ gfc_reduce_init_expr (gfc_expr *expr)
 
   return SUCCESS;
 }
-
-
 
 
 /* Match an initialization expression.  We work by first matching an
@@ -4004,24 +4000,6 @@ gfc_check_assign_symbol (gfc_symbol *sym, gfc_component *comp, gfc_expr *rvalue)
   return SUCCESS;
 }
 
-static gfc_try
-has_default_initializer (gfc_component *c, void *data ATTRIBUTE_UNUSED)
-{
-    if (gfc_bt_struct (c->ts.type))
-      {
-        if (!c->attr.pointer
-	     && gfc_has_default_initializer (c->ts.u.derived))
-	  return FAILURE;
-	if (c->attr.pointer && c->initializer)
-	  return FAILURE;
-      }
-    else
-      {
-        if (c->initializer)
-	  return FAILURE;
-      }
-    return SUCCESS;
-}
 
 /* Check for default initializer; sym->value is not enough
    as it is also set for EXPR_NULL of allocatables.  */
@@ -4029,84 +4007,31 @@ has_default_initializer (gfc_component *c, void *data ATTRIBUTE_UNUSED)
 bool
 gfc_has_default_initializer (gfc_symbol *der)
 {
-  gcc_assert (gfc_fl_struct (der->attr.flavor));
-  return gfc_traverse_components (der, has_default_initializer, NULL) == FAILURE;
-}
+  gfc_component *c;
 
-static gfc_try
-free_default_initializer (gfc_component *c, void *data ATTRIBUTE_UNUSED)
-{
-  if (gfc_bt_struct (c->ts.type))
-    {
-      if (!c->attr.pointer)
-        gfc_free_derived_initializer (c->ts.u.derived);
-      else if (c->attr.pointer && c->initializer)
-      {
-        gfc_free_expr (c->initializer);
-        c->initializer = NULL;
-      }
-    }
-  else if (c->initializer)
+  gcc_assert (gfc_fl_struct (der->attr.flavor));
+  for (c = der->components; c; c = c->next)
   {
-    gfc_free_expr (c->initializer);
-    c->initializer = NULL;
+    if (gfc_bt_struct (c->ts.type))
+      {
+        if (!c->attr.pointer
+	     && gfc_has_default_initializer (c->ts.u.derived))
+	  return true;
+	if (c->attr.pointer && c->initializer)
+	  return true;
+      }
+    else
+      {
+        if (c->initializer)
+	  return true;
+      }
   }
-  return SUCCESS;
+
+  return false;
 }
 
-/* Recursively free all default initializers for the given derived-type
-   components. */
 
-void
-gfc_free_derived_initializer (gfc_symbol *der)
-{
-  gcc_assert (gfc_fl_struct (der->attr.flavor));
-  gfc_traverse_components (der, free_default_initializer, NULL);
-}
-
-static gfc_try
-get_default_init (gfc_component *comp, void *data)
-{
-    gfc_component **init_comp = (gfc_component **)data;
-    if (comp->initializer || comp->attr.allocatable
-	|| (comp->ts.type == BT_CLASS && CLASS_DATA (comp)
-	    && CLASS_DATA (comp)->attr.allocatable))
-    {
-        *init_comp = comp;
-        return FAILURE;
-    }
-    return SUCCESS;
-}
-
-static gfc_try
-add_constructor (gfc_component *comp, void *data)
-{
-  gfc_expr *init = (gfc_expr *)data;
-  gfc_constructor *ctor = gfc_constructor_get();
-
-  if (comp->initializer)
-    {
-      ctor->expr = gfc_copy_expr (comp->initializer);
-      if ((comp->ts.type != comp->initializer->ts.type
-           || comp->ts.kind != comp->initializer->ts.kind)
-          && !comp->attr.pointer && !comp->attr.proc_pointer)
-        gfc_convert_type_warn (ctor->expr, &comp->ts, 2, false);
-    }
-
-  if (comp->attr.allocatable
-      || (comp->ts.type == BT_CLASS && CLASS_DATA (comp)->attr.allocatable))
-    {
-      ctor->expr = gfc_get_expr ();
-      ctor->expr->expr_type = EXPR_NULL;
-      ctor->expr->ts = comp->ts;
-    }
-
-  gfc_constructor_append (&init->value.constructor, ctor);
-
-  return SUCCESS;
-}
-
-/* Get an expression for a default initializer of a derived typespec.  */
+/* Get an expression for a default initializer.  */
 
 gfc_expr *
 gfc_default_initializer (gfc_typespec *ts)
@@ -4116,7 +4041,11 @@ gfc_default_initializer (gfc_typespec *ts)
 
   /* See if we have a default initializer in this, but not in nested
      types (otherwise we could use gfc_has_default_initializer()).  */
-  gfc_traverse_components (ts->u.derived, get_default_init, (void *)&comp);
+  for (comp = ts->u.derived->components; comp; comp = comp->next)
+    if (comp->initializer || comp->attr.allocatable
+	|| (comp->ts.type == BT_CLASS && CLASS_DATA (comp)
+	    && CLASS_DATA (comp)->attr.allocatable))
+      break;
 
   if (!comp)
     return NULL;
@@ -4125,8 +4054,29 @@ gfc_default_initializer (gfc_typespec *ts)
 					     &ts->u.derived->declared_at);
   init->ts = *ts;
 
-  /* Add constructors for each component to the initializer. */
-  gfc_traverse_components (ts->u.derived, add_constructor, (void *)init);
+  for (comp = ts->u.derived->components; comp; comp = comp->next)
+    {
+      gfc_constructor *ctor = gfc_constructor_get();
+
+      if (comp->initializer)
+	{
+	  ctor->expr = gfc_copy_expr (comp->initializer);
+	  if ((comp->ts.type != comp->initializer->ts.type
+	       || comp->ts.kind != comp->initializer->ts.kind)
+	      && !comp->attr.pointer && !comp->attr.proc_pointer)
+	    gfc_convert_type_warn (ctor->expr, &comp->ts, 2, false);
+	}
+
+      if (comp->attr.allocatable
+	  || (comp->ts.type == BT_CLASS && CLASS_DATA (comp)->attr.allocatable))
+	{
+	  ctor->expr = gfc_get_expr ();
+	  ctor->expr->expr_type = EXPR_NULL;
+	  ctor->expr->ts = comp->ts;
+	}
+
+      gfc_constructor_append (&init->value.constructor, ctor);
+    }
 
   return init;
 }
