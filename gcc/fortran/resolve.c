@@ -13431,7 +13431,8 @@ resolve_symbol (gfc_symbol *sym)
       return;
     }
 
-  if (gfc_fl_struct (sym->attr.flavor) && resolve_fl_derived (sym) == FAILURE)
+  if ((sym->attr.flavor == FL_DERIVED || sym->attr.flavor == FL_STRUCT)
+      && resolve_fl_derived (sym) == FAILURE)
     return;
 
   if (sym->attr.flavor == FL_UNION && resolve_fl_union (sym) == FAILURE)
