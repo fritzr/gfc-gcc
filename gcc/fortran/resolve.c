@@ -895,6 +895,31 @@ resolve_entries (gfc_namespace *ns)
 }
 
 
+/* Free the initializer of a derived type. This is only used when we discover
+   that a previously declared structure/derived type with an initializer is
+   actually in a common block. Since we cannot have initializers in common
+   blocks, this is normally an error; however, if the initializer was generated
+   with -finit-derived, we can't punish the user. */
+static void
+free_derived_initializer (gfc_symbol *derived)
+{
+  gfc_component *comp;
+
+  gcc_assert (gfc_fl_struct (derived->attr.flavor));
+
+  for (comp = derived->components; comp; comp = comp->next)
+  {
+    if (gfc_bt_struct (comp->ts.type))
+      free_derived_initializer (comp->ts.u.derived);
+
+    if (comp->initializer)
+    {
+      gfc_free_expr (comp->initializer);
+      comp->initializer = NULL;
+    }
+  }
+}
+
 /* Resolve common variables.  */
 static void
 resolve_common_vars (gfc_symbol *sym, bool named_common)
@@ -935,7 +960,16 @@ resolve_common_vars (gfc_symbol *sym, bool named_common)
       if (gfc_has_default_initializer (csym->ts.u.derived))
       {
         /* Ignore initializers that we made because of -finit-derived. */
-        if (!gfc_option.flag_init_derived)
+        if (gfc_option.flag_init_derived)
+        {
+          if (csym->value)
+          {
+            gfc_free_expr (csym->value);
+            csym->value = NULL;
+          }
+          free_derived_initializer (csym->ts.u.derived);
+        }
+        else
           gfc_error_now ("Derived type variable '%s' in COMMON at %L "
                          "may not have default initializer", csym->name,
                          &csym->declared_at);
