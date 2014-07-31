@@ -4232,25 +4232,6 @@ gfc_trans_use_stmts (gfc_namespace * ns)
     }
 }
 
-/* Forward declaration for mutual recursion with check_comp_const_init. */
-static bool
-check_constant_initializer (gfc_expr *, gfc_typespec *, bool, bool);
-
-static gfc_try
-check_comp_const_init (gfc_component *cm, void *data)
-{
-  gfc_constructor **c = (gfc_constructor **)data;
-
-  if (!(*c)->expr || cm->attr.allocatable)
-      goto continu;
-  if (!check_constant_initializer ((*c)->expr, &cm->ts,
-                                   cm->attr.dimension,
-                                   cm->attr.pointer))
-      return FAILURE;
-continu:
-  *c = gfc_constructor_next (*c);
-  return SUCCESS;
-}
 
 /* Return true if expr is a constant initializer that gfc_conv_initializer
    will handle.  */
@@ -4260,6 +4241,7 @@ check_constant_initializer (gfc_expr *expr, gfc_typespec *ts, bool array,
 			    bool pointer)
 {
   gfc_constructor *c;
+  gfc_component *cm;
 
   if (pointer)
     return true;
@@ -4291,10 +4273,17 @@ check_constant_initializer (gfc_expr *expr, gfc_typespec *ts, bool array,
     case_struct_bt:
       if (expr->expr_type != EXPR_STRUCTURE)
 	return false;
-      c = gfc_constructor_first (expr->value.constructor);
-      if (FAILURE == gfc_traverse_components (expr->ts.u.derived, 
-                          check_comp_const_init, (void *)&c))
-          return false;
+      cm = expr->ts.u.derived->components;
+      for (c = gfc_constructor_first (expr->value.constructor);
+          c; c = gfc_constructor_next (c), cm = cm->next)
+       {
+         if (!c->expr || cm->attr.allocatable)
+           continue;
+         if (!check_constant_initializer (c->expr, &cm->ts,
+                                          cm->attr.dimension,
+                                          cm->attr.pointer))
+           return false;
+       }
       return true;
     default:
       return expr->expr_type == EXPR_CONSTANT;

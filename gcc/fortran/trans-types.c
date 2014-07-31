@@ -2411,38 +2411,6 @@ gfc_get_union_type (gfc_symbol *un)
     return typenode;
 }
 
-/* Forward declaration for mutual recursion with build_derived_comp. */
-tree gfc_get_derived_type (gfc_symbol *);
-
-static gfc_try
-build_derived_comp (gfc_component *c, void *data ATTRIBUTE_UNUSED)
-{
-  if (c->ts.type != BT_DERIVED && c->ts.type != BT_CLASS)
-    return SUCCESS;
-
-  if ((!c->attr.pointer && !c->attr.proc_pointer)
-      || c->ts.u.derived->backend_decl == NULL)
-    c->ts.u.derived->backend_decl = gfc_get_derived_type (c->ts.u.derived);
-
-  if (c->ts.u.derived->attr.is_iso_c)
-    {
-      /* Need to copy the modified ts from the derived type.  The
-         typespec was modified because C_PTR/C_FUNPTR are translated
-         into (void *) from derived types.  */
-      c->ts.type = c->ts.u.derived->ts.type;
-      c->ts.kind = c->ts.u.derived->ts.kind;
-      c->ts.f90_type = c->ts.u.derived->ts.f90_type;
-      if (c->initializer)
-        {
-          c->initializer->ts.type = c->ts.type;
-          c->initializer->ts.kind = c->ts.kind;
-          c->initializer->ts.f90_type = c->ts.f90_type;
-          c->initializer->expr_type = EXPR_NULL;
-        }
-    }
-
-  return SUCCESS;
-}
 
 /* Build a tree node for a derived type.  If there are equal
    derived types, with different local names, these are built
@@ -2562,7 +2530,32 @@ gfc_get_derived_type (gfc_symbol * derived)
      possible to recurse back to this derived type through a
      pointer component (PR24092). If this happens, the fields
      will be built and so we can return the type.  */
-  gfc_traverse_components (derived, build_derived_comp, NULL);
+  for (c = derived->components; c; c = c->next)
+  {
+    if (c->ts.type != BT_DERIVED && c->ts.type != BT_CLASS)
+      continue;
+
+    if ((!c->attr.pointer && !c->attr.proc_pointer)
+        || c->ts.u.derived->backend_decl == NULL)
+      c->ts.u.derived->backend_decl = gfc_get_derived_type (c->ts.u.derived);
+
+    if (c->ts.u.derived->attr.is_iso_c)
+      {
+        /* Need to copy the modified ts from the derived type.  The
+           typespec was modified because C_PTR/C_FUNPTR are translated
+           into (void *) from derived types.  */
+        c->ts.type = c->ts.u.derived->ts.type;
+        c->ts.kind = c->ts.u.derived->ts.kind;
+        c->ts.f90_type = c->ts.u.derived->ts.f90_type;
+        if (c->initializer)
+          {
+            c->initializer->ts.type = c->ts.type;
+            c->initializer->ts.kind = c->ts.kind;
+            c->initializer->ts.f90_type = c->ts.f90_type;
+            c->initializer->expr_type = EXPR_NULL;
+          }
+      }
+  }
 
   if (TYPE_FIELDS (derived->backend_decl))
     return derived->backend_decl;
