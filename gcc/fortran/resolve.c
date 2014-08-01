@@ -958,22 +958,9 @@ resolve_common_vars (gfc_symbol *sym, bool named_common)
 		       "has an ultimate component that is "
 		       "allocatable", csym->name, &csym->declared_at);
       if (gfc_has_default_initializer (csym->ts.u.derived))
-      {
-        /* Ignore initializers that we made because of -finit-derived. */
-        if (gfc_option.flag_init_derived)
-        {
-          if (csym->value)
-          {
-            gfc_free_expr (csym->value);
-            csym->value = NULL;
-          }
-          free_derived_initializer (csym->ts.u.derived);
-        }
-        else
-          gfc_error_now ("Derived type variable '%s' in COMMON at %L "
-                         "may not have default initializer", csym->name,
-                         &csym->declared_at);
-      }
+        gfc_error_now ("Derived type variable '%s' in COMMON at %L "
+                       "may not have default initializer", csym->name,
+                       &csym->declared_at);
 
       if (csym->attr.flavor == FL_UNKNOWN && !csym->attr.proc_pointer)
 	gfc_add_flavor (&csym->attr, FL_VARIABLE, csym->name, &csym->declared_at);
@@ -13119,9 +13106,11 @@ resolve_fl_derived0 (gfc_symbol *sym)
 			   : sym->components;
 
   /* Resolve all components of this type. */
-  if (gfc_traverse_components_head (c, resolve_component, (void *)sym)
-          == FAILURE)
+  for (; c; c = c->next)
+  {
+    if (resolve_component (c, (void *)sym) == FAILURE)
       return FAILURE;
+  }
 
   check_defined_assignments (sym);
 
