@@ -2825,6 +2825,59 @@ gfc_build_default_init_expr (gfc_typespec *ts, locus *where)
 }
 
 
+/* Apply an initialization expression to a typespec.
+   Can be used for both symbols and components.
+   Similar to add_init_expr_to_sym in decl.c; could probably be combined with
+   some effort. */
+void
+gfc_apply_init (gfc_typespec *ts, symbol_attribute *attr, gfc_expr *init)
+{
+  if (ts->type == BT_CHARACTER && !attr->pointer && init
+      && ts->u.cl
+      && ts->u.cl->length && ts->u.cl->length->expr_type == EXPR_CONSTANT)
+    {
+      int len;
+
+      gcc_assert (ts->u.cl && ts->u.cl->length);
+      gcc_assert (ts->u.cl->length->expr_type == EXPR_CONSTANT);
+      gcc_assert (ts->u.cl->length->ts.type == BT_INTEGER);
+
+      len = mpz_get_si (ts->u.cl->length->value.integer);
+
+      if (init->expr_type == EXPR_CONSTANT)
+	gfc_set_constant_character_len (len, init, -1);
+      else if (mpz_cmp (ts->u.cl->length->value.integer,
+			init->ts.u.cl->length->value.integer))
+	{
+	  gfc_constructor *ctor;
+	  ctor = gfc_constructor_first (init->value.constructor);
+
+	  if (ctor)
+	    {
+	      int first_len;
+	      bool has_ts = (init->ts.u.cl
+			     && init->ts.u.cl->length_from_typespec);
+
+	      /* Remember the length of the first element for checking
+		 that all elements *in the constructor* have the same
+		 length.  This need not be the length of the LHS!  */
+	      gcc_assert (ctor->expr->expr_type == EXPR_CONSTANT);
+	      gcc_assert (ctor->expr->ts.type == BT_CHARACTER);
+	      first_len = ctor->expr->value.character.length;
+
+	      for ( ; ctor; ctor = gfc_constructor_next (ctor))
+		if (ctor->expr->expr_type == EXPR_CONSTANT)
+		{
+		  gfc_set_constant_character_len (len, ctor->expr,
+						  has_ts ? -1 : first_len);
+		  ctor->expr->ts.u.cl->length = gfc_copy_expr (ts->u.cl->length);
+		}
+	    }
+	}
+    }
+}
+
+
 /* Given an actual argument list, test to see that each argument is a
    restricted expression and optionally if the expression type is
    integer or character.  */
