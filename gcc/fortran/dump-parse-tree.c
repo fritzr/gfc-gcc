@@ -723,6 +723,12 @@ show_components (gfc_symbol *sym)
       show_array_spec (c->as);
       if (c->attr.access)
 	fprintf (dumpfile, " %s", gfc_code2string (access_types, c->attr.access));
+      if (c->initializer)
+      {
+        fprintf (dumpfile, " (init ");
+        show_expr (c->initializer);
+        fprintf (dumpfile, ")");
+      }
     }
   --show_level;
 }
@@ -907,6 +913,13 @@ show_symbol (gfc_symbol *sym)
       show_indent ();
       fputs ("Formal namespace", dumpfile);
       show_namespace (sym->formal_ns);
+    }
+
+  if (sym->value)
+    {
+      show_indent ();
+      fputs ("value: ", dumpfile);
+      show_expr (sym->value);
     }
 
   if (sym->components)
