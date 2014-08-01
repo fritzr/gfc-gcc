@@ -11293,6 +11293,25 @@ resolve_fl_var_and_proc (gfc_symbol *sym, int mp_flag)
 }
 
 
+static bool
+can_create_initializer (gfc_symbol *sym)
+{
+  symbol_attribute *a = &sym->attr;
+  if (!sym)
+    return false;
+
+  if (sym->value || sym->attr.allocatable || sym->attr.alloc_comp
+      || a->pointer || a->cray_pointer || a->cray_pointee)
+    return false;
+
+  return ((a->dummy && a->intent == INTENT_OUT)
+          || (!a->save && !a->dummy && !a->pointer
+              && !a->in_common && !a->use_assoc
+              && (a->referenced || a->result)
+              && !(a->function && sym != sym->result)));
+}
+
+
 /* Additional checks for symbols with flavor variable and derived
    type.  To be called from resolve_fl_variable.  */
 
@@ -14011,20 +14030,8 @@ resolve_symbol (gfc_symbol *sym)
   /* If we have come this far we can apply default-initializers, as
      described in 14.7.5, to those variables that have not already
      been assigned one.  */
-  if (sym->ts.type == BT_DERIVED
-      && !sym->value
-      && !sym->attr.allocatable
-      && !sym->attr.alloc_comp)
-    {
-      symbol_attribute *a = &sym->attr;
-
-      if ((!a->save && !a->dummy && !a->pointer
-	   && !a->in_common && !a->use_assoc
-	   && (a->referenced || a->result)
-	   && !(a->function && sym != sym->result))
-	  || (a->dummy && a->intent == INTENT_OUT && !a->pointer))
-	apply_default_init (sym);
-    }
+  if (sym->ts.type == BT_DERIVED && can_create_initializer (sym))
+    apply_default_init (sym);
 
   if (sym->ts.type == BT_CLASS && sym->ns == gfc_current_ns
       && sym->attr.dummy && sym->attr.intent == INTENT_OUT
