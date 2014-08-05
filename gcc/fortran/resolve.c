@@ -1259,6 +1259,7 @@ resolve_cons (gfc_component *comp, gfc_constructor *cons, int init)
 }
 
 static gfc_try resolve_fl_derived0 (gfc_symbol *sym);
+static gfc_try resolve_fl_union (gfc_symbol *);
 
 /* Resolve all of the elements of a structure constructor and make sure that
    the types are correct. The 'init' flag indicates that the given
@@ -1272,6 +1273,8 @@ resolve_structure_cons (gfc_expr *expr, int init)
 
   if (expr->ts.type == BT_DERIVED)
     resolve_fl_derived0 (expr->ts.u.derived);
+  else if (expr->ts.type == BT_UNION)
+    resolve_fl_union (expr->ts.u.derived);
 
   cons = gfc_constructor_first (expr->value.constructor);
 
@@ -1290,6 +1293,10 @@ resolve_structure_cons (gfc_expr *expr, int init)
   if (expr->ts.type == BT_DERIVED && expr->ts.u.derived
       && expr->ts.u.derived->ts.is_iso_c && cons
       && cons->expr && cons->expr->expr_type == EXPR_NULL)
+    return SUCCESS;
+
+  /* Union constructors only have one constructor. */
+  if (expr->ts.type == BT_UNION)
     return SUCCESS;
 
   /* A constructor may have references if it is the result of substituting a
@@ -12662,8 +12669,6 @@ check_defined_assignments (gfc_symbol *derived)
 }
 
 /* Resolve a component (for resolve_fl_derived0). */
-
-static gfc_try resolve_fl_union (gfc_symbol *);
 
 static gfc_try
 resolve_component (gfc_component *c, void *data)

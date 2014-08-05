@@ -6129,6 +6129,23 @@ gfc_conv_structure (gfc_se * se, gfc_expr * expr, int init)
       return;
     }
 
+  /* Though unions appear to have multiple map components, they must only
+     have a single initializer since each map overlaps. */
+  if (expr->ts.type == BT_UNION)
+  {
+    c = gfc_constructor_first (expr->value.constructor);
+    cm = c->n.component;
+    val = gfc_conv_initializer (c->expr, &expr->ts,
+                                TREE_TYPE (cm->backend_decl),
+                                cm->attr.dimension, cm->attr.pointer,
+                                cm->attr.proc_pointer);
+    val = unshare_expr_without_location (val);
+
+    /* Append it to the constructor list.  */
+    CONSTRUCTOR_APPEND_ELT (v, cm->backend_decl, val);
+    goto finish;
+  }
+
   cm = expr->ts.u.derived->components;
 
   for (c = gfc_constructor_first (expr->value.constructor);
@@ -6169,6 +6186,7 @@ gfc_conv_structure (gfc_se * se, gfc_expr * expr, int init)
 	  CONSTRUCTOR_APPEND_ELT (v, cm->backend_decl, val);
 	}
     }
+finish:
   se->expr = build_constructor (type, v);
   if (init)
     TREE_CONSTANT (se->expr) = 1;
