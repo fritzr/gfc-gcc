@@ -653,39 +653,6 @@ gfc_target_interpret_expr (unsigned char *buffer, size_t buffer_size,
    equivalence initializers to a buffer.  This is added to the union
    and the original initializers freed.  */
 
-typedef struct {
-    gfc_constructor *c;
-    unsigned char *data;
-    unsigned char *chk;
-    size_t len;
-} comp_to_char_data;
-
-/* Forward declaration for comp_to_char. */
-static size_t
-expr_to_char (gfc_expr *e, unsigned char *data, unsigned char *chk, size_t len);
-
-/* Take a derived type, one component at a time, using the offsets from the
-   backend declaration. */
-
-static gfc_try
-comp_to_char (gfc_component *cmp, void *data)
-{
-  int ptr;
-  comp_to_char_data *d = (comp_to_char_data *)data;
-
-  gcc_assert (cmp->backend_decl);
-
-  if (d->c->expr)
-    {
-      ptr = TREE_INT_CST_LOW(DECL_FIELD_OFFSET(cmp->backend_decl))
-          + TREE_INT_CST_LOW(DECL_FIELD_BIT_OFFSET(cmp->backend_decl))/8;
-      expr_to_char (d->c->expr, &d->data[ptr], &d->chk[ptr], d->len);
-    }
-
-  d->c = gfc_constructor_next (d->c);
-  return SUCCESS;
-}
-
 /* Writes the values of a constant expression to a char buffer. If another
    unequal initializer has already been written to the buffer, this is an
    error.  */
@@ -695,6 +662,8 @@ expr_to_char (gfc_expr *e, unsigned char *data, unsigned char *chk, size_t len)
 {
   int i;
   unsigned char *buffer;
+  gfc_component *cmp;
+  gfc_constructor *c;
 
   if (e == NULL)
     return 0;
@@ -702,12 +671,21 @@ expr_to_char (gfc_expr *e, unsigned char *data, unsigned char *chk, size_t len)
   /* Handle components recursively.  */
   if (gfc_bt_struct (e->ts.type))
     {
-      comp_to_char_data d;
-      d.data = data;
-      d.chk = chk;
-      d.len = len;
-      d.c = gfc_constructor_first (e->value.constructor);
-      gfc_traverse_components (e->ts.u.derived, comp_to_char, (void *)&d);
+      c = gfc_constructor_first (e->value.constructor);
+      for (cmp = e->ts.u.derived->components; cmp; cmp = cmp->next)
+      {
+        int ptr;
+        gcc_assert (cmp->backend_decl);
+
+        if (c->expr)
+          {
+            ptr = TREE_INT_CST_LOW(DECL_FIELD_OFFSET(cmp->backend_decl))
+                + TREE_INT_CST_LOW(DECL_FIELD_BIT_OFFSET(cmp->backend_decl))/8;
+            expr_to_char (c->expr, &data[ptr], &chk[ptr], len);
+          }
+
+        c = gfc_constructor_next (c);
+      }
       return len;
     }
 

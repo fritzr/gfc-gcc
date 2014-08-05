@@ -1041,34 +1041,22 @@ resolve_contained_functions (gfc_namespace *ns)
 }
 
 
-static gfc_try resolve_fl_derived0 (gfc_symbol *sym);
-
-typedef struct {
-    gfc_try t;
-    gfc_constructor *cons;
-    int init;
-} resolve_cons_data;
-
 static gfc_try
-resolve_cons (gfc_component *comp, void *data)
+resolve_cons (gfc_component *comp, gfc_constructor *cons, int init)
 {
   int rank;
   bool impure;
   symbol_attribute a;
-  resolve_cons_data *d = (resolve_cons_data *)data;
-  gfc_constructor *cons = d->cons;
+  gfc_try t = SUCCESS;
 
   if (!cons)
     return FAILURE;
 
   if (!cons->expr)
-    goto continu;
+    return FAILURE;
 
   if (gfc_resolve_expr (cons->expr) == FAILURE)
-    {
-      d->t = FAILURE;
-      goto continu;
-    }
+      return FAILURE;
 
   rank = comp->as ? comp->as->rank : 0;
   if (cons->expr->expr_type != EXPR_NULL && rank != cons->expr->rank
@@ -1078,7 +1066,7 @@ resolve_cons (gfc_component *comp, void *data)
                  "constructor at %L does not match that of the "
                  "component (%d/%d)", &cons->expr->where,
                  cons->expr->rank, rank);
-      d->t = FAILURE;
+      t = FAILURE;
     }
 
   /* If we don't have the right type, try to convert it.  */
@@ -1100,13 +1088,13 @@ resolve_cons (gfc_component *comp, void *data)
                      &cons->expr->where, comp->name,
                      gfc_basic_typename (cons->expr->ts.type),
                      gfc_basic_typename (comp->ts.type));
-          d->t = FAILURE;
+          t = FAILURE;
         }
       else
         {
           gfc_try t2 = gfc_convert_type (cons->expr, &comp->ts, 1);
-          if (d->t != FAILURE)
-            d->t = t2;
+          if (t != FAILURE)
+            t = t2;
         }
     }
 
@@ -1179,7 +1167,7 @@ resolve_cons (gfc_component *comp, void *data)
                && (CLASS_DATA (comp)->attr.class_pointer
                    || CLASS_DATA (comp)->attr.allocatable))))
     {
-      d->t = FAILURE;
+      t = FAILURE;
       gfc_error ("The NULL in the structure constructor at %L is "
                  "being applied to component '%s', which is neither "
                  "a POINTER nor ALLOCATABLE", &cons->expr->where,
@@ -1223,30 +1211,30 @@ resolve_cons (gfc_component *comp, void *data)
 
   if (!comp->attr.pointer || comp->attr.proc_pointer
       || cons->expr->expr_type == EXPR_NULL)
-    goto continu;
+    return t;
 
   a = gfc_expr_attr (cons->expr);
 
   if (!a.pointer && !a.target)
     {
-      d->t = FAILURE;
+      t = FAILURE;
       gfc_error ("The element in the structure constructor at %L, "
                  "for pointer component '%s' should be a POINTER or "
                  "a TARGET", &cons->expr->where, comp->name);
     }
 
-  if (d->init)
+  if (init)
     {
       /* F08:C461. Additional checks for pointer initialization.  */
       if (a.allocatable)
         {
-          d->t = FAILURE;
+          t = FAILURE;
           gfc_error ("Pointer initialization target at %L "
                      "must not be ALLOCATABLE ", &cons->expr->where);
         }
       if (!a.save)
         {
-          d->t = FAILURE;
+          t = FAILURE;
           gfc_error ("Pointer initialization target at %L "
                      "must have the SAVE attribute", &cons->expr->where);
         }
@@ -1258,7 +1246,7 @@ resolve_cons (gfc_component *comp, void *data)
                     || gfc_is_coindexed (cons->expr));
   if (impure && gfc_pure (NULL))
     {
-      d->t = FAILURE;
+      t = FAILURE;
       gfc_error ("Invalid expression in the structure constructor for "
                  "pointer component '%s' at %L in PURE procedure",
                  comp->name, &cons->expr->where);
@@ -1267,11 +1255,10 @@ resolve_cons (gfc_component *comp, void *data)
   if (impure)
     gfc_unset_implicit_pure (NULL);
 
-continu:
-  d->cons = gfc_constructor_next (cons);
-  return SUCCESS;
+  return t;
 }
 
+static gfc_try resolve_fl_derived0 (gfc_symbol *sym);
 
 /* Resolve all of the elements of a structure constructor and make sure that
    the types are correct. The 'init' flag indicates that the given
@@ -1313,13 +1300,11 @@ resolve_structure_cons (gfc_expr *expr, int init)
   else
     comp = expr->ts.u.derived->components;
 
-  resolve_cons_data d;
-  d.t = SUCCESS;
-  d.cons = cons;
-  d.init = init;
-  if (gfc_traverse_components_head (comp, resolve_cons, (void *)&d) == FAILURE)
+  for (; comp; comp = comp->next, cons = gfc_constructor_next (cons))
+    if (resolve_cons (comp, cons, init) == FAILURE)
       return FAILURE;
-  return d.t;
+
+  return SUCCESS;
 }
 
 /****************** Expression name resolution ******************/
