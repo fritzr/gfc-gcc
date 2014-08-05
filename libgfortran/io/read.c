@@ -1056,7 +1056,7 @@ exponent:
      the d parameter before explict conversion takes place.  */
 
   if (w == 0)
-    goto bad_float;
+    goto done; /* Extension: exponent defaults to 1 when ommitted. */
 
   if (dtp->u.p.blank_status == BLANK_UNSPECIFIED)
     {

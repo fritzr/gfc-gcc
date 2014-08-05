@@ -1618,7 +1618,10 @@ read_real (st_parameter_dt *dtp, void * dest, int length)
 
  exp2:
   if (!isdigit (c))
-    goto bad_real;
+  {
+    push_char (dtp, '1');
+    goto done; /* Extension: exponent defaults to 1 when ommitted. */
+  }
   push_char (dtp, c);
 
   for (;;)
