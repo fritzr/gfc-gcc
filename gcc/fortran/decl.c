@@ -1896,7 +1896,7 @@ check_variable_name (char *name)
   /* Ensure variable name does not conflict with another entity.
      Note that STRUCTURE types (unlike derived types) have no generic symbol
      accessible from user-level code therefore will not conflict here. */
-  gfc_find_symbol (name, gfc_current_ns, 1, &sym);
+  gfc_find_symbol (name, NULL, 1, &sym);
   if (sym && !sym->attr.implicit_type && sym->attr.flavor != FL_STRUCT
       && (sym->ts.type != BT_UNKNOWN 
           || (sym->attr.flavor == FL_PROCEDURE && sym->generic))
@@ -2085,6 +2085,14 @@ variable_decl (int elem)
     goto cleanup;
   }
 
+  /* Component name checks are done elsewhere. */
+  if (!gfc_comp_is_derived (gfc_current_state ())
+      && check_variable_name (name) == FAILURE)
+  {
+    return MATCH_ERROR;
+    goto cleanup;
+  }
+
   /*  If this symbol has already shown up in a Cray Pointer declaration,
       then we want to set the type & bail out.  */
   if (gfc_option.flag_cray_pointer)
@@ -2152,14 +2160,6 @@ variable_decl (int elem)
      For components of derived types, it is not true, so we don't
      create a symbol for those yet.  If we fail to create the symbol,
      bail out.  */
-  /* Component name checks are done elsewhere. */
-  if (!gfc_comp_is_derived (gfc_current_state ())
-      && check_variable_name (name) == FAILURE)
-  {
-    return MATCH_ERROR;
-    goto cleanup;
-  }
-
   if (!gfc_comp_is_derived (gfc_current_state ())
       && build_sym (name, cl, cl_deferred, &as, &var_locus) == FAILURE)
     {
