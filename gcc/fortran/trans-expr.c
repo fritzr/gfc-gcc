@@ -6056,41 +6056,19 @@ gfc_trans_subcomponent_assign (tree dest, gfc_component * cm, gfc_expr * expr)
   return gfc_finish_block (&block);
 }
 
-typedef struct {
-    gfc_constructor *c;
-    stmtblock_t *block;
-    tree dest;
-} comp_assign_cons_data;
-
-static gfc_try
-comp_assign_cons (gfc_component *cm, void *data)
-{
-  tree tmp;
-  tree field;
-  comp_assign_cons_data *d = (comp_assign_cons_data *)data;
-
-  /* Skip absent members in default initializers.  */
-  if (d->c->expr)
-    {
-      field = cm->backend_decl;
-      tmp = fold_build3_loc (input_location, COMPONENT_REF, TREE_TYPE (field),
-                             d->dest, field, NULL_TREE);
-      tmp = gfc_trans_subcomponent_assign (tmp, cm, d->c->expr);
-      gfc_add_expr_to_block (d->block, tmp);
-    }
-
-  d->c = gfc_constructor_next (d->c);
-  return SUCCESS;
-}
-
 /* Assign a derived type constructor to a variable.  */
 
 static tree
 gfc_trans_structure_assign (tree dest, gfc_expr * expr)
 {
+  gfc_constructor *c;
+  gfc_component *cm;
   stmtblock_t block;
+  tree field;
+  tree tmp;
 
   gfc_start_block (&block);
+  cm = expr->ts.u.derived->components;
 
   if (expr->ts.u.derived->from_intmod == INTMOD_ISO_C_BINDING
       && (expr->ts.u.derived->intmod_sym_id == ISOCBINDING_PTR
@@ -6098,7 +6076,7 @@ gfc_trans_structure_assign (tree dest, gfc_expr * expr)
     {
       gfc_se se, lse;
 
-      gcc_assert (expr->ts.u.derived->components->backend_decl == NULL);
+      gcc_assert (cm->backend_decl == NULL);
       gfc_init_se (&se, NULL);
       gfc_init_se (&lse, NULL);
       gfc_conv_expr (&se, gfc_constructor_first (expr->value.constructor)->expr);
@@ -6109,69 +6087,20 @@ gfc_trans_structure_assign (tree dest, gfc_expr * expr)
       return gfc_finish_block (&block);
     }
 
-  comp_assign_cons_data d;
-  d.c = gfc_constructor_first (expr->value.constructor);
-  d.block = &block;
-  d.dest = dest;
-  gfc_traverse_components (expr->ts.u.derived, comp_assign_cons, (void *)&d);
+  for (c = gfc_constructor_first (expr->value.constructor);
+       c; c = gfc_constructor_next (c), cm = cm->next)
+    {
+      /* Skip absent members in default initializers.  */
+      if (!c->expr)
+	continue;
 
+      field = cm->backend_decl;
+      tmp = fold_build3_loc (input_location, COMPONENT_REF, TREE_TYPE (field),
+			     dest, field, NULL_TREE);
+      tmp = gfc_trans_subcomponent_assign (tmp, cm, c->expr);
+      gfc_add_expr_to_block (&block, tmp);
+    }
   return gfc_finish_block (&block);
-}
-
-typedef struct {
-    gfc_constructor *c;
-    vec<constructor_elt, va_gc> *v;
-} conv_comp_data;
-
-/* Convert a constructor for a single component; part of gfc_conv_structure. */
-
-static gfc_try
-conv_comp (gfc_component *cm, void *data)
-{
-  conv_comp_data *d = (conv_comp_data *)data;
-  tree val;
-
-  if (!d->c)
-      return FAILURE;
-
-  /* Skip absent members in default initializers and allocatable
-     components.  Although the latter have a default initializer
-     of EXPR_NULL,... by default, the static nullify is not needed
-     since this is done every time we come into scope.  */
-  if (!d->c->expr || (cm->attr.allocatable && cm->attr.flavor != FL_PROCEDURE))
-    goto continu;
-
-  if (cm->initializer && cm->initializer->expr_type != EXPR_NULL
-      && strcmp (cm->name, "_extends") == 0
-      && cm->initializer->symtree)
-    {
-      tree vtab;
-      gfc_symbol *vtabs;
-      vtabs = cm->initializer->symtree->n.sym;
-      vtab = gfc_build_addr_expr (NULL_TREE, gfc_get_symbol_decl (vtabs));
-      vtab = unshare_expr_without_location (vtab);
-      CONSTRUCTOR_APPEND_ELT (d->v, cm->backend_decl, vtab);
-    }
-  else if (cm->ts.u.derived && strcmp (cm->name, "_size") == 0)
-    {
-      val = TYPE_SIZE_UNIT (gfc_get_derived_type (cm->ts.u.derived));
-      CONSTRUCTOR_APPEND_ELT (d->v, cm->backend_decl, val);
-    }
-  else
-    {
-      val = gfc_conv_initializer (d->c->expr, &cm->ts,
-                                  TREE_TYPE (cm->backend_decl),
-                                  cm->attr.dimension, cm->attr.pointer,
-                                  cm->attr.proc_pointer);
-      val = unshare_expr_without_location (val);
-
-      /* Append it to the constructor list.  */
-      CONSTRUCTOR_APPEND_ELT (d->v, cm->backend_decl, val);
-    }
-
-continu:
-  d->c = gfc_constructor_next (d->c);
-  return SUCCESS;
 }
 
 /* Build an expression for a constructor. If init is nonzero then
@@ -6180,8 +6109,12 @@ continu:
 void
 gfc_conv_structure (gfc_se * se, gfc_expr * expr, int init)
 {
+  gfc_constructor *c;
+  gfc_component *cm;
+  tree val;
   tree type;
   tree tmp;
+  vec<constructor_elt, va_gc> *v = NULL;
 
   gcc_assert (se->ss == NULL);
   gcc_assert (expr->expr_type == EXPR_STRUCTURE);
@@ -6196,12 +6129,47 @@ gfc_conv_structure (gfc_se * se, gfc_expr * expr, int init)
       return;
     }
 
-  conv_comp_data d;
-  d.v = NULL;
-  d.c = gfc_constructor_first (expr->value.constructor);
-  gfc_traverse_components (expr->ts.u.derived, conv_comp, (void *)&d);
+  cm = expr->ts.u.derived->components;
 
-  se->expr = build_constructor (type, d.v);
+  for (c = gfc_constructor_first (expr->value.constructor);
+       c; c = gfc_constructor_next (c), cm = cm->next)
+    {
+      /* Skip absent members in default initializers and allocatable
+	 components.  Although the latter have a default initializer
+	 of EXPR_NULL,... by default, the static nullify is not needed
+	 since this is done every time we come into scope.  */
+      if (!c->expr || (cm->attr.allocatable && cm->attr.flavor != FL_PROCEDURE))
+        continue;
+
+      if (cm->initializer && cm->initializer->expr_type != EXPR_NULL
+	  && strcmp (cm->name, "_extends") == 0
+	  && cm->initializer->symtree)
+	{
+	  tree vtab;
+	  gfc_symbol *vtabs;
+	  vtabs = cm->initializer->symtree->n.sym;
+	  vtab = gfc_build_addr_expr (NULL_TREE, gfc_get_symbol_decl (vtabs));
+	  vtab = unshare_expr_without_location (vtab);
+	  CONSTRUCTOR_APPEND_ELT (v, cm->backend_decl, vtab);
+	}
+      else if (cm->ts.u.derived && strcmp (cm->name, "_size") == 0)
+	{
+	  val = TYPE_SIZE_UNIT (gfc_get_derived_type (cm->ts.u.derived));
+	  CONSTRUCTOR_APPEND_ELT (v, cm->backend_decl, val);
+	}
+      else
+	{
+	  val = gfc_conv_initializer (c->expr, &cm->ts,
+				      TREE_TYPE (cm->backend_decl),
+				      cm->attr.dimension, cm->attr.pointer,
+				      cm->attr.proc_pointer);
+	  val = unshare_expr_without_location (val);
+
+	  /* Append it to the constructor list.  */
+	  CONSTRUCTOR_APPEND_ELT (v, cm->backend_decl, val);
+	}
+    }
+  se->expr = build_constructor (type, v);
   if (init)
     TREE_CONSTANT (se->expr) = 1;
 }
