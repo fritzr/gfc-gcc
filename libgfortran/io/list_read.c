@@ -1619,7 +1619,7 @@ read_real (st_parameter_dt *dtp, void * dest, int length)
  exp2:
   if (!isdigit (c))
   {
-    push_char (dtp, '1');
+    push_char (dtp, '0');
     goto done; /* Extension: exponent defaults to 1 when ommitted. */
   }
   push_char (dtp, c);
