@@ -1548,7 +1548,7 @@ list_formatted_write_scalar (st_parameter_dt *dtp, bt type, void *p, int kind,
   if (dtp->u.p.first_item)
     {
       dtp->u.p.first_item = 0;
-      write_char (dtp, ' ');
+      if (dtp->u.p.current_unit->flags.cc != CC_FORTRAN) write_char (dtp, ' ');
     }
   else
     {

@@ -2015,7 +2015,8 @@ typedef struct
 {
   gfc_expr *unit, *file, *status, *access, *form, *recl,
     *blank, *position, *action, *delim, *pad, *iostat, *iomsg, *convert,
-    *decimal, *encoding, *round, *sign, *asynchronous, *id, *newunit, *share;
+    *decimal, *encoding, *round, *sign, *asynchronous, *id, *newunit, *share,
+    *cc;
   int readonly : 1;
   gfc_st_label *err;
 }

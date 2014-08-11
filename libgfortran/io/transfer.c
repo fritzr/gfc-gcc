@@ -306,7 +306,8 @@ read_sf (st_parameter_dt *dtp, int * length)
       q = fbuf_getc (dtp->u.p.current_unit);
       if (q == EOF)
 	break;
-      else if (q == '\n' || q == '\r')
+      else if (dtp->u.p.current_unit->flags.cc != CC_NONE
+               && (q == '\n' || q == '\r'))
 	{
 	  /* Unexpected end of line. Set the position.  */
 	  dtp->u.p.sf_seen_eor = 1;
@@ -2416,6 +2417,7 @@ data_transfer_init (st_parameter_dt *dtp, int read_flag)
       u_flags.round = ROUND_UNSPECIFIED;
       u_flags.sign = SIGN_UNSPECIFIED;
       u_flags.share = SHARE_UNSPECIFIED;
+      u_flags.cc = CC_UNSPECIFIED;
       u_flags.readonly = 0;
 
       u_flags.status = STATUS_UNKNOWN;
@@ -3038,6 +3040,9 @@ next_record_r (st_parameter_dt *dtp, int done)
   int bytes_left;
   char p;
   int cc;
+  unit_flags flags;
+
+  flags = dtp->u.p.current_unit->flags;
 
   switch (current_mode (dtp))
     {
@@ -3102,7 +3107,7 @@ next_record_r (st_parameter_dt *dtp, int done)
 	    } 
 	  break;
 	}
-      else 
+      else if (flags.cc != CC_NONE)
 	{
 	  do
 	    {
@@ -3291,7 +3296,10 @@ static void
 next_record_w (st_parameter_dt *dtp, int done)
 {
   gfc_offset m, record, max_pos;
+  unit_flags flags;
   int length;
+
+  flags = dtp->u.p.current_unit->flags;
 
   /* Zero counters for X- and T-editing.  */
   max_pos = dtp->u.p.max_pos;
@@ -3434,11 +3442,15 @@ next_record_w (st_parameter_dt *dtp, int done)
       else
 	{
 #ifdef HAVE_CRLF
-	  const int len = 2;
+	  static const int lflen = 2;
 #else
-	  const int len = 1;
+	  static const int lflen = 1;
 #endif
+          const int len = flags.cc == CC_NONE ? 0 : lflen;
           fbuf_seek (dtp->u.p.current_unit, 0, SEEK_END);
+          /* Skip newlines for CC_NONE */
+          if (flags.cc != CC_NONE)
+          {
           char * p = fbuf_alloc (dtp->u.p.current_unit, len);
           if (!p)
             goto io_error;
@@ -3446,6 +3458,7 @@ next_record_w (st_parameter_dt *dtp, int done)
           *(p++) = '\r';
 #endif
           *p = '\n';
+          }
 	  if (is_stream_io (dtp))
 	    {
 	      dtp->u.p.current_unit->strm_pos += len;

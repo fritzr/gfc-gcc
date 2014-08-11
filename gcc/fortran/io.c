@@ -41,6 +41,8 @@ static const io_tag
         tag_readonly    = {"READONLY", " readonly", NULL, BT_UNKNOWN },
         tag_shared      = {"SHARED", " shared", NULL, BT_UNKNOWN },
         tag_noshared    = {"NOSHARED", " noshared", NULL, BT_UNKNOWN },
+        tag_cc          = {"CARRIAGECONTROL",
+                           " carriagecontrol =", " %e", BT_CHARACTER },
         tag_e_share     = {"SHARE", " share =", " %e", BT_CHARACTER },
 	tag_file	= {"FILE", " file =", " %e", BT_CHARACTER },
 	tag_status	= {"STATUS", " status =", " %e", BT_CHARACTER},
@@ -1714,6 +1716,9 @@ match_open_element (gfc_open *open)
   m = match_dec_etag (&tag_e_share, &open->share);
   if (m != MATCH_NO)
     return m;
+  m = match_dec_etag (&tag_cc, &open->cc);
+  if (m != MATCH_NO)
+    return m;
   m = match_dec_ftag (&tag_readonly, open);
   if (m != MATCH_NO)
     return m;
@@ -1754,6 +1759,7 @@ gfc_free_open (gfc_open *open)
   gfc_free_expr (open->asynchronous);
   gfc_free_expr (open->newunit);
   gfc_free_expr (open->share);
+  gfc_free_expr (open->cc);
   free (open);
 }
 
@@ -1785,6 +1791,7 @@ gfc_resolve_open (gfc_open *open)
   RESOLVE_TAG (&tag_convert, open->convert);
   RESOLVE_TAG (&tag_newunit, open->newunit);
   RESOLVE_TAG (&tag_e_share, open->share);
+  RESOLVE_TAG (&tag_cc, open->cc);
 
   if (gfc_reference_st_label (open->err, ST_LABEL_TARGET) == FAILURE)
     return FAILURE;
@@ -2029,6 +2036,17 @@ gfc_match_open (void)
 					  "OPEN", warn))
 	    goto cleanup;
 	}
+    }
+
+  /* Checks on the CARRIAGECONTROL specifier. */
+  if (open->cc)
+    {
+      static const char *cc[] = { "LIST", "FORTRAN", "NONE", NULL };
+
+      if (!compare_to_allowed_values ("CARRIAGECONTROL", cc, NULL, NULL,
+                                      open->cc->value.character.string,
+                                      "OPEN", warn))
+        goto cleanup;
     }
 
   /* Checks on the DECIMAL specifier.  */

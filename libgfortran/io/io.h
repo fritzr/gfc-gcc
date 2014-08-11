@@ -215,6 +215,12 @@ typedef enum
 unit_share;
 
 typedef enum
+{ CC_LIST, CC_FORTRAN, CC_NONE,
+  CC_UNSPECIFIED
+}
+unit_cc;
+
+typedef enum
 { SIGN_S, SIGN_SS, SIGN_SP }
 unit_sign_s;
 
@@ -247,6 +253,7 @@ typedef struct
   GFC_INTEGER_4 *newunit;
   GFC_INTEGER_4 (readonly);
   CHARACTER1 (share);
+  CHARACTER2 (cc);
 }
 st_parameter_open;
 
@@ -512,6 +519,7 @@ typedef struct
   unit_sign sign;
   unit_async async;
   unit_share share;
+  unit_cc cc;
   int is_notpadded : 1;
   int has_recl     : 1;
   int readonly     : 1;

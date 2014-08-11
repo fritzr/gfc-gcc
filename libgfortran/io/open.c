@@ -55,6 +55,14 @@ static const st_option share_opt[] =
   { NULL, 0}
 };
 
+static const st_option cc_opt[] =
+{
+  { "list", CC_LIST },
+  { "fortran", CC_FORTRAN },
+  { "none", CC_NONE },
+  { NULL, 0}
+};
+
 static const st_option blank_opt[] =
 {
   { "null", BLANK_NULL},
@@ -202,6 +210,10 @@ edit_modes (st_parameter_open *opp, gfc_unit * u, unit_flags * flags)
     generate_error (&opp->common, LIBERROR_BAD_OPTION,
                     "Cannot change SHARE parameter in OPEN statement");
 
+  if (flags->cc != CC_UNSPECIFIED && u->flags.cc != flags->cc)
+    generate_error (&opp->common, LIBERROR_BAD_OPTION,
+                  "Cannot change CARRIAGECONTROL parameter in OPEN statement");
+
   /* Status must be OLD if present.  */
 
   if (flags->status != STATUS_UNSPECIFIED && flags->status != STATUS_OLD &&
@@ -336,6 +348,16 @@ new_unit (st_parameter_open *opp, gfc_unit *u, unit_flags * flags)
 
   if (flags->status == STATUS_UNSPECIFIED)
     flags->status = STATUS_UNKNOWN;
+
+  if (flags->cc == CC_UNSPECIFIED)
+    flags->cc = flags->form == FORM_UNFORMATTED ? CC_NONE : CC_LIST;
+  else if (flags->form == FORM_UNFORMATTED && flags->cc != CC_NONE)
+    {
+      generate_error (&opp->common, LIBERROR_OPTION_CONFLICT,
+          "CARRIAGECONTROL parameter conflicts with UNFORMATTED form in "
+          "OPEN statement");
+      goto fail;
+    }
 
   /* Checks.  */
 
@@ -750,6 +772,10 @@ st_open (st_parameter_open *opp)
   flags.share = !(cf & IOPARM_OPEN_HAS_SHARE) ? SHARE_UNSPECIFIED :
     find_option (&opp->common, opp->share, opp->share_len,
                  share_opt, "Bad SHARE parameter in OPEN statement");
+
+  flags.cc = !(cf & IOPARM_OPEN_HAS_CC) ? CC_UNSPECIFIED :
+    find_option (&opp->common, opp->cc, opp->cc_len,
+                 cc_opt, "Bad CARRIAGECONTROL parameter in OPEN statement");
 
   flags.blank = !(cf & IOPARM_OPEN_HAS_BLANK) ? BLANK_UNSPECIFIED :
     find_option (&opp->common, opp->blank, opp->blank_len,

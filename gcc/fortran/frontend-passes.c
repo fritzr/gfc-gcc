@@ -1853,6 +1853,7 @@ gfc_code_walker (gfc_code **c, walk_code_fn_t codefn, walk_expr_fn_t exprfn,
 	      WALK_SUBEXPR (co->ext.open->id);
 	      WALK_SUBEXPR (co->ext.open->newunit);
 	      WALK_SUBEXPR (co->ext.open->share);
+	      WALK_SUBEXPR (co->ext.open->cc);
 	      break;
 
 	    case EXEC_CLOSE:
