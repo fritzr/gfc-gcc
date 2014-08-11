@@ -405,6 +405,10 @@ fdec-member-dot
 Fortran
 Enable dot (`.`) as a member separator (in addition to the usual `%`).
 
+fdec-static
+Fortran
+Enable STATIC and AUTOMATIC attributes.
+
 fdec-structure
 Fortran
 Enable DEC STRUCTURE extension.

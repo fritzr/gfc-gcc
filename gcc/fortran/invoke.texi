@@ -118,6 +118,7 @@ by type.  Explanations are in the following sections.
 -fd-lines-as-comments @gol
 -fdec -fdec-extended-int -fdec-member-dot -fdec-structure -fdec-math @gol
 -fdec-logical-xor -fdec-bitwise-ops -fdec-io fdec-intrinsic-ints -ffeed @gol
+-fdec-static @gol
 -fdefault-double-8 -fdefault-integer-8 -fdefault-real-8 -fdollar-ok @gol
 -ffixed-line-length-@var{n} -ffixed-line-length-none -ffree-form @gol
 -ffree-line-length-@var{n} -ffree-line-length-none -fimplicit-none @gol
@@ -240,7 +241,7 @@ The options enabled by this switch are: @option{-fdollar-ok}
 @option{-fdec-structure} @option{-fdec-member-dot} @option{-fdec-extended-int}
 @option{-fdec-math} @option{-fdec-logical-xor} @option{-fdec-bitwise-ops}
 @option{-fd-lines-as-comments} @option{-fdec-io} @option{-ffeed}
-@option{fdec-intrinsic-ints}
+@option{-fdec-intrinsic-ints} @option{-fdec-static}
 
 @item -fdec-intrinsic-ints
 @opindex @code{fdec-intrinsic-ints}
@@ -266,6 +267,11 @@ statements.
 @item -fdec-member-dot
 @opindex @code{fdec-member-dot}
 Enable dot (`.`) as a member separator (in addition to the usual `%`).
+
+@item -fdec-static
+@opindex @code{fdec-static}
+Enable STATIC and AUTOMATIC as attributes specifying storage location.
+For GFORTRAN, STATIC is the same as SAVE.
 
 @item -fdec-structure
 @opindex @code{fdec-structure}

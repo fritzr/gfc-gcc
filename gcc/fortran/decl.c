@@ -3603,6 +3603,7 @@ match_attr_spec (void)
     DECL_ALLOCATABLE = GFC_DECL_BEGIN, DECL_DIMENSION, DECL_EXTERNAL,
     DECL_IN, DECL_OUT, DECL_INOUT, DECL_INTRINSIC, DECL_OPTIONAL,
     DECL_PARAMETER, DECL_POINTER, DECL_PROTECTED, DECL_PRIVATE,
+    DECL_STATIC, DECL_AUTOMATIC,
     DECL_PUBLIC, DECL_SAVE, DECL_TARGET, DECL_VALUE, DECL_VOLATILE,
     DECL_IS_BIND_C, DECL_CODIMENSION, DECL_ASYNCHRONOUS, DECL_CONTIGUOUS,
     DECL_NONE, GFC_DECL_END /* Sentinel */
@@ -3667,6 +3668,14 @@ match_attr_spec (void)
 		      d = DECL_ASYNCHRONOUS;
 		    }
 		  break;
+
+                case 'u':
+                  if (match_string_p ("tomatic"))
+                    {
+                      /* Matched "automatic". */
+                      d = DECL_AUTOMATIC;
+                    }
+                  break;
 		}
 	      break;
 
@@ -3795,8 +3804,25 @@ match_attr_spec (void)
 	      break;
 
 	    case 's':
-	      if (match_string_p ("save"))
-		d = DECL_SAVE;
+	      gfc_next_ascii_char ();
+	      switch (gfc_next_ascii_char ())
+                {
+                  case 'a':
+                  if (match_string_p ("ve"))
+                    {
+                      /* Matched "save". */
+                      d = DECL_SAVE;
+                    }
+                  break;
+
+                  case 't':
+                  if (match_string_p ("atic"))
+                    {
+                      /* Matched "static". */
+                      d = DECL_STATIC;
+                    }
+                  break;
+                }
 	      break;
 
 	    case 't':
@@ -3933,6 +3959,12 @@ match_attr_spec (void)
 	  case DECL_SAVE:
 	    attr = "SAVE";
 	    break;
+          case DECL_STATIC:
+            attr = "STATIC";
+            break;
+          case DECL_AUTOMATIC:
+            attr = "AUTOMATIC";
+            break;
 	  case DECL_TARGET:
 	    attr = "TARGET";
 	    break;
@@ -3962,6 +3994,18 @@ match_attr_spec (void)
 	continue;
       else
         attr_seen = 1;
+
+      if ((d == DECL_STATIC || d == DECL_AUTOMATIC)
+          && !gfc_option.flag_dec_static)
+      {
+        gfc_error ("%s at %L is a DEC extension, enable with -fdec-static",
+                   d == DECL_STATIC ? "STATIC" : "AUTOMATIC", &seen_at[d]);
+        m = MATCH_ERROR;
+        goto cleanup;
+      }
+      /* Allow SAVE with STATIC, but don't complain. */
+      if (d == DECL_STATIC && seen[DECL_SAVE])
+        continue;
 
       if (gfc_comp_is_derived (gfc_current_state ())
 	  && d != DECL_DIMENSION && d != DECL_CODIMENSION
@@ -4109,9 +4153,14 @@ match_attr_spec (void)
 			      &seen_at[d]);
 	  break;
 
+        case DECL_STATIC:
 	case DECL_SAVE:
 	  t = gfc_add_save (&current_attr, SAVE_EXPLICIT, NULL, &seen_at[d]);
 	  break;
+
+        case DECL_AUTOMATIC:
+          t = gfc_add_automatic (&current_attr, NULL, &seen_at[d]);
+          break;
 
 	case DECL_TARGET:
 	  t = gfc_add_target (&current_attr, &seen_at[d]);
@@ -7351,6 +7400,110 @@ gfc_match_parameter (void)
     }
 
   return m;
+}
+
+
+match
+gfc_match_automatic (void)
+{
+  gfc_symbol *sym;
+  match m;
+  bool seen_symbol = false;
+
+  if (!gfc_option.flag_dec_static)
+  {
+    gfc_error ("AUTOMATIC at %C is a DEC extension, enable with -fdec-static");
+    return MATCH_ERROR;
+  }
+
+  gfc_match (" ::");
+
+  for (;;)
+    {
+      m = gfc_match_symbol (&sym, 0);
+      switch (m)
+	{
+        case MATCH_NO:
+	case MATCH_ERROR:
+	  return MATCH_ERROR;
+
+	case MATCH_YES:
+	  if (gfc_add_automatic (&sym->attr, sym->name, &gfc_current_locus)
+              == FAILURE)
+	    return MATCH_ERROR;
+          seen_symbol = true;
+	  break;
+	}
+
+      if (gfc_match_eos () == MATCH_YES)
+	break;
+      if (gfc_match_char (',') != MATCH_YES)
+	goto syntax;
+    }
+
+  if (!seen_symbol)
+  {
+    gfc_error ("Expected var-list in AUTOMATIC statement at %C");
+    return MATCH_ERROR;
+  }
+
+  return MATCH_YES;
+
+syntax:
+  gfc_error ("Syntax error in AUTOMATIC statement at %C");
+  return MATCH_ERROR;
+}
+
+
+match
+gfc_match_static (void)
+{
+  gfc_symbol *sym;
+  match m;
+  bool seen_symbol = false;
+
+  if (!gfc_option.flag_dec_static)
+  {
+    gfc_error ("STATIC at %C is a DEC extension, enable with -fdec-static");
+    return MATCH_ERROR;
+  }
+
+  gfc_match (" ::");
+
+  for (;;)
+    {
+      m = gfc_match_symbol (&sym, 0);
+      switch (m)
+	{
+        case MATCH_NO:
+	case MATCH_ERROR:
+	  return MATCH_ERROR;
+
+	case MATCH_YES:
+	  if (gfc_add_save (&sym->attr, SAVE_EXPLICIT, sym->name,
+			    &gfc_current_locus) == FAILURE)
+	    return MATCH_ERROR;
+          seen_symbol = true;
+	  break;
+	}
+
+      if (gfc_match_eos () == MATCH_YES)
+	break;
+      if (gfc_match_char (',') != MATCH_YES)
+	goto syntax;
+    }
+
+  if (!seen_symbol)
+  {
+    gfc_error ("Expected var-list in STATIC statement at %C");
+    return MATCH_ERROR;
+  }
+
+  return MATCH_YES;
+
+syntax:
+  gfc_error ("Syntax error in STATIC statement at %C");
+  return MATCH_ERROR;
 }
 
 

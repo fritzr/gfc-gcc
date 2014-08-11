@@ -363,7 +363,7 @@ check_conflict (symbol_attribute *attr, const char *name, locus *where)
     *volatile_ = "VOLATILE", *is_protected = "PROTECTED",
     *is_bind_c = "BIND(C)", *procedure = "PROCEDURE",
     *asynchronous = "ASYNCHRONOUS", *codimension = "CODIMENSION",
-    *contiguous = "CONTIGUOUS", *generic = "GENERIC";
+    *contiguous = "CONTIGUOUS", *generic = "GENERIC", *automatic = "AUTOMATIC";
   static const char *threadprivate = "THREADPRIVATE";
 
   const char *a1, *a2;
@@ -422,6 +422,7 @@ check_conflict (symbol_attribute *attr, const char *name, locus *where)
       conf (dummy, save);
       conf (in_common, save);
       conf (result, save);
+      conf (automatic, save);
 
       switch (attr->flavor)
 	{
@@ -455,6 +456,12 @@ check_conflict (symbol_attribute *attr, const char *name, locus *where)
   conf (pointer, intrinsic);
   conf (pointer, elemental);
   conf (allocatable, elemental);
+
+  conf (in_common, automatic);
+  conf (in_equivalence, automatic);
+  conf (result, automatic);
+  conf (use_assoc, automatic);
+  conf (dummy, automatic);
 
   conf (target, external);
   conf (target, intrinsic);
@@ -1091,6 +1098,21 @@ gfc_add_result (symbol_attribute *attr, const char *name, locus *where)
     return FAILURE;
 
   attr->result = 1;
+  return check_conflict (attr, name, where);
+}
+
+
+gfc_try
+gfc_add_automatic (symbol_attribute *attr, const char *name, locus *where)
+{
+  if (check_used (attr, name, where))
+    return FAILURE;
+
+  if (attr->automatic && gfc_notify_std (GFC_STD_LEGACY, 
+      "Duplicate AUTOMATIC attribute specified at %L", where) == FAILURE)
+    return FAILURE;
+
+  attr->automatic = 1;
   return check_conflict (attr, name, where);
 }
 
@@ -1749,6 +1771,8 @@ gfc_copy_attr (symbol_attribute *dest, symbol_attribute *src, locus *where)
   if (src->pointer && gfc_add_pointer (dest, where) == FAILURE)
     goto fail;
   if (src->is_protected && gfc_add_protected (dest, NULL, where) == FAILURE)
+    goto fail;
+  if (src->automatic && gfc_add_automatic (dest, NULL, where) == FAILURE)
     goto fail;
   if (src->save && gfc_add_save (dest, src->save, NULL, where) == FAILURE)
     goto fail;
@@ -3773,6 +3797,13 @@ gfc_is_var_automatic (gfc_symbol *sym)
       && sym->ts.u.cl
       && !gfc_is_constant_expr (sym->ts.u.cl->length))
     return true;
+  /* Variables with explicit AUTOMATIC attribute. */
+  if (sym->attr.automatic)
+  {
+    gfc_warning_now ("%s at %L marked AUTOMATIC in blanket SAVE namespace "
+             "so variable will not be SAVEd", sym->name, &sym->declared_at);
+    return true;
+  }
   return false;
 }
 
