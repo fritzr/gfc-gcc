@@ -2415,6 +2415,8 @@ data_transfer_init (st_parameter_dt *dtp, int read_flag)
       u_flags.async = ASYNC_UNSPECIFIED;
       u_flags.round = ROUND_UNSPECIFIED;
       u_flags.sign = SIGN_UNSPECIFIED;
+      u_flags.share = SHARE_UNSPECIFIED;
+      u_flags.readonly = 0;
 
       u_flags.status = STATUS_UNKNOWN;
 

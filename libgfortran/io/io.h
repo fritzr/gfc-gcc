@@ -245,8 +245,8 @@ typedef struct
   CHARACTER1 (sign);
   CHARACTER2 (asynchronous);
   GFC_INTEGER_4 *newunit;
-  CHARACTER1 (share);
   GFC_INTEGER_4 (readonly);
+  CHARACTER1 (share);
 }
 st_parameter_open;
 

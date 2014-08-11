@@ -1378,11 +1378,29 @@ match_ltag (const io_tag *tag, gfc_st_label ** label)
 }
 
 
+/* Match a tag using match_etag, but only if -fdec-io is enabled. 
+   Gives a nice error if the tag was matched but -fdec-io is not on. */
+static match
+match_dec_etag (const io_tag *tag, gfc_expr **e)
+{
+  match m = match_etag (tag, e);
+  if (gfc_option.flag_dec_io && m != MATCH_NO)
+    return m;
+  else if (m != MATCH_NO)
+  {
+    gfc_error ("%s is a DEC extension at %C, re-compile with"
+               "-fdec-io to enable", tag->name);
+    return MATCH_ERROR;
+  }
+
+  return m;
+}
+
 /* Match a flag tag (tag with no var/expr association, such as READONLY).
    The open object is messed with accordingly. */
 
 static match
-match_dectag (const io_tag *tag, gfc_open *o)
+match_dec_ftag (const io_tag *tag, gfc_open *o)
 {
   match m;
   locus *where;
@@ -1693,20 +1711,13 @@ match_open_element (gfc_open *open)
     return m;
 
   /* The following are DEC extensions. */
-  m = match_etag (&tag_e_share, &open->share);
-  if (gfc_option.flag_dec_io && m != MATCH_NO)
-    return m;
-  else if (m != MATCH_NO)
-  {
-    gfc_error ("%s is a DEC extension at %C, re-compile with"
-               "-fdec-io to enable", tag_e_share.name);
-    return MATCH_ERROR;
-  }
-
-  m = match_dectag (&tag_readonly, open);
+  m = match_dec_etag (&tag_e_share, &open->share);
   if (m != MATCH_NO)
     return m;
-  m = match_dectag (&tag_shared, open);
+  m = match_dec_ftag (&tag_readonly, open);
+  if (m != MATCH_NO)
+    return m;
+  m = match_dec_ftag (&tag_shared, open);
   if (m != MATCH_NO)
     return m;
 
