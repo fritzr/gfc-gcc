@@ -2275,6 +2275,7 @@ copy_union_components (gfc_symbol *to, gfc_symbol *from, bool from_gsym)
   for (; to_map; to_map = to_map->next, from_map = from_map->next)
   {
     to_map->backend_decl = from_map->backend_decl;
+    to_map->ts.u.derived->backend_decl = from_map->ts.u.derived->backend_decl;
     copy_components (to_map->ts.u.derived, from_map->ts.u.derived, from_gsym);
   }
 }
