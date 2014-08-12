@@ -2296,7 +2296,6 @@ static void
 parse_union (void)
 {
     int compiling;
-    bool seen_map;
     gfc_statement st;
     gfc_state_data s;
     gfc_component *c;
@@ -2306,7 +2305,6 @@ parse_union (void)
     push_state (&s, COMP_UNION, gfc_new_block);
     un = gfc_new_block;
 
-    seen_map = false;
     compiling = 1;
 
     while (compiling)
@@ -2331,7 +2329,6 @@ parse_union (void)
           }
           c->ts.type = BT_DERIVED;
           c->ts.u.derived = gfc_new_block;
-          seen_map = true;
           break;
 
         case ST_END_UNION:
@@ -2360,7 +2357,7 @@ parse_union (void)
     c->ts.type = BT_UNION;
     c->ts.u.derived = un;
 
-    un->attr.zero_comp = !seen_map;
+    un->attr.zero_comp = un->components == NULL;
 }
 
 /* Parse a structure definition. */
@@ -2368,7 +2365,7 @@ parse_union (void)
 static void
 parse_structure (void)
 { 
-    int compiling_type, seen_field;
+    int compiling_type;
     gfc_statement st;
     gfc_state_data s;
     gfc_symbol *sym;
@@ -2385,7 +2382,6 @@ parse_structure (void)
 
     gfc_new_block->component_access = ACCESS_PUBLIC;
     compiling_type = 1;
-    seen_field = 0;
 
     while (compiling_type)
     {
@@ -2413,7 +2409,6 @@ parse_structure (void)
 
         case ST_DATA_DECL:
           accept_statement (ST_DATA_DECL);
-          seen_field = 1;
           /* The data declaration was a nested/ad-hoc STRUCTURE field */
           if (gfc_new_block && gfc_new_block != gfc_current_block ()
                             && gfc_new_block->attr.flavor == FL_STRUCT)
@@ -2437,7 +2432,7 @@ parse_structure (void)
     sym = gfc_current_block ();
     gfc_traverse_components (sym, check_component, (void *)sym);
 
-    sym->attr.zero_comp = !seen_field;
+    sym->attr.zero_comp = sym->components == NULL;
 
     pop_state ();
 
@@ -2449,7 +2444,7 @@ parse_structure (void)
 static void
 parse_map (void)
 {
-    int compiling_type, seen_field;
+    int compiling_type;
     gfc_statement st;
     gfc_state_data s;
     gfc_symbol *sym;
@@ -2466,7 +2461,6 @@ parse_map (void)
 
     gfc_new_block->component_access = ACCESS_PUBLIC;
     compiling_type = 1;
-    seen_field = 0;
 
     while (compiling_type)
     {
@@ -2493,7 +2487,6 @@ parse_map (void)
 
         case ST_DATA_DECL:
           accept_statement (ST_DATA_DECL);
-          seen_field = 1;
           /* The data declaration was a nested/ad-hoc STRUCTURE field */
           if (gfc_new_block && gfc_new_block != gfc_current_block ()
                             && gfc_new_block->attr.flavor == FL_STRUCT)
@@ -2517,7 +2510,7 @@ parse_map (void)
     sym = gfc_current_block ();
     gfc_traverse_components (sym, check_component, (void *)sym);
 
-    sym->attr.zero_comp = !seen_field;
+    sym->attr.zero_comp = sym->components == NULL;
 
     /* So parse_union can add this structure to its list of maps */
     gfc_new_block = gfc_current_block ();
@@ -2655,7 +2648,7 @@ endType:
   sym = gfc_current_block ();
   gfc_traverse_components (sym, check_component, (void *)sym);
 
-  sym->attr.zero_comp = seen_component;
+  sym->attr.zero_comp = !seen_component;
 
   pop_state ();
 }
