@@ -1,5 +1,5 @@
 ! { dg-do compile }
-! { dg-options "-ffeed" }
+! { dg-options "-ffeed -ffixed-form" }
 !
       PROGRAM MAIN
 
