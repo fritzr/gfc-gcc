@@ -7424,280 +7424,35 @@ gfc_copy_allocatable_data (tree dest, tree src, tree type, int rank)
   return duplicate_allocatable (dest, src, type, rank, true);
 }
 
-enum alloc_comp_purpose {
-    DEALLOCATE_ALLOC_COMP = 1,
-    NULLIFY_ALLOC_COMP,
-    COPY_ALLOC_COMP,
-    COPY_ONLY_ALLOC_COMP
-};
-
-typedef struct {
-    alloc_comp_purpose purpose;
-    tree decl, dest;
-    stmtblock_t *fnblock;
-} alloc_comp_data;
-
-/* Forward declaration for mutual recursion with alloc_component. */
-static tree
-structure_alloc_comps (gfc_symbol * der_type, tree decl,
-		       tree dest, int rank, alloc_comp_purpose purpose);
-
-/* Generate code to deallocate, nullify or copy allocatable components. */
-static gfc_try
-alloc_component (gfc_component *c, void *data)
-{
-  bool cmp_has_alloc_comps;
-  bool called_dealloc_with_status;
-  stmtblock_t tmpblock;
-  tree tmp, dcmp, cdecl, ctype, comp, nelems, null_cond;
-  int rank;
-  alloc_comp_data *d = (alloc_comp_data *)data;
-  
-  cmp_has_alloc_comps = (gfc_bt_struct (c->ts.type) || c->ts.type == BT_CLASS)
-                        && c->ts.u.derived->attr.alloc_comp;
-
-  cdecl = c->backend_decl;
-  ctype = TREE_TYPE (cdecl);
-
-  switch (d->purpose)
-    {
-    case DEALLOCATE_ALLOC_COMP:
-
-      /* gfc_deallocate_scalar_with_status calls gfc_deallocate_alloc_comp
-         (i.e. this function) so generate all the calls and suppress the
-         recursion from here, if necessary.  */
-      called_dealloc_with_status = false;
-      gfc_init_block (&tmpblock);
-
-      if (c->attr.allocatable && (c->attr.dimension || c->attr.codimension)
-          && !c->attr.proc_pointer)
-        {
-          comp = fold_build3_loc (input_location, COMPONENT_REF, ctype,
-                                  d->decl, cdecl, NULL_TREE);
-          tmp = gfc_trans_dealloc_allocated (comp, c->attr.codimension);
-          gfc_add_expr_to_block (&tmpblock, tmp);
-        }
-      else if (c->attr.allocatable)
-        {
-          /* Allocatable scalar components.  */
-          comp = fold_build3_loc (input_location, COMPONENT_REF, ctype,
-                                  d->decl, cdecl, NULL_TREE);
-
-          tmp = gfc_deallocate_scalar_with_status (comp, NULL, true, NULL,
-                                                   c->ts);
-          gfc_add_expr_to_block (&tmpblock, tmp);
-          called_dealloc_with_status = true;
-
-          tmp = fold_build2_loc (input_location, MODIFY_EXPR,
-                                 void_type_node, comp,
-                                 build_int_cst (TREE_TYPE (comp), 0));
-          gfc_add_expr_to_block (&tmpblock, tmp);
-        }
-      else if (c->ts.type == BT_CLASS && CLASS_DATA (c)->attr.allocatable)
-        {
-          /* Allocatable CLASS components.  */
-          comp = fold_build3_loc (input_location, COMPONENT_REF, ctype,
-                                  d->decl, cdecl, NULL_TREE);
-
-          /* Add reference to '_data' component.  */
-          tmp = CLASS_DATA (c)->backend_decl;
-          comp = fold_build3_loc (input_location, COMPONENT_REF,
-                                  TREE_TYPE (tmp), comp, tmp, NULL_TREE);
-
-          if (GFC_DESCRIPTOR_TYPE_P(TREE_TYPE (comp)))
-            tmp = gfc_trans_dealloc_allocated (comp,
-                                    CLASS_DATA (c)->attr.codimension);
-          else
-            {
-              tmp = gfc_deallocate_scalar_with_status (comp, NULL_TREE, true, NULL,
-                                                       CLASS_DATA (c)->ts);
-              gfc_add_expr_to_block (&tmpblock, tmp);
-              called_dealloc_with_status = true;
-
-              tmp = fold_build2_loc (input_location, MODIFY_EXPR,
-                                     void_type_node, comp,
-                                     build_int_cst (TREE_TYPE (comp), 0));
-            }
-          gfc_add_expr_to_block (&tmpblock, tmp);
-        }
-
-      if (cmp_has_alloc_comps
-            && !c->attr.pointer
-            && !called_dealloc_with_status)
-        {
-          /* Do not deallocate the components of ultimate pointer
-             components or iteratively call self if call has been made
-             to gfc_trans_dealloc_allocated  */
-          comp = fold_build3_loc (input_location, COMPONENT_REF, ctype,
-                                  d->decl, cdecl, NULL_TREE);
-          rank = c->as ? c->as->rank : 0;
-          tmp = structure_alloc_comps (c->ts.u.derived, comp, NULL_TREE,
-                                       rank, d->purpose);
-          gfc_add_expr_to_block (d->fnblock, tmp);
-        }
-
-      /* Now add the deallocation of this component.  */
-      gfc_add_block_to_block (d->fnblock, &tmpblock);
-      break;
-
-    case NULLIFY_ALLOC_COMP:
-      if (c->attr.pointer)
-        return SUCCESS;
-      else if (c->attr.allocatable
-               && (c->attr.dimension|| c->attr.codimension))
-        {
-          comp = fold_build3_loc (input_location, COMPONENT_REF, ctype,
-                                  d->decl, cdecl, NULL_TREE);
-          gfc_conv_descriptor_data_set (d->fnblock, comp, null_pointer_node);
-        }
-      else if (c->attr.allocatable)
-        {
-          /* Allocatable scalar components.  */
-          comp = fold_build3_loc (input_location, COMPONENT_REF, ctype,
-                                  d->decl, cdecl, NULL_TREE);
-          tmp = fold_build2_loc (input_location, MODIFY_EXPR,
-                                 void_type_node, comp,
-                                 build_int_cst (TREE_TYPE (comp), 0));
-          gfc_add_expr_to_block (d->fnblock, tmp);
-        }
-      else if (c->ts.type == BT_CLASS && CLASS_DATA (c)->attr.allocatable)
-        {
-          /* Allocatable CLASS components.  */
-          comp = fold_build3_loc (input_location, COMPONENT_REF, ctype,
-                                  d->decl, cdecl, NULL_TREE);
-          /* Add reference to '_data' component.  */
-          tmp = CLASS_DATA (c)->backend_decl;
-          comp = fold_build3_loc (input_location, COMPONENT_REF,
-                                  TREE_TYPE (tmp), comp, tmp, NULL_TREE);
-          if (GFC_DESCRIPTOR_TYPE_P(TREE_TYPE (comp)))
-            gfc_conv_descriptor_data_set (d->fnblock, comp, null_pointer_node);
-          else
-            {
-              tmp = fold_build2_loc (input_location, MODIFY_EXPR,
-                                     void_type_node, comp,
-                                     build_int_cst (TREE_TYPE (comp), 0));
-              gfc_add_expr_to_block (d->fnblock, tmp);
-            }
-        }
-      else if (cmp_has_alloc_comps)
-        {
-          comp = fold_build3_loc (input_location, COMPONENT_REF, ctype,
-                                  d->decl, cdecl, NULL_TREE);
-          rank = c->as ? c->as->rank : 0;
-          tmp = structure_alloc_comps (c->ts.u.derived, comp, NULL_TREE,
-                                       rank, d->purpose);
-          gfc_add_expr_to_block (d->fnblock, tmp);
-        }
-      break;
-
-    case COPY_ALLOC_COMP:
-      if (c->attr.pointer)
-        return SUCCESS;
-
-      /* We need source and destination components.  */
-      comp = fold_build3_loc (input_location, COMPONENT_REF, ctype, d->decl,
-                              cdecl, NULL_TREE);
-      dcmp = fold_build3_loc (input_location, COMPONENT_REF, ctype, d->dest,
-                              cdecl, NULL_TREE);
-      dcmp = fold_convert (TREE_TYPE (comp), dcmp);
-
-      if (c->ts.type == BT_CLASS && CLASS_DATA (c)->attr.allocatable)
-        {
-          tree ftn_tree;
-          tree size;
-          tree dst_data;
-          tree src_data;
-          tree null_data;
-
-          dst_data = gfc_class_data_get (dcmp);
-          src_data = gfc_class_data_get (comp);
-          size = fold_convert (size_type_node, gfc_vtable_size_get (comp));
-
-          if (CLASS_DATA (c)->attr.dimension)
-            {
-              nelems = gfc_conv_descriptor_size (src_data,
-                                                 CLASS_DATA (c)->as->rank);
-              src_data = gfc_conv_descriptor_data_get (src_data);
-              dst_data = gfc_conv_descriptor_data_get (dst_data);
-            }
-          else
-            nelems = build_int_cst (size_type_node, 1);
-
-          gfc_init_block (&tmpblock);
-
-          /* We need to use CALLOC as _copy might try to free allocatable
-             components of the destination.  */
-          ftn_tree = builtin_decl_explicit (BUILT_IN_CALLOC);
-          tmp = build_call_expr_loc (input_location, ftn_tree, 2, nelems,
-                                     size);
-          gfc_add_modify (&tmpblock, dst_data,
-                          fold_convert (TREE_TYPE (dst_data), tmp));
-
-          tmp = gfc_copy_class_to_class (comp, dcmp, nelems);
-          gfc_add_expr_to_block (&tmpblock, tmp);
-          tmp = gfc_finish_block (&tmpblock);
-
-          gfc_init_block (&tmpblock);
-          gfc_add_modify (&tmpblock, dst_data,
-                          fold_convert (TREE_TYPE (dst_data),
-                                        null_pointer_node));
-          null_data = gfc_finish_block (&tmpblock);
-
-          null_cond = fold_build2_loc (input_location, NE_EXPR,
-                                       boolean_type_node, src_data,
-                                       null_pointer_node);
-
-          gfc_add_expr_to_block (d->fnblock, build3_v (COND_EXPR, null_cond,
-                                                     tmp, null_data));
-          return SUCCESS;
-        }
-
-      if (c->attr.allocatable && !c->attr.proc_pointer
-          && !cmp_has_alloc_comps)
-        {
-          rank = c->as ? c->as->rank : 0;
-          tmp = gfc_duplicate_allocatable (dcmp, comp, ctype, rank);
-          gfc_add_expr_to_block (d->fnblock, tmp);
-        }
-
-      if (cmp_has_alloc_comps)
-        {
-          rank = c->as ? c->as->rank : 0;
-          tmp = fold_convert (TREE_TYPE (dcmp), comp);
-          gfc_add_modify (d->fnblock, dcmp, tmp);
-          tmp = structure_alloc_comps (c->ts.u.derived, comp, dcmp,
-                                       rank, d->purpose);
-          gfc_add_expr_to_block (d->fnblock, tmp);
-        }
-      break;
-
-    default:
-      gcc_unreachable ();
-      break;
-    }
-
-  return SUCCESS;
-}
 
 /* Recursively traverse an object of derived type, generating code to
    deallocate, nullify or copy allocatable components.  This is the work horse
-   function for the functions named in the alloc_comp_purpose enum.  */
+   function for the functions named in this enum.  */
+
+enum {DEALLOCATE_ALLOC_COMP = 1, NULLIFY_ALLOC_COMP, COPY_ALLOC_COMP,
+      COPY_ONLY_ALLOC_COMP};
 
 static tree
 structure_alloc_comps (gfc_symbol * der_type, tree decl,
-		       tree dest, int rank, alloc_comp_purpose purpose)
+		       tree dest, int rank, int purpose)
 {
+  gfc_component *c;
   gfc_loopinfo loop;
   stmtblock_t fnblock;
   stmtblock_t loopbody;
+  stmtblock_t tmpblock;
   tree decl_type;
   tree tmp;
+  tree comp;
+  tree dcmp;
   tree nelems;
   tree index;
   tree var;
+  tree cdecl;
+  tree ctype;
   tree vref, dref;
   tree null_cond = NULL_TREE;
-  alloc_comp_data data;
+  bool called_dealloc_with_status;
 
   gfc_init_block (&fnblock);
 
@@ -7795,11 +7550,231 @@ structure_alloc_comps (gfc_symbol * der_type, tree decl,
 
   /* Otherwise, act on the components or recursively call self to
      act on a chain of components.  */
-  data.purpose = purpose;
-  data.decl = decl;
-  data.dest = dest;
-  data.fnblock = &fnblock;
-  gfc_traverse_components (der_type, alloc_component, (void *)&data);
+  for (c = der_type->components; c; c = c->next)
+    {
+      bool cmp_has_alloc_comps = (c->ts.type == BT_DERIVED
+				  || c->ts.type == BT_CLASS)
+				    && c->ts.u.derived->attr.alloc_comp;
+      cdecl = c->backend_decl;
+      ctype = TREE_TYPE (cdecl);
+
+      switch (purpose)
+	{
+	case DEALLOCATE_ALLOC_COMP:
+
+	  /* gfc_deallocate_scalar_with_status calls gfc_deallocate_alloc_comp
+	     (i.e. this function) so generate all the calls and suppress the
+	     recursion from here, if necessary.  */
+	  called_dealloc_with_status = false;
+	  gfc_init_block (&tmpblock);
+
+	  if (c->attr.allocatable && (c->attr.dimension || c->attr.codimension)
+	      && !c->attr.proc_pointer)
+	    {
+	      comp = fold_build3_loc (input_location, COMPONENT_REF, ctype,
+				      decl, cdecl, NULL_TREE);
+	      tmp = gfc_trans_dealloc_allocated (comp, c->attr.codimension);
+	      gfc_add_expr_to_block (&tmpblock, tmp);
+	    }
+	  else if (c->attr.allocatable)
+	    {
+	      /* Allocatable scalar components.  */
+	      comp = fold_build3_loc (input_location, COMPONENT_REF, ctype,
+				      decl, cdecl, NULL_TREE);
+
+	      tmp = gfc_deallocate_scalar_with_status (comp, NULL, true, NULL,
+						       c->ts);
+	      gfc_add_expr_to_block (&tmpblock, tmp);
+	      called_dealloc_with_status = true;
+
+	      tmp = fold_build2_loc (input_location, MODIFY_EXPR,
+				     void_type_node, comp,
+				     build_int_cst (TREE_TYPE (comp), 0));
+	      gfc_add_expr_to_block (&tmpblock, tmp);
+	    }
+	  else if (c->ts.type == BT_CLASS && CLASS_DATA (c)->attr.allocatable)
+	    {
+	      /* Allocatable CLASS components.  */
+	      comp = fold_build3_loc (input_location, COMPONENT_REF, ctype,
+				      decl, cdecl, NULL_TREE);
+
+	      /* Add reference to '_data' component.  */
+	      tmp = CLASS_DATA (c)->backend_decl;
+	      comp = fold_build3_loc (input_location, COMPONENT_REF,
+				      TREE_TYPE (tmp), comp, tmp, NULL_TREE);
+
+	      if (GFC_DESCRIPTOR_TYPE_P(TREE_TYPE (comp)))
+	        tmp = gfc_trans_dealloc_allocated (comp,
+					CLASS_DATA (c)->attr.codimension);
+	      else
+		{
+		  tmp = gfc_deallocate_scalar_with_status (comp, NULL_TREE, true, NULL,
+							   CLASS_DATA (c)->ts);
+		  gfc_add_expr_to_block (&tmpblock, tmp);
+		  called_dealloc_with_status = true;
+
+		  tmp = fold_build2_loc (input_location, MODIFY_EXPR,
+					 void_type_node, comp,
+					 build_int_cst (TREE_TYPE (comp), 0));
+		}
+	      gfc_add_expr_to_block (&tmpblock, tmp);
+	    }
+
+	  if (cmp_has_alloc_comps
+		&& !c->attr.pointer
+		&& !called_dealloc_with_status)
+	    {
+	      /* Do not deallocate the components of ultimate pointer
+		 components or iteratively call self if call has been made
+		 to gfc_trans_dealloc_allocated  */
+	      comp = fold_build3_loc (input_location, COMPONENT_REF, ctype,
+				      decl, cdecl, NULL_TREE);
+	      rank = c->as ? c->as->rank : 0;
+	      tmp = structure_alloc_comps (c->ts.u.derived, comp, NULL_TREE,
+					   rank, purpose);
+	      gfc_add_expr_to_block (&fnblock, tmp);
+	    }
+
+	  /* Now add the deallocation of this component.  */
+	  gfc_add_block_to_block (&fnblock, &tmpblock);
+	  break;
+
+	case NULLIFY_ALLOC_COMP:
+	  if (c->attr.pointer)
+	    continue;
+	  else if (c->attr.allocatable
+		   && (c->attr.dimension|| c->attr.codimension))
+	    {
+	      comp = fold_build3_loc (input_location, COMPONENT_REF, ctype,
+				      decl, cdecl, NULL_TREE);
+	      gfc_conv_descriptor_data_set (&fnblock, comp, null_pointer_node);
+	    }
+	  else if (c->attr.allocatable)
+	    {
+	      /* Allocatable scalar components.  */
+	      comp = fold_build3_loc (input_location, COMPONENT_REF, ctype,
+				      decl, cdecl, NULL_TREE);
+	      tmp = fold_build2_loc (input_location, MODIFY_EXPR,
+				     void_type_node, comp,
+				     build_int_cst (TREE_TYPE (comp), 0));
+	      gfc_add_expr_to_block (&fnblock, tmp);
+	    }
+	  else if (c->ts.type == BT_CLASS && CLASS_DATA (c)->attr.allocatable)
+	    {
+	      /* Allocatable CLASS components.  */
+	      comp = fold_build3_loc (input_location, COMPONENT_REF, ctype,
+				      decl, cdecl, NULL_TREE);
+	      /* Add reference to '_data' component.  */
+	      tmp = CLASS_DATA (c)->backend_decl;
+	      comp = fold_build3_loc (input_location, COMPONENT_REF,
+				      TREE_TYPE (tmp), comp, tmp, NULL_TREE);
+	      if (GFC_DESCRIPTOR_TYPE_P(TREE_TYPE (comp)))
+		gfc_conv_descriptor_data_set (&fnblock, comp, null_pointer_node);
+	      else
+		{
+		  tmp = fold_build2_loc (input_location, MODIFY_EXPR,
+					 void_type_node, comp,
+					 build_int_cst (TREE_TYPE (comp), 0));
+		  gfc_add_expr_to_block (&fnblock, tmp);
+		}
+	    }
+          else if (cmp_has_alloc_comps)
+	    {
+	      comp = fold_build3_loc (input_location, COMPONENT_REF, ctype,
+				      decl, cdecl, NULL_TREE);
+	      rank = c->as ? c->as->rank : 0;
+	      tmp = structure_alloc_comps (c->ts.u.derived, comp, NULL_TREE,
+					   rank, purpose);
+	      gfc_add_expr_to_block (&fnblock, tmp);
+	    }
+	  break;
+
+	case COPY_ALLOC_COMP:
+	  if (c->attr.pointer)
+	    continue;
+
+	  /* We need source and destination components.  */
+	  comp = fold_build3_loc (input_location, COMPONENT_REF, ctype, decl,
+				  cdecl, NULL_TREE);
+	  dcmp = fold_build3_loc (input_location, COMPONENT_REF, ctype, dest,
+				  cdecl, NULL_TREE);
+	  dcmp = fold_convert (TREE_TYPE (comp), dcmp);
+
+	  if (c->ts.type == BT_CLASS && CLASS_DATA (c)->attr.allocatable)
+	    {
+	      tree ftn_tree;
+	      tree size;
+	      tree dst_data;
+	      tree src_data;
+	      tree null_data;
+
+	      dst_data = gfc_class_data_get (dcmp);
+	      src_data = gfc_class_data_get (comp);
+	      size = fold_convert (size_type_node, gfc_vtable_size_get (comp));
+
+	      if (CLASS_DATA (c)->attr.dimension)
+		{
+		  nelems = gfc_conv_descriptor_size (src_data,
+						     CLASS_DATA (c)->as->rank);
+		  src_data = gfc_conv_descriptor_data_get (src_data);
+		  dst_data = gfc_conv_descriptor_data_get (dst_data);
+		}
+	      else
+		nelems = build_int_cst (size_type_node, 1);
+
+	      gfc_init_block (&tmpblock);
+
+	      /* We need to use CALLOC as _copy might try to free allocatable
+		 components of the destination.  */
+	      ftn_tree = builtin_decl_explicit (BUILT_IN_CALLOC);
+              tmp = build_call_expr_loc (input_location, ftn_tree, 2, nelems,
+					 size);
+	      gfc_add_modify (&tmpblock, dst_data,
+			      fold_convert (TREE_TYPE (dst_data), tmp));
+
+	      tmp = gfc_copy_class_to_class (comp, dcmp, nelems);
+	      gfc_add_expr_to_block (&tmpblock, tmp);
+	      tmp = gfc_finish_block (&tmpblock);
+
+	      gfc_init_block (&tmpblock);
+	      gfc_add_modify (&tmpblock, dst_data,
+			      fold_convert (TREE_TYPE (dst_data),
+					    null_pointer_node));
+	      null_data = gfc_finish_block (&tmpblock);
+
+	      null_cond = fold_build2_loc (input_location, NE_EXPR,
+					   boolean_type_node, src_data,
+				           null_pointer_node);
+
+	      gfc_add_expr_to_block (&fnblock, build3_v (COND_EXPR, null_cond,
+							 tmp, null_data));
+	      continue;
+	    }
+
+	  if (c->attr.allocatable && !c->attr.proc_pointer
+	      && !cmp_has_alloc_comps)
+	    {
+	      rank = c->as ? c->as->rank : 0;
+	      tmp = gfc_duplicate_allocatable (dcmp, comp, ctype, rank);
+	      gfc_add_expr_to_block (&fnblock, tmp);
+	    }
+
+          if (cmp_has_alloc_comps)
+	    {
+	      rank = c->as ? c->as->rank : 0;
+	      tmp = fold_convert (TREE_TYPE (dcmp), comp);
+	      gfc_add_modify (&fnblock, dcmp, tmp);
+	      tmp = structure_alloc_comps (c->ts.u.derived, comp, dcmp,
+					   rank, purpose);
+	      gfc_add_expr_to_block (&fnblock, tmp);
+	    }
+	  break;
+
+	default:
+	  gcc_unreachable ();
+	  break;
+	}
+    }
 
   return gfc_finish_block (&fnblock);
 }
