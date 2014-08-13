@@ -407,27 +407,6 @@ gfc_is_class_container_ref (gfc_expr *e)
   return result;
 }
 
-/* For gfc_class_null_initializer to traverse components. */
-
-typedef struct {
-    gfc_symbol *vtab;
-    gfc_expr *init;
-} ctor_builder;
-
-static gfc_try
-ctor_append (gfc_component *comp, void *arg)
-{
-    ctor_builder *b = (ctor_builder *)arg;
-
-    gfc_constructor *ctor = gfc_constructor_get();
-    if (strcmp (comp->name, "_vptr") == 0 && b->vtab)
-        ctor->expr = gfc_lval_expr_from_sym (b->vtab);
-    else
-        ctor->expr = gfc_get_null_expr (NULL);
-    gfc_constructor_append (&b->init->value.constructor, ctor);
-
-    return SUCCESS;
-}
 
 /* Build a NULL initializer for CLASS pointers,
    initializing the _data component to NULL and
@@ -437,6 +416,7 @@ gfc_expr *
 gfc_class_null_initializer (gfc_typespec *ts, gfc_expr *init_expr)
 {
   gfc_expr *init;
+  gfc_component *comp;
   gfc_symbol *vtab = NULL;
   bool is_unlimited_polymorphic;
 
@@ -453,10 +433,15 @@ gfc_class_null_initializer (gfc_typespec *ts, gfc_expr *init_expr)
 					     &ts->u.derived->declared_at);
   init->ts = *ts;
 
-  ctor_builder b;
-  b.vtab = vtab;
-  b.init = init;
-  gfc_traverse_components (ts->u.derived, ctor_append, (void *)&b);
+  for (comp = ts->u.derived->components; comp; comp = comp->next)
+    {
+      gfc_constructor *ctor = gfc_constructor_get();
+      if (strcmp (comp->name, "_vptr") == 0 && vtab)
+	ctor->expr = gfc_lval_expr_from_sym (vtab);
+      else
+	ctor->expr = gfc_get_null_expr (NULL);
+      gfc_constructor_append (&init->value.constructor, ctor);
+    }
 
   return init;
 }
@@ -751,41 +736,26 @@ add_procs_to_declared_vtab1 (gfc_symtree *st, gfc_symbol *vtype)
     add_proc_comp (vtype, st->name, st->n.tb);
 }
 
-static gfc_try
-copy_vtab_proc (gfc_component *cmp, void *vp)
-{
-    gfc_symbol *vtype = (gfc_symbol *)vp;
-    if (gfc_find_component (vtype, cmp->name, true, true, NULL) == NULL)
-        add_proc_comp (vtype, cmp->name, cmp->tb);
-    return SUCCESS;
-}
 
 /* Copy procedure pointers components from the parent type.  */
 
 static void
 copy_vtab_proc_comps (gfc_symbol *declared, gfc_symbol *vtype)
 {
-  gfc_symbol *vtab = gfc_find_derived_vtab (declared);
-  gfc_traverse_components (vtab->ts.u.derived, copy_vtab_proc, (void *)vtype);
+  gfc_component *cmp;
+  gfc_symbol *vtab;
+
+  vtab = gfc_find_derived_vtab (declared);
+
+  for (cmp = vtab->ts.u.derived->components; cmp; cmp = cmp->next)
+    {
+      if (gfc_find_component (vtype, cmp->name, true, true, NULL))
+	continue;
+
+      add_proc_comp (vtype, cmp->name, cmp->tb);
+    }
 }
 
-/* Forward declaration for has_finalizer. */
-static bool has_finalizer_component (gfc_symbol *);
-
-static gfc_try
-has_finalizer (gfc_component *c, void *data ATTRIBUTE_UNUSED)
-{
-  if (c->ts.type == BT_DERIVED && c->ts.u.derived->f2k_derived
-      && c->ts.u.derived->f2k_derived->finalizers)
-    return FAILURE;
-
-  if (c->ts.type == BT_DERIVED
-      && !c->attr.pointer && !c->attr.allocatable
-      && has_finalizer_component (c->ts.u.derived))
-    return FAILURE;
-
-  return SUCCESS;
-}
 
 /* Returns true if any of its nonpointer nonallocatable components or
    their nonpointer nonallocatable subcomponents has a finalization
@@ -794,29 +764,22 @@ has_finalizer (gfc_component *c, void *data ATTRIBUTE_UNUSED)
 static bool
 has_finalizer_component (gfc_symbol *derived)
 {
-    return gfc_traverse_components (derived, has_finalizer, NULL) == FAILURE;
+   gfc_component *c;
+
+  for (c = derived->components; c; c = c->next)
+    {
+      if (c->ts.type == BT_DERIVED && c->ts.u.derived->f2k_derived
+	  && c->ts.u.derived->f2k_derived->finalizers)
+	return true;
+
+      if (c->ts.type == BT_DERIVED
+	  && !c->attr.pointer && !c->attr.allocatable
+	  && has_finalizer_component (c->ts.u.derived))
+	return true;
+    }
+  return false;
 }
 
-typedef struct {
-    gfc_expr *e;
-    gfc_symbol *derived;
-    gfc_symbol *stat;
-    gfc_symbol *fini_coarray;
-    gfc_code **code;
-} finalizer;
-
-/* Forward declaraion for finalize_wrap. */
-static void finalize_component (
-        gfc_expr *expr, gfc_symbol *derived, gfc_component *comp,
-        gfc_symbol *stat, gfc_symbol *fini_coarray, gfc_code **code);
-
-static gfc_try
-finalize_wrap (gfc_component *c, void *fin)
-{
-    finalizer *f = (finalizer *)fin;
-    finalize_component (f->e, f->derived, c, f->stat, f->fini_coarray, f->code);
-    return SUCCESS;
-}
 
 /* Call DEALLOCATE for the passed component if it is allocatable, if it is
    neither allocatable nor a pointer but has a finalizer, call it. If it
@@ -936,7 +899,9 @@ finalize_component (gfc_expr *expr, gfc_symbol *derived, gfc_component *comp,
       gfc_component *c;
 
       vtab = gfc_find_derived_vtab (comp->ts.u.derived);
-      c = gfc_find_component (vtab->ts.u.derived, "_final", true, true, NULL);
+      for (c = vtab->ts.u.derived->components; c; c = c->next)
+	if (strcmp (c->name, "_final") == 0)
+	  break;
 
       gcc_assert (c);
       final_wrap = XCNEW (gfc_code);
@@ -958,12 +923,14 @@ finalize_component (gfc_expr *expr, gfc_symbol *derived, gfc_component *comp,
     }
   else
     {
-      finalizer f = { e, comp->ts.u.derived, stat, fini_coarray, code };
-      gfc_traverse_components (comp->ts.u.derived, finalize_wrap, (void *)&f);
+      gfc_component *c;
 
+      for (c = comp->ts.u.derived->components; c; c = c->next)
+	finalize_component (e, comp->ts.u.derived, c, stat, fini_coarray, code);
       gfc_free_expr (e);
     }
 }
+
 
 /* Generate code equivalent to
    CALL C_F_POINTER (TRANSFER (TRANSFER (C_LOC (array, cptr), c_intptr)
@@ -1453,68 +1420,6 @@ finalizer_insert_packed_call (gfc_code *block, gfc_finalizer *fini,
   block2->next->expr2 = gfc_lval_expr_from_sym (ptr2);
 }
 
-static gfc_try
-find_wrapper_init (gfc_component *comp, void *wrapper_p)
-{
-    gfc_expr **wrapper = (gfc_expr **)wrapper_p;
-    if (comp->name[0] == '_' && comp->name[1] == 'f')
-      {
-        *wrapper = comp->initializer;
-        return FAILURE;
-      }
-    return SUCCESS;
-}
-
-typedef struct {
-    gfc_symbol *derived;
-    gfc_expr *ancestor_wrapper;
-    bool *finalizable_comp;
-} check_allocatable_data;
-
-static gfc_try
-check_allocatable (gfc_component *comp, void *data)
-{
-    check_allocatable_data *d = (check_allocatable_data *)data;
-    if (comp == d->derived->components && d->derived->attr.extension
-        && d->ancestor_wrapper && d->ancestor_wrapper->expr_type != EXPR_NULL)
-    return SUCCESS;
-
-    if (comp->ts.type != BT_CLASS && !comp->attr.pointer
-        && (comp->attr.allocatable
-            || (comp->ts.type == BT_DERIVED
-                && (comp->ts.u.derived->attr.alloc_comp
-                    || has_finalizer_component (comp->ts.u.derived)
-                    || (comp->ts.u.derived->f2k_derived
-                        && comp->ts.u.derived->f2k_derived->finalizers)))))
-      *d->finalizable_comp = true;
-    else if (comp->ts.type == BT_CLASS && CLASS_DATA (comp)
-             && CLASS_DATA (comp)->attr.allocatable)
-      *d->finalizable_comp = true;
-    return SUCCESS;
-}
-
-typedef struct {
-    gfc_expr *ancestor_wrapper;
-    gfc_code *last_code;
-    finalizer f;
-} finalizer_wrapper;
-
-static gfc_try
-finalize_wrapper (gfc_component *comp, void *data)
-{
-  finalizer_wrapper *fw = (finalizer_wrapper *)data;
-
-  if (comp == fw->f.derived->components && fw->f.derived->attr.extension
-      && fw->ancestor_wrapper && fw->ancestor_wrapper->expr_type != EXPR_NULL)
-  return SUCCESS;
-
-  finalize_component (fw->f.e, fw->f.derived, comp, fw->f.stat,
-                      fw->f.fini_coarray, fw->f.code);
-  if (!fw->last_code->block->next)
-    fw->last_code->block->next = *fw->f.code;
-
-  return SUCCESS;
-}
 
 /* Generate the finalization/polymorphic freeing wrapper subroutine for the
    derived type "derived". The function first calls the approriate FINAL
@@ -1538,6 +1443,7 @@ generate_finalization_wrapper (gfc_symbol *derived, gfc_namespace *ns,
 {
   gfc_symbol *final, *array, *fini_coarray, *byte_stride, *sizes, *strides;
   gfc_symbol *ptr = NULL, *idx, *idx2, *is_contiguous, *offset, *nelem;
+  gfc_component *comp;
   gfc_namespace *sub_ns;
   gfc_code *last_code, *block;
   char name[GFC_MAX_SYMBOL_LEN+1];
@@ -1552,10 +1458,15 @@ generate_finalization_wrapper (gfc_symbol *derived, gfc_namespace *ns,
 	  || has_finalizer_component (derived)))
     {
       gfc_symbol *vtab;
+      gfc_component *comp;
 
       vtab = gfc_find_derived_vtab (derived->components->ts.u.derived);
-      gfc_traverse_components (vtab->ts.u.derived, find_wrapper_init,
-                               (void *)&ancestor_wrapper);
+      for (comp = vtab->ts.u.derived->components; comp; comp = comp->next)
+	if (comp->name[0] == '_' && comp->name[1] == 'f')
+	  {
+	    ancestor_wrapper = comp->initializer;
+	    break;
+	  }
     }
 
   /* No wrapper of the ancestor and no own FINAL subroutines and allocatable
@@ -1567,13 +1478,25 @@ generate_finalization_wrapper (gfc_symbol *derived, gfc_namespace *ns,
       && !has_finalizer_component (derived))
     expr_null_wrapper = true;
   else
-  {
-    check_allocatable_data d;
-    d.derived = derived;
-    d.ancestor_wrapper = ancestor_wrapper;
-    d.finalizable_comp = &finalizable_comp;
-    gfc_traverse_components (derived, check_allocatable, (void *)&d);
-  }
+    /* Check whether there are new allocatable components.  */
+    for (comp = derived->components; comp; comp = comp->next)
+      {
+	if (comp == derived->components && derived->attr.extension
+	    && ancestor_wrapper && ancestor_wrapper->expr_type != EXPR_NULL)
+	continue;
+
+	if (comp->ts.type != BT_CLASS && !comp->attr.pointer
+	    && (comp->attr.allocatable
+		|| (comp->ts.type == BT_DERIVED
+		    && (comp->ts.u.derived->attr.alloc_comp
+			|| has_finalizer_component (comp->ts.u.derived)
+			|| (comp->ts.u.derived->f2k_derived
+			    && comp->ts.u.derived->f2k_derived->finalizers)))))
+	  finalizable_comp = true;
+	else if (comp->ts.type == BT_CLASS && CLASS_DATA (comp)
+		 && CLASS_DATA (comp)->attr.allocatable)
+	  finalizable_comp = true;
+      }
 
   /* If there is no new finalizer and no new allocatable, return with
      an expr to the ancestor's one.  */
@@ -2165,11 +2088,17 @@ generate_finalization_wrapper (gfc_symbol *derived, gfc_namespace *ns,
 					     sub_ns);
       block = block->next;
 
-      finalizer_wrapper fw = {
-          ancestor_wrapper, last_code, 
-          { gfc_lval_expr_from_sym (ptr), derived, stat, fini_coarray, &block }
-      };
-      gfc_traverse_components (derived, finalize_wrapper, (void *)&fw);
+      for (comp = derived->components; comp; comp = comp->next)
+	{
+	  if (comp == derived->components && derived->attr.extension
+	      && ancestor_wrapper && ancestor_wrapper->expr_type != EXPR_NULL)
+	    continue;
+
+	  finalize_component (gfc_lval_expr_from_sym (ptr), derived, comp,
+			      stat, fini_coarray, &block);
+	  if (!last_code->block->next)
+	    last_code->block->next = block;
+	}
 
     }
 
@@ -2488,15 +2417,6 @@ cleanup:
   return found_sym;
 }
 
-static gfc_try
-is_finalizable (gfc_component *c, void *data ATTRIBUTE_UNUSED)
-{
-    if (c->ts.type == BT_DERIVED
-	&& !c->attr.pointer && !c->attr.proc_pointer && !c->attr.allocatable
-	&& gfc_is_finalizable (c->ts.u.derived, NULL))
-        return FAILURE;
-    return SUCCESS;
-}
 
 /* Check if a derived type is finalizable. That is the case if it
    (1) has a FINAL subroutine or
@@ -2508,14 +2428,20 @@ bool
 gfc_is_finalizable (gfc_symbol *derived, gfc_expr **final_expr)
 {
   gfc_symbol *vtab;
+  gfc_component *c;
 
   /* (1) Check for FINAL subroutines.  */
   if (derived->f2k_derived && derived->f2k_derived->finalizers)
     goto yes;
 
   /* (2) Check for components of finalizable type.  */
-  if (gfc_traverse_components (derived, is_finalizable, NULL) == SUCCESS)
-    return false;
+  for (c = derived->components; c; c = c->next)
+    if (c->ts.type == BT_DERIVED
+	&& !c->attr.pointer && !c->attr.proc_pointer && !c->attr.allocatable
+	&& gfc_is_finalizable (c->ts.u.derived, NULL))
+      goto yes;
+
+  return false;
 
 yes:
   /* Make sure vtab is generated.  */
