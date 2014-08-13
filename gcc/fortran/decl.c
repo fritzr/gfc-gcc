@@ -3074,28 +3074,18 @@ gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
     }
 
 derived:
-  /* TODO: Possibly make a struct: label for FL_STRUCT types? 
-     They are handled quite differently from FL_DERIVED because they don't
-     have to worry about the generic procedure variable with a lowercase name.
-     Then we need to worry about whether the name matches a dt or a struct. */
-
-  dt_name = gfc_dt_upper_string (name);
   /* Defer association of the derived type until the end of the
      specification block.  However, if the derived type can be
      found, add it to the typespec.  */
   if (gfc_matching_function)
     {
       ts->u.derived = NULL;
-      if (gfc_current_state () != COMP_INTERFACE)
-      {
-        if (!gfc_find_symbol (name, NULL, 1, &sym) && sym)
+      if (gfc_current_state () != COMP_INTERFACE
+	    && !gfc_find_symbol (name, NULL, 1, &sym) && sym)
 	{
 	  sym = gfc_find_dt_in_generic (sym);
 	  ts->u.derived = sym;
 	}
-        else if (!gfc_find_symbol (dt_name, NULL, 1, &sym) && sym)
-          ts->u.derived = sym;
-      }
       return MATCH_YES;
     }
 
@@ -3105,6 +3095,7 @@ derived:
      stored in a symtree with the first letter of the name capitalized; the
      symtree with the all lower-case name contains the associated
      generic function.  */
+  dt_name = gfc_dt_upper_string (name);
   sym = NULL;
   dt_sym = NULL;
   if (ts->kind != -1)
