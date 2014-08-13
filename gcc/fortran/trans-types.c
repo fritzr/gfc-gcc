@@ -2260,31 +2260,29 @@ gfc_add_field_to_struct (tree context, tree name, tree type, tree **chain)
   return decl;
 }
 
-static void copy_components (gfc_symbol *, gfc_symbol *, bool);
 
-static void
-copy_union_components (gfc_symbol *to, gfc_symbol *from, bool from_gsym)
+/* Copy the backend_decl and component backend_decls if
+   the two derived type symbols are "equal", as described
+   in 4.4.2 and resolved by gfc_compare_derived_types.  */
+
+int
+gfc_copy_dt_decls_ifequal (gfc_symbol *from, gfc_symbol *to,
+			   bool from_gsym)
 {
-  gfc_component *to_map   =   to->components,
-                *from_map = from->components;
+  gfc_component *to_cm;
+  gfc_component *from_cm;
 
-  /* The same union types get the same backend declarations. */
+  if (from == to)
+    return 1;
+
+  if (from->backend_decl == NULL
+	|| !gfc_compare_derived_types (from, to))
+    return 0;
+
   to->backend_decl = from->backend_decl;
 
-  /* Ensure each map is copied. */
-  for (; to_map; to_map = to_map->next, from_map = from_map->next)
-  {
-    to_map->backend_decl = from_map->backend_decl;
-    to_map->ts.u.derived->backend_decl = from_map->ts.u.derived->backend_decl;
-    copy_components (to_map->ts.u.derived, from_map->ts.u.derived, from_gsym);
-  }
-}
-
-static void
-copy_components (gfc_symbol *to, gfc_symbol *from, bool from_gsym)
-{
-  gfc_component *to_cm   =   to->components;
-  gfc_component *from_cm = from->components;
+  to_cm = to->components;
+  from_cm = from->components;
 
   /* Copy the component declarations.  If a component is itself
      a derived type, we need a copy of its component declarations.
@@ -2303,35 +2301,7 @@ copy_components (gfc_symbol *to, gfc_symbol *from, bool from_gsym)
 	gfc_get_derived_type (to_cm->ts.u.derived);
       else if (from_cm->ts.type == BT_CHARACTER)
 	to_cm->ts.u.cl->backend_decl = from_cm->ts.u.cl->backend_decl;
-      else if (from_cm->ts.type == BT_UNION)
-        copy_union_components (to_cm->ts.u.derived, from_cm->ts.u.derived,
-            from_gsym);
     }
-}
-
-/* Copy the backend_decl and component backend_decls if
-   the two derived type symbols are "equal", as described
-   in 4.4.2 and resolved by gfc_compare_derived_types.  */
-
-int
-gfc_copy_dt_decls_ifequal (gfc_symbol *from, gfc_symbol *to,
-			   bool from_gsym)
-{
-  if (from == to)
-    return 1;
-
-  if (from->backend_decl == NULL)
-    return 0;
-  
-  if (from->attr.flavor == FL_UNION && !gfc_compare_union_types (from, to))
-    return 0;
-
-  if (gfc_fl_struct (from->attr.flavor) && !gfc_compare_derived_types (from, to))
-    return 0;
-
-  to->backend_decl = from->backend_decl;
-
-  copy_components (to, from, from_gsym);
 
   return 1;
 }
