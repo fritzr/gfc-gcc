@@ -1973,6 +1973,8 @@ verify_st_order (st_state *p, gfc_statement st, bool silent)
     case ST_PUBLIC:
     case ST_PRIVATE:
     case ST_STRUCTURE_DECL:
+    case ST_UNION:
+    case ST_MAP:
     case ST_DERIVED_DECL:
     case_decl:
       if (p->state >= ORDER_EXEC)
