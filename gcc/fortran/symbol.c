@@ -1880,13 +1880,17 @@ gfc_add_component (gfc_symbol *sym, const char *name,
 
   /* Check for existing components with the same name, but not for union
      components or containers. Unions and maps are anonymous so they have
-     unique internal names which will never conflict. */
-  if (sym->attr.flavor != FL_UNION
-      && (p = gfc_find_component (sym, name, true, true, NULL)) != NULL)
+     unique internal names which will never conflict.
+     Don't use gfc_find_component here because it calls gfc_use_derived,
+     but the derived type may not be fully defined yet. */
+  for (p = sym->components; p; p = p->next)
     {
-      gfc_error ("Component '%s' at %C already declared at %L",
-                 name, &p->loc);
-      return FAILURE;
+      if (strcmp (p->name, name) == 0)
+        {
+          gfc_error ("Component '%s' at %C already declared at %L",
+                     name, &p->loc);
+          return FAILURE;
+        }
     }
 
   tail = NULL;
