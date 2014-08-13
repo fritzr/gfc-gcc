@@ -1535,27 +1535,6 @@ nml_get_addr_expr (gfc_symbol * sym, gfc_component * c,
   return tmp;
 }
 
-typedef struct {
-    const char *var_name;
-    stmtblock_t *block;
-    tree expr;
-} transfer_namelist_data;
-
-/* Forward declaraion for transfer_namelist. */
-static void
-transfer_namelist_element (stmtblock_t *, const char *,
-			   gfc_symbol *, gfc_component *,
-			   tree);
-
-static gfc_try
-transfer_namelist (gfc_component *cmp, void *data)
-{
-  transfer_namelist_data *d = (transfer_namelist_data *)data;
-  char *full_name = nml_full_name (d->var_name, cmp->name);
-  transfer_namelist_element (d->block, full_name, NULL, cmp, d->expr);
-  free (full_name);
-  return SUCCESS;
-}
 
 /* For an object VAR_NAME whose base address is BASE_ADDR, generate a
    call to iocall[IOCALL_SET_NML_VAL].  For derived type variable, recursively
@@ -1645,13 +1624,21 @@ transfer_namelist_element (stmtblock_t * block, const char * var_name,
 
   if (gfc_bt_struct (ts->type) && ts->u.derived->components)
     {
+      gfc_component *cmp;
+
       /* Provide the RECORD_TYPE to build component references.  */
 
       tree expr = build_fold_indirect_ref_loc (input_location,
 					   addr_expr);
 
-      transfer_namelist_data d = { var_name, block, expr };
-      gfc_traverse_components (ts->u.derived, transfer_namelist, (void *)&d);
+      for (cmp = ts->u.derived->components; cmp; cmp = cmp->next)
+	{
+	  char *full_name = nml_full_name (var_name, cmp->name);
+	  transfer_namelist_element (block,
+				     full_name,
+				     NULL, cmp, expr);
+	  free (full_name);
+	}
     }
 }
 
@@ -2029,46 +2016,13 @@ transfer_array_component (tree expr, gfc_component * cm, locus * where)
   return gfc_finish_block (&block);
 }
 
-typedef struct {
-    tree expr;
-    gfc_se *se;
-    gfc_code *code;
-} transfer_expr_data;
-
-static gfc_try
-transfer_comp_expr (gfc_component *c, void *data)
-{
-  transfer_expr_data *d = (transfer_expr_data *)data;
-  tree tmp, field;
-
-  field = c->backend_decl;
-  gcc_assert (field && TREE_CODE (field) == FIELD_DECL);
-
-  tmp = fold_build3_loc (UNKNOWN_LOCATION,
-                     COMPONENT_REF, TREE_TYPE (field),
-                     d->expr, field, NULL_TREE);
-
-  if (c->attr.dimension)
-    {
-      tmp = transfer_array_component (tmp, c, &d->code->loc);
-      gfc_add_expr_to_block (&d->se->pre, tmp);
-    }
-  else
-    {
-      if (!c->attr.pointer)
-        tmp = gfc_build_addr_expr (NULL_TREE, tmp);
-      transfer_expr (d->se, &c->ts, tmp, d->code);
-    }
-
-  return SUCCESS;
-}
-
 /* Generate the call for a scalar transfer node.  */
 
 static void
 transfer_expr (gfc_se * se, gfc_typespec * ts, tree addr_expr, gfc_code * code)
 {
-  tree tmp, function, arg2, arg3, expr;
+  tree tmp, function, arg2, arg3, field, expr;
+  gfc_component *c;
   int kind;
 
   /* It is possible to get a C_NULL_PTR or C_NULL_FUNPTR expression here if
@@ -2219,11 +2173,27 @@ transfer_expr (gfc_se * se, gfc_typespec * ts, tree addr_expr, gfc_code * code)
       if (ts->u.derived->backend_decl == NULL_TREE)
 	tmp = gfc_typenode_for_spec (ts);
 
-      transfer_expr_data d;
-      d.expr = expr;
-      d.se = se;
-      d.code = code;
-      gfc_traverse_components (ts->u.derived, transfer_comp_expr, (void *)&d);
+      for (c = ts->u.derived->components; c; c = c->next)
+	{
+	  field = c->backend_decl;
+	  gcc_assert (field && TREE_CODE (field) == FIELD_DECL);
+
+	  tmp = fold_build3_loc (UNKNOWN_LOCATION,
+			     COMPONENT_REF, TREE_TYPE (field),
+			     expr, field, NULL_TREE);
+
+          if (c->attr.dimension)
+            {
+              tmp = transfer_array_component (tmp, c, & code->loc);
+              gfc_add_expr_to_block (&se->pre, tmp);
+            }
+          else
+            {
+              if (!c->attr.pointer)
+                tmp = gfc_build_addr_expr (NULL_TREE, tmp);
+              transfer_expr (se, &c->ts, tmp, code);
+            }
+	}
       return;
 
     default:
