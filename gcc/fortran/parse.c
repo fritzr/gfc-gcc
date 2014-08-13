@@ -2372,13 +2372,6 @@ parse_structure (void)
     gfc_state_data s;
     gfc_symbol *sym;
 
-    /* STRUCTURE is a DEC extension. */
-    if(gfc_notify_std (GFC_STD_GNU, "STRUCTURE declaration at %C") == FAILURE)
-    {
-        reject_statement ();
-        return;
-    }
-
     accept_statement(ST_STRUCTURE_DECL);
     push_state (&s, COMP_STRUCTURE, gfc_new_block);
 
@@ -2450,13 +2443,6 @@ parse_map (void)
     gfc_statement st;
     gfc_state_data s;
     gfc_symbol *sym;
-
-    /* MAP is a DEC extension. */
-    if(gfc_notify_std (GFC_STD_GNU, "MAP declaration at %C") == FAILURE)
-    {
-        reject_statement ();
-        return;
-    }
 
     accept_statement(ST_MAP);
     push_state (&s, COMP_MAP, gfc_new_block);
