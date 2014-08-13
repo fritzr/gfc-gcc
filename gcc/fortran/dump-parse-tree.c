@@ -856,13 +856,6 @@ show_symbol (gfc_symbol *sym)
   fputs ("attributes: ", dumpfile);
   show_attr (&sym->attr, sym->module);
 
-  if (sym->value)
-    {
-      show_indent ();
-      fputs ("value: ", dumpfile);
-      show_expr (sym->value);
-    }
-
   if (sym->as)
     {
       show_indent ();
