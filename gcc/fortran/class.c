@@ -200,7 +200,7 @@ gfc_add_component_ref (gfc_expr *e, const char *name)
 {
   gfc_component *c;
   gfc_ref **tail = &(e->ref);
-  gfc_ref *next = NULL;
+  gfc_ref *ref, *next = NULL;
   gfc_symbol *derived = e->symtree->n.sym->ts.u.derived;
   while (*tail != NULL)
     {
@@ -221,6 +221,9 @@ gfc_add_component_ref (gfc_expr *e, const char *name)
     next = *tail;
   c = gfc_find_component (derived, name, true, true, tail);
   gcc_assert (c);
+  for (ref = *tail; ref->next; ref = ref->next)
+    ;
+  ref->next = next;
   if (!next)
     e->ts = c->ts;
 }
