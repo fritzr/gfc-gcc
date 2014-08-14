@@ -1769,6 +1769,7 @@ gfc_match_varspec (gfc_expr *primary, int equiv_flag, bool sub_flag,
   gfc_symbol *sym = primary->symtree->n.sym;
   match m;
   bool unknown;
+  char sep;
 
   tail = NULL;
 
@@ -1849,6 +1850,7 @@ gfc_match_varspec (gfc_expr *primary, int equiv_flag, bool sub_flag,
   if (equiv_flag)
     return MATCH_YES;
 
+  sep = gfc_peek_ascii_char ();
   m = gfc_match_member_sep (sym);
   if(m == MATCH_ERROR)
       return MATCH_ERROR;
@@ -1865,8 +1867,8 @@ gfc_match_varspec (gfc_expr *primary, int equiv_flag, bool sub_flag,
   else if ((sym->ts.type != BT_DERIVED && sym->ts.type != BT_CLASS)
           && m == MATCH_YES)
     {
-      gfc_error ("Unexpected member separator for nonderived-type variable "
-                 "'%s' at %C", sym->name);
+      gfc_error ("Unexpected '%c' for nonderived-type variable "
+                 "'%s' at %C", sep, sym->name);
       return MATCH_ERROR;
     }
 
