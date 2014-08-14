@@ -5336,14 +5336,6 @@ done:
 }
 
 
-static gfc_try
-check_allocatable (gfc_component *c, void *)
-{
-    if (c->attr.allocatable && c->ts.type == BT_CLASS)
-        return FAILURE;
-    return SUCCESS;
-}
-
 /* Resolve a variable expression.  */
 
 static gfc_try
@@ -5591,13 +5583,14 @@ resolve_procedure:
 	{
 	  gfc_component *c;
 	  c = ref2 ? ref2->u.c.component : e->symtree->n.sym->components;
-          if (gfc_traverse_components_head (c, check_allocatable, NULL)
-                  == FAILURE)
-	    {
-              gfc_error ("Coindexed object with polymorphic allocatable "
-			 "subcomponent at %L", &e->where);
-              t = FAILURE;
-	    }
+          for ( ; c; c = c->next)
+            if (c->attr.allocatable && c->ts.type == BT_CLASS)
+              {
+                gfc_error ("Coindexed object with polymorphic allocatable "
+                           "subcomponent at %L", &e->where);
+                t = FAILURE;
+                break;
+              }
 	}
     }
 
@@ -6980,16 +6973,6 @@ resolve_forall_iterators (gfc_forall_iterator *it)
       }
 }
 
-static int
-derived_inaccessible (gfc_symbol *);
-
-static gfc_try
-inaccessible (gfc_component *c, void *data ATTRIBUTE_UNUSED)
-{
-    if (c->ts.type == BT_DERIVED && derived_inaccessible (c->ts.u.derived))
-      return FAILURE;
-    return SUCCESS;
-}
 
 /* Given a pointer to a symbol that is a derived type, see if it's
    inaccessible, i.e. if it's defined in another module and the components are
@@ -6999,11 +6982,16 @@ inaccessible (gfc_component *c, void *data ATTRIBUTE_UNUSED)
 static int
 derived_inaccessible (gfc_symbol *sym)
 {
+  gfc_component *c;
+
   if (sym->attr.use_assoc && sym->attr.private_comp)
     return 1;
 
-  if (gfc_traverse_components (sym, inaccessible, NULL) == FAILURE)
-      return 1;
+  for (c = sym->components; c; c = c->next)
+    {
+      if (c->ts.type == BT_DERIVED && derived_inaccessible (c->ts.u.derived))
+        return 1;
+    }
 
   return 0;
 }
