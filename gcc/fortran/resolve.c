@@ -9920,35 +9920,6 @@ add_code_to_chain (gfc_code **this_code, gfc_code **head, gfc_code **tail)
   *this_code = NULL;
 }
 
-static int
-nonscalar_typebound_assign (gfc_symbol *, int);
-
-static gfc_try
-count_nonscalar_tba (gfc_component *c, void *countp)
-{
-    int t_depth = 0;
-    int c_depth = *(int *)countp;
-
-    if ((gfc_bt_struct (c->ts.type)
-        || c->attr.pointer
-        || c->attr.allocatable
-        || c->attr.proc_pointer_comp
-        || c->attr.class_pointer
-        || c->attr.proc_pointer)
-      && !c->attr.defined_assign_comp)
-        return SUCCESS;
-
-    if (c->as && c_depth == 0)
-        c_depth = 1;
-
-    if (c->ts.u.derived->attr.defined_assign_comp)
-        t_depth = nonscalar_typebound_assign (c->ts.u.derived,
-                                              c->as ? 1 : 0);
-
-    *(int *)countp = t_depth > c_depth ? t_depth : c_depth;
-
-    return SUCCESS;
-}
 
 /* Counts the potential number of part array references that would
    result from resolution of typebound defined assignments.  */
@@ -9956,10 +9927,31 @@ count_nonscalar_tba (gfc_component *c, void *countp)
 static int
 nonscalar_typebound_assign (gfc_symbol *derived, int depth)
 {
-  int c_depth = 0;
+  gfc_component *c;
+  int c_depth = 0, t_depth;
 
-  gfc_traverse_components (derived, count_nonscalar_tba, (void *)&c_depth);
+  for (c= derived->components; c; c = c->next)
+    {
+      if ((!gfc_bt_struct (c->ts.type)
+	    || c->attr.pointer
+	    || c->attr.allocatable
+	    || c->attr.proc_pointer_comp
+	    || c->attr.class_pointer
+	    || c->attr.proc_pointer)
+	  && !c->attr.defined_assign_comp)
+	continue;
 
+      if (c->as && c_depth == 0)
+	c_depth = 1;
+
+      if (c->ts.u.derived->attr.defined_assign_comp)
+	t_depth = nonscalar_typebound_assign (c->ts.u.derived,
+					      c->as ? 1 : 0);
+      else
+	t_depth = 0;
+
+      c_depth = t_depth > c_depth ? t_depth : c_depth;
+    }
   return depth + c_depth;
 }
 
