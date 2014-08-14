@@ -1896,7 +1896,7 @@ check_variable_name (char *name)
   /* Ensure variable name does not conflict with another entity.
      Note that STRUCTURE types (unlike derived types) have no generic symbol
      accessible from user-level code therefore will not conflict here. */
-  gfc_find_symbol (name, NULL, 1, &sym);
+  gfc_find_symbol (name, NULL, 0, &sym);
   if (sym && !sym->attr.implicit_type && sym->attr.flavor != FL_STRUCT
       && (sym->ts.type != BT_UNKNOWN 
           || (sym->attr.flavor == FL_PROCEDURE && sym->generic))
