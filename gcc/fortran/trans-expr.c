@@ -1614,15 +1614,15 @@ gfc_conv_component_ref (gfc_se * se, gfc_ref * ref)
 static void
 conv_parent_component_references (gfc_se * se, gfc_ref * ref)
 {
-  gfc_component *c;
+  gfc_component *c, *cmp;
   gfc_symbol *dt;
   gfc_ref parent;
 
   dt = ref->u.c.sym;
   c = ref->u.c.component;
 
-  /* Return if the component is in the parent type.  */
-  if (gfc_find_component (dt, c->name, true, true, NULL))
+  for (cmp = dt->components; cmp; cmp = cmp->next)
+    if (strcmp (c->name, cmp->name) == 0)
       return;
 
   /* Build a gfc_ref to recursively call gfc_conv_component_ref.  */
