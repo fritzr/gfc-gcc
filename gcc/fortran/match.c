@@ -616,6 +616,7 @@ gfc_match_extended_integer (char *buffer, int *radix, int *cnt)
   
   base = 10;
   old_loc = gfc_current_locus;
+  gfc_gobble_whitespace ();
   m = gfc_match_literal_int (buffer, 10, &length);
 
   /* If we see a '#' this is an extended base#val int; otherwise the number we
@@ -669,7 +670,6 @@ gfc_match_small_literal_int (int *value, int *cnt)
 
     v = -1;
     old_loc = gfc_current_locus;
-    gfc_gobble_whitespace ();
     m = gfc_match_extended_integer (NULL, &radix, &length);
     gfc_current_locus = old_loc;
     if (m != MATCH_YES)
