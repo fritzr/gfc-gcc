@@ -2255,89 +2255,6 @@ gfc_free_structure_ctor_component (gfc_structure_ctor_component *comp)
   free (comp);
 }
 
-typedef struct {
-    gfc_structure_ctor_component **comp_head;
-    gfc_constructor_base *ctor_head;
-    gfc_symbol *sym;
-} constructor_builder;
-
-/* Forward declaration for build_constructor. */
-static gfc_try
-build_actual_constructor (gfc_structure_ctor_component **comp_head,
-			  gfc_constructor_base *ctor_head, gfc_symbol *sym);
-
-static gfc_try
-build_constructor (gfc_component *comp, void *data)
-{
-  constructor_builder *b = (constructor_builder *)data;
-  gfc_structure_ctor_component **next_ptr, *comp_iter;
-  gfc_expr *value = NULL;
-
-  /* Try to find the initializer for the current component by name.  */
-  next_ptr = b->comp_head;
-  for (comp_iter = *b->comp_head; comp_iter; comp_iter = comp_iter->next)
-    {
-      if (!strcmp (comp_iter->name, comp->name))
-        break;
-      next_ptr = &comp_iter->next;
-    }
-
-  /* If an extension, try building the parent derived type by building
-     a value expression for the parent derived type and calling self.  */
-  if (!comp_iter && comp == b->sym->components && b->sym->attr.extension)
-    {
-      value = gfc_get_structure_constructor_expr (comp->ts.type,
-                                                  comp->ts.kind,
-                                                  &gfc_current_locus);
-      value->ts = comp->ts;
-
-      if (build_actual_constructor (b->comp_head, &value->value.constructor,
-                                    comp->ts.u.derived) == FAILURE)
-        {
-          gfc_free_expr (value);
-          return FAILURE;
-        }
-
-      gfc_constructor_append_expr (b->ctor_head, value, NULL);
-      return SUCCESS;
-    }
-
-  /* If it was not found, try the default initializer if there's any;
-     otherwise, it's an error.  */
-  if (!comp_iter)
-    {
-      if (comp->initializer)
-        {
-          if (gfc_notify_std (GFC_STD_F2003, "Structure"
-                              " constructor with missing optional arguments"
-                              " at %C") == FAILURE)
-            return FAILURE;
-          value = gfc_copy_expr (comp->initializer);
-        }
-      else
-        {
-          gfc_error ("No initializer for component '%s' given in the"
-                     " structure constructor at %C!", comp->name);
-          return FAILURE;
-        }
-    }
-  else
-    value = comp_iter->val;
-
-  /* Add the value to the constructor chain built.  */
-  gfc_constructor_append_expr (b->ctor_head, value, NULL);
-
-  /* Remove the entry from the component list.  We don't want the expression
-     value to be free'd, so set it to NULL.  */
-  if (comp_iter)
-    {
-      *next_ptr = comp_iter->next;
-      comp_iter->val = NULL;
-      gfc_free_structure_ctor_component (comp_iter);
-    }
-
-  return SUCCESS;
-}
 
 /* Translate the component list into the actual constructor by sorting it in
    the order required; this also checks along the way that each and every
@@ -2347,12 +2264,77 @@ static gfc_try
 build_actual_constructor (gfc_structure_ctor_component **comp_head,
 			  gfc_constructor_base *ctor_head, gfc_symbol *sym)
 {
-  constructor_builder b = {
-      comp_head, ctor_head, sym
-  };
+  gfc_structure_ctor_component *comp_iter;
+  gfc_component *comp;
 
-  gfc_traverse_components (sym, build_constructor, (void *)&b);
+  for (comp = sym->components; comp; comp = comp->next)
+    {
+      gfc_structure_ctor_component **next_ptr;
+      gfc_expr *value = NULL;
 
+      /* Try to find the initializer for the current component by name.  */
+      next_ptr = comp_head;
+      for (comp_iter = *comp_head; comp_iter; comp_iter = comp_iter->next)
+	{
+	  if (!strcmp (comp_iter->name, comp->name))
+	    break;
+	  next_ptr = &comp_iter->next;
+	}
+
+      /* If an extension, try building the parent derived type by building
+	 a value expression for the parent derived type and calling self.  */
+      if (!comp_iter && comp == sym->components && sym->attr.extension)
+	{
+	  value = gfc_get_structure_constructor_expr (comp->ts.type,
+						      comp->ts.kind,
+						      &gfc_current_locus);
+	  value->ts = comp->ts;
+
+	  if (build_actual_constructor (comp_head, &value->value.constructor,
+					comp->ts.u.derived) == FAILURE)
+	    {
+	      gfc_free_expr (value);
+	      return FAILURE;
+	    }
+
+	  gfc_constructor_append_expr (ctor_head, value, NULL);
+	  continue;
+	}
+
+      /* If it was not found, try the default initializer if there's any;
+	 otherwise, it's an error.  */
+      if (!comp_iter)
+	{
+	  if (comp->initializer)
+	    {
+	      if (gfc_notify_std (GFC_STD_F2003, "Structure"
+				  " constructor with missing optional arguments"
+				  " at %C") == FAILURE)
+		return FAILURE;
+	      value = gfc_copy_expr (comp->initializer);
+	    }
+	  else
+	    {
+	      gfc_error ("No initializer for component '%s' given in the"
+			 " structure constructor at %C!", comp->name);
+	      return FAILURE;
+	    }
+	}
+      else
+	value = comp_iter->val;
+
+      /* Add the value to the constructor chain built.  */
+      gfc_constructor_append_expr (ctor_head, value, NULL);
+
+      /* Remove the entry from the component list.  We don't want the expression
+	 value to be free'd, so set it to NULL.  */
+      if (comp_iter)
+	{
+	  *next_ptr = comp_iter->next;
+	  comp_iter->val = NULL;
+	  gfc_free_structure_ctor_component (comp_iter);
+	}
+    }
   return SUCCESS;
 }
 

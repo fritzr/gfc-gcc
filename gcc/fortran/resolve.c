@@ -12283,6 +12283,7 @@ resolve_typebound_procedure (gfc_symtree* stree)
   locus where;
   gfc_symbol* me_arg;
   gfc_symbol* super_type;
+  gfc_component *comp;
 
   gcc_assert (stree);
 
@@ -12449,14 +12450,14 @@ resolve_typebound_procedure (gfc_symtree* stree)
     }
 
   /* See if there's a name collision with a component directly in this type.  */
-  if (gfc_find_component (resolve_bindings_derived, stree->name, true, true,
-                          NULL))
-  {
-    gfc_error ("Procedure '%s' at %L has the same name as a component of"
-               " '%s'",
-               stree->name, &where, resolve_bindings_derived->name);
-    goto error;
-  }
+  for (comp = resolve_bindings_derived->components; comp; comp = comp->next)
+    if (!strcmp (comp->name, stree->name))
+      {
+	gfc_error ("Procedure '%s' at %L has the same name as a component of"
+		   " '%s'",
+		   stree->name, &where, resolve_bindings_derived->name);
+	goto error;
+      }
 
   /* Try to find a name collision with an inherited component.  */
   if (super_type && gfc_find_component (super_type, stree->name, true, true,
@@ -12596,42 +12597,6 @@ ensure_not_abstract (gfc_symbol* sub, gfc_symbol* ancestor)
   return SUCCESS;
 }
 
-/* Forward declaration for check_defined_assign. */
-static void
-check_defined_assignments (gfc_symbol *derived);
-
-static gfc_try
-check_defined_assign (gfc_component *c, void *data)
-{
-    gfc_symbol *derived = (gfc_symbol *)data;
-
-    /* TODO: Handle BT_UNION components */
-
-    if (!gfc_bt_struct (c->ts.type)
-        || c->attr.pointer
-        || c->attr.allocatable
-        || c->attr.proc_pointer_comp
-        || c->attr.class_pointer
-        || c->attr.proc_pointer)
-      return SUCCESS;
-
-    if (c->ts.u.derived->attr.defined_assign_comp
-        || (c->ts.u.derived->f2k_derived
-           && c->ts.u.derived->f2k_derived->tb_op[INTRINSIC_ASSIGN]))
-      {
-        derived->attr.defined_assign_comp = 1;
-        return FAILURE;
-      }
-
-    check_defined_assignments (c->ts.u.derived);
-    if (c->ts.u.derived->attr.defined_assign_comp)
-      {
-        derived->attr.defined_assign_comp = 1;
-        return FAILURE;
-      }
-
-    return SUCCESS;
-}
 
 /* This check for typebound defined assignments is done recursively
    since the order in which derived types are resolved is not always in
@@ -12640,7 +12605,33 @@ check_defined_assign (gfc_component *c, void *data)
 static void
 check_defined_assignments (gfc_symbol *derived)
 {
-    gfc_traverse_components (derived, check_defined_assign, (void *)derived);
+  gfc_component *c;
+
+  for (c = derived->components; c; c = c->next)
+    {
+      if (!gfc_bt_struct (c->ts.type)
+	  || c->attr.pointer
+	  || c->attr.allocatable
+	  || c->attr.proc_pointer_comp
+	  || c->attr.class_pointer
+	  || c->attr.proc_pointer)
+	continue;
+
+      if (c->ts.u.derived->attr.defined_assign_comp
+	  || (c->ts.u.derived->f2k_derived
+	     && c->ts.u.derived->f2k_derived->tb_op[INTRINSIC_ASSIGN]))
+	{
+	  derived->attr.defined_assign_comp = 1;
+	  return;
+	}
+
+      check_defined_assignments (c->ts.u.derived);
+      if (c->ts.u.derived->attr.defined_assign_comp)
+	{
+	  derived->attr.defined_assign_comp = 1;
+	  return;
+	}
+    }
 }
 
 /* Resolve a component (for resolve_fl_derived0). */
@@ -13339,12 +13330,6 @@ resolve_fl_parameter (gfc_symbol *sym)
   return SUCCESS;
 }
 
-static gfc_try
-has_initializer (gfc_component *c, void *data ATTRIBUTE_UNUSED)
-{
-    /* Return FAILURE if c has an initializer (stops iteration) */
-    return c->initializer ? FAILURE : SUCCESS;
-}
 
 /* Do anything necessary to resolve a symbol.  Right now, we just
    assume that an otherwise unknown symbol is a variable.  This sort
@@ -13357,6 +13342,7 @@ resolve_symbol (gfc_symbol *sym)
   gfc_symtree *symtree;
   gfc_symtree *this_symtree;
   gfc_namespace *ns;
+  gfc_component *c;
   symbol_attribute class_attr;
   gfc_array_spec *as;
   bool saved_specification_expr;
@@ -13779,13 +13765,15 @@ resolve_symbol (gfc_symbol *sym)
       && sym->as
       && sym->as->type == AS_ASSUMED_SIZE)
     {
-        if (gfc_traverse_components (sym->ts.u.derived, has_initializer, NULL)
-                == FAILURE)
-        {
-            gfc_error ("The INTENT(OUT) dummy argument '%s' at %L is "
-                       "ASSUMED SIZE and so cannot have a default initializer",
-                       sym->name, &sym->declared_at);
-            return;
+      for (c = sym->ts.u.derived->components; c; c = c->next)
+	{
+	  if (c->initializer)
+	    {
+	      gfc_error ("The INTENT(OUT) dummy argument '%s' at %L is "
+			 "ASSUMED SIZE and so cannot have a default initializer",
+			 sym->name, &sym->declared_at);
+	      return;
+	    }
 	}
     }
 
@@ -14569,18 +14557,6 @@ warn_unused_fortran_label (gfc_st_label *label)
   warn_unused_fortran_label (label->right);
 }
 
-/* Forward declaration for match_sequence_type. */
-static seq_type
-sequence_type (gfc_typespec ts);
-
-static gfc_try
-match_sequence_type (gfc_component *c, void *data)
-{
-    seq_type *result = (seq_type *)data;
-    if (sequence_type (c->ts) != *result)
-      return FAILURE;
-    return SUCCESS;
-}
 
 /* Returns the sequence type of a symbol or sequence.  */
 
@@ -14588,6 +14564,7 @@ static seq_type
 sequence_type (gfc_typespec ts)
 {
   seq_type result;
+  gfc_component *c;
 
   switch (ts.type)
   {
@@ -14596,9 +14573,9 @@ sequence_type (gfc_typespec ts)
 	return SEQ_NONDEFAULT;
 
       result = sequence_type (ts.u.derived->components->ts);
-      if (FAILURE == gfc_traverse_components (ts.u.derived, match_sequence_type,
-                                              (void *)&result))
-          return SEQ_MIXED;
+      for (c = ts.u.derived->components->next; c; c = c->next)
+	if (sequence_type (c->ts) != result)
+	  return SEQ_MIXED;
 
       return result;
 
