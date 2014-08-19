@@ -2170,12 +2170,14 @@ error:
    attributes of a component, and raise errors if conflicting attributes
    are found for the component. */
 
-static gfc_try
-check_component (gfc_component *c, gfc_symbol *sym)
+static void
+check_component (gfc_component *c, gfc_symbol *sym, gfc_component **lockp)
 {
   gfc_component *lock_comp = NULL;
   bool coarray, lock_type, allocatable, pointer;
   coarray = lock_type = allocatable = pointer = false;
+
+  if (lockp) lock_comp = *lockp;
 
   /* Look for allocatable components.  */
   if (c->attr.allocatable
@@ -2283,7 +2285,7 @@ check_component (gfc_component *c, gfc_symbol *sym)
       || (c->ts.type == BT_DERIVED && c->ts.u.derived->attr.private_comp))
     sym->attr.private_comp = 1;
 
-  return SUCCESS;
+  if (lockp) *lockp = lock_comp;
 }
 
 static void parse_map (void);
@@ -2344,7 +2346,7 @@ parse_union (void)
     }
 
     for (c = un->components; c; c = c->next)
-      check_component (c, un);
+      check_component (c, un, NULL);
 
     /* Add the union as a component in its parent structure. */
     pop_state ();
@@ -2425,7 +2427,7 @@ parse_structure (void)
     */
     sym = gfc_current_block ();
     for (c = sym->components; c; c = c->next)
-      check_component (c, sym);
+      check_component (c, sym, NULL);
 
     sym->attr.zero_comp = sym->components == NULL;
 
@@ -2498,7 +2500,7 @@ parse_map (void)
     */
     sym = gfc_current_block ();
     for (c = sym->components; c; c = c->next)
-      check_component (c, sym);
+      check_component (c, sym, NULL);
 
     sym->attr.zero_comp = sym->components == NULL;
 
@@ -2517,7 +2519,7 @@ parse_derived (void)
   gfc_statement st;
   gfc_state_data s;
   gfc_symbol *sym;
-  gfc_component *c;
+  gfc_component *c, *lock_comp = NULL;
 
   accept_statement (ST_DERIVED_DECL);
   push_state (&s, COMP_DERIVED, gfc_new_block);
@@ -2638,7 +2640,7 @@ endType:
    */
   sym = gfc_current_block ();
   for (c = sym->components; c; c = c->next)
-    check_component (c, sym);
+    check_component (c, sym, &lock_comp);
 
   sym->attr.zero_comp = !seen_component;
 
