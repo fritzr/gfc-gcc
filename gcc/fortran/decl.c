@@ -1890,27 +1890,6 @@ match_pointer_init (gfc_expr **init, int procptr)
 
 
 static gfc_try
-check_variable_name (char *name)
-{
-  gfc_symbol *sym;
-  /* Ensure variable name does not conflict with another entity.
-     Note that STRUCTURE types (unlike derived types) have no generic symbol
-     accessible from user-level code therefore will not conflict here. */
-  gfc_find_symbol (name, NULL, 0, &sym);
-  if (sym && !sym->attr.implicit_type && sym->attr.flavor != FL_STRUCT
-      && (sym->ts.type != BT_UNKNOWN 
-          || (sym->attr.flavor == FL_PROCEDURE && sym->generic))
-      && !gfc_compare_types (&sym->ts, &current_ts))
-  {
-    gfc_error ("Declaration of '%s' at %C conflicts with entity declared at %L"
-               , name, &sym->declared_at);
-    return FAILURE;
-  }
-  return SUCCESS;
-}
-
-
-static gfc_try
 check_function_name (char *name)
 {
   /* In functions that have a RESULT variable defined, the function name always
@@ -2082,14 +2061,6 @@ variable_decl (int elem)
   {
     gfc_error ("Unnamed fields may not have initializers at %C");
     m = MATCH_ERROR;
-    goto cleanup;
-  }
-
-  /* Component name checks are done elsewhere. */
-  if (!gfc_comp_is_derived (gfc_current_state ())
-      && check_variable_name (name) == FAILURE)
-  {
-    return MATCH_ERROR;
     goto cleanup;
   }
 
