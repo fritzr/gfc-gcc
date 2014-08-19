@@ -3098,9 +3098,8 @@ derived:
 	return MATCH_NO;
     }
 
-  if ((sym->attr.flavor != FL_UNKNOWN
-       && !(sym->attr.flavor == FL_PROCEDURE && sym->attr.generic)
-       && !sym->attr.flavor == FL_STRUCT)
+  if ((sym->attr.flavor != FL_UNKNOWN && sym->attr.flavor != FL_STRUCT
+       && !(sym->attr.flavor == FL_PROCEDURE && sym->attr.generic))
       || sym->attr.subroutine)
     {
       gfc_error ("Type name '%s' at %C conflicts with previously declared "
