@@ -11247,25 +11247,6 @@ resolve_fl_var_and_proc (gfc_symbol *sym, int mp_flag)
 }
 
 
-static bool
-can_create_initializer (gfc_symbol *sym)
-{
-  symbol_attribute *a = &sym->attr;
-  if (!sym)
-    return false;
-
-  if (sym->value || sym->attr.allocatable || sym->attr.alloc_comp
-      || a->pointer || a->cray_pointer || a->cray_pointee)
-    return false;
-
-  return ((a->dummy && a->intent == INTENT_OUT)
-          || (!a->save && !a->dummy && !a->pointer
-              && !a->in_common && !a->use_assoc
-              && (a->referenced || a->result)
-              && !(a->function && sym != sym->result)));
-}
-
-
 /* Additional checks for symbols with flavor variable and derived
    type.  To be called from resolve_fl_variable.  */
 

@@ -4084,21 +4084,112 @@ gfc_has_default_initializer (gfc_symbol *der)
 }
 
 
-/* Get an expression for a default initializer.  */
+/* Only the last initializer in a union matters. */
+static gfc_expr *
+get_last_init (gfc_symbol *uniont, gfc_component **mapp)
+{
+  gfc_component *map;
+  gfc_expr *init=NULL, *init2;
+  for (map = uniont->components; map; map = map->next)
+  {
+    if (!gfc_has_default_initializer (map->ts.u.derived))
+      continue;
+
+    init2 = gfc_default_initializer (&map->ts, false);
+    if (!init2)
+      continue;
+
+    if (init)
+    {
+      gfc_warning_now ("Initializer in map at %L overwritten by initializer in "
+                       "map at %L in union", &init->where, &init2->where);
+      gfc_free_expr (init);
+    }
+
+    init = init2;
+    if (mapp) *mapp = map;
+  }
+  if (!init) *mapp = NULL;
+  return init;
+}
+
+
+/* Fetch or generate an initializer for the given component.
+   Only generate an initializer if generate is true. */
+
+static gfc_expr *
+component_init (gfc_component *c, bool generate)
+{
+  gfc_component *map = NULL;
+  gfc_expr *init = NULL;
+
+  if (c->initializer) return c->initializer;
+  if (!generate) return NULL;
+
+  /* Recursively handle derived type components */
+  if (c->ts.type == BT_DERIVED || c->ts.type == BT_CLASS)
+    init = gfc_default_initializer (&c->ts, true);
+
+  else if (c->ts.type == BT_UNION && c->ts.u.derived->components)
+  {
+    /* TODO: keep _all_ map initializers here, and squash them together
+       during the translation phase (in trans-expr.c:gfc_conv_structure?)
+       to allow non-overlapping initializers across maps. */
+
+    /* Try to take an existing initializer from a map. */
+    gfc_constructor *ctor;
+    ctor = gfc_constructor_get ();
+    ctor->expr = get_last_init (c->ts.u.derived, &map);
+
+    /* If no maps had an explicit initializer, generate a default
+       initializer for just the first map.
+       TODO: Use the largest map / initialize the entire union.
+       This can only be determined in translation (?) */
+    if (!map) map = c->ts.u.derived->components;
+
+    ctor->n.component = map;
+    if (!ctor->expr)
+      ctor->expr = gfc_default_initializer (&map->ts, true);
+
+    init = gfc_get_structure_constructor_expr (c->ts.type, c->ts.kind, &c->loc);
+    init->ts = c->ts;
+    gfc_constructor_append (&init->value.constructor, ctor);
+  }
+
+  /* Simple components */
+  else
+  {
+    init = gfc_build_default_init_expr (&c->ts, &c->loc);
+    gfc_apply_init (&c->ts, &c->attr, init);
+  }
+
+  return init;
+}
+
+
+/* Get an expression for a default initializer of a derived type. 
+   If -finit-derived is specified, generate default initialization expressions
+   for components that lack them as with gfc_build_default_init_expr. */
 
 gfc_expr *
-gfc_default_initializer (gfc_typespec *ts)
+gfc_default_initializer (gfc_typespec *ts, bool generate)
 {
-  gfc_expr *init;
+  gfc_expr *init, *tmp;
   gfc_component *comp;
+  generate = gfc_option.flag_init_derived && generate;
 
   /* See if we have a default initializer in this, but not in nested
-     types (otherwise we could use gfc_has_default_initializer()).  */
-  for (comp = ts->u.derived->components; comp; comp = comp->next)
-    if (comp->initializer || comp->attr.allocatable
-	|| (comp->ts.type == BT_CLASS && CLASS_DATA (comp)
-	    && CLASS_DATA (comp)->attr.allocatable))
-      break;
+     types (otherwise we could use gfc_has_default_initializer()).
+     We don't need to check if we are going to generate them. */
+  comp = ts->u.derived->components;
+  if (!generate)
+  {
+    for (; comp; comp = comp->next)
+      if (comp->initializer || comp->attr.allocatable
+          || (comp->ts.type == BT_CLASS && CLASS_DATA (comp)
+              && CLASS_DATA (comp)->attr.allocatable))
+        break;
+  }
 
   if (!comp)
     return NULL;
@@ -4111,11 +4202,14 @@ gfc_default_initializer (gfc_typespec *ts)
     {
       gfc_constructor *ctor = gfc_constructor_get();
 
-      if (comp->initializer)
+      /* Fetch or generate an initializer for the component.  */
+      tmp = component_init (comp, generate);
+      if (tmp)
 	{
-	  ctor->expr = gfc_copy_expr (comp->initializer);
-	  if ((comp->ts.type != comp->initializer->ts.type
-	       || comp->ts.kind != comp->initializer->ts.kind)
+          /* If the initializer was not generated, we need a copy.  */
+          ctor->expr = comp->initializer ? gfc_copy_expr (tmp) : tmp;
+	  if ((comp->ts.type != tmp->ts.type
+	       || comp->ts.kind != tmp->ts.kind)
 	      && !comp->attr.pointer && !comp->attr.proc_pointer)
 	    gfc_convert_type_warn (ctor->expr, &comp->ts, 2, false);
 	}
