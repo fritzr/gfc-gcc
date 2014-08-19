@@ -669,6 +669,7 @@ gfc_match_small_literal_int (int *value, int *cnt)
     match m;
 
     v = -1;
+    if (cnt) *cnt = 0;
     old_loc = gfc_current_locus;
     m = gfc_match_extended_integer (NULL, &radix, &length);
     gfc_current_locus = old_loc;
