@@ -1415,9 +1415,6 @@ check_assumed_size_reference (gfc_symbol *sym, gfc_expr *e)
   if (need_full_assumed_size || !(sym->as && sym->as->type == AS_ASSUMED_SIZE))
       return false;
 
-  if (sym->attr.cray_pointee)
-    return false;
-
   /* FIXME: The comparison "e->ref->u.ar.type == AR_FULL" is wrong.
      What should it be?  */
   if ((e->ref->u.ar.end[e->ref->u.ar.as->rank - 1] == NULL)
