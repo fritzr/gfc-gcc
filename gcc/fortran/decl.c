@@ -8177,13 +8177,13 @@ gfc_match_derived_decl (void)
   char name[GFC_MAX_SYMBOL_LEN + 1];
   char parent[GFC_MAX_SYMBOL_LEN + 1];
   symbol_attribute attr;
-  gfc_interface *intr, *head;
   gfc_symbol *sym, *gensym;
   gfc_symbol *extended;
   match m;
   match is_type_attr_spec = MATCH_NO;
   bool seen_attr = false;
   locus where;
+  gfc_interface *intr = NULL, *head;
 
   if (gfc_comp_is_derived (gfc_current_state ()))
     return MATCH_NO;
@@ -8237,63 +8237,55 @@ gfc_match_derived_decl (void)
     return MATCH_ERROR;
 
   if (!gensym->attr.generic && gensym->ts.type != BT_UNKNOWN)
-  {
-    gfc_error ("Derived type name '%s' at %C already has a basic type of %s", 
-               gensym->name, gfc_typename (&gensym->ts));
-    return MATCH_ERROR;
-  }
+    {
+      gfc_error ("Derived type name '%s' at %C already has a basic type "
+		 "of %s", gensym->name, gfc_typename (&gensym->ts));
+      return MATCH_ERROR;
+    }
 
   if (!gensym->attr.generic
-    && gfc_add_generic (&gensym->attr, gensym->name, NULL) == FAILURE)
+      && gfc_add_generic (&gensym->attr, gensym->name, NULL) == FAILURE)
     return MATCH_ERROR;
 
   if (!gensym->attr.function
-    && gfc_add_function (&gensym->attr, gensym->name, NULL) == FAILURE)
+      && gfc_add_function (&gensym->attr, gensym->name, NULL) == FAILURE)
     return MATCH_ERROR;
 
   sym = gfc_find_dt_in_generic (gensym);
 
   if (sym && (sym->components != NULL || sym->attr.zero_comp))
-  {
-    gfc_error ("Derived type definition of '%s' at %C has already been defined",
-               sym->name);
-    return MATCH_ERROR;
-  }
+    {
+      gfc_error ("Derived type definition of '%s' at %C has already been "
+                 "defined", sym->name);
+      return MATCH_ERROR;
+    }
 
   if (!sym)
-  {
-    /* Use upper case to save the actual derived-type symbol.  */
-    gfc_get_symbol (gfc_dt_upper_string (gensym->name), NULL, &sym);
-    sym->name = gfc_get_string (gensym->name);
-    head = gensym->generic;
-    intr = gfc_get_interface ();
-    intr->sym = sym;
-    intr->where = where;
-    intr->sym->declared_at = where;
-    intr->next = head;
-    gensym->generic = intr;
-    gensym->attr.if_source = IFSRC_DECL;
-    gensym->declared_at = where;
-  }
+    {
+      /* Use upper case to save the actual derived-type symbol.  */
+      gfc_get_symbol (gfc_get_string ("%c%s",
+			(char) TOUPPER ((unsigned char) gensym->name[0]),
+			&gensym->name[1]), NULL, &sym);
+      sym->name = gfc_get_string (gensym->name);
+      head = gensym->generic;
+      intr = gfc_get_interface ();
+      intr->sym = sym;
+      intr->where = gfc_current_locus;
+      intr->sym->declared_at = gfc_current_locus;
+      intr->next = head;
+      gensym->generic = intr;
+      gensym->attr.if_source = IFSRC_DECL;
+      gensym->declared_at = where;
+    }
 
+  /* The symbol may already have the derived attribute without the
+     components.  The ways this can happen is via a function
+     definition, an INTRINSIC statement or a subtype in another
+     derived type that is a pointer.  The first part of the AND clause
+     is true if the symbol is not the return value of a function.  */
   if (sym->attr.flavor != FL_DERIVED
       && gfc_add_flavor (&sym->attr, FL_DERIVED, sym->name, NULL) == FAILURE)
     return MATCH_ERROR;
-
-  /* Construct the f2k_derived namespace if it is not yet there.  */
-  if (!sym->f2k_derived)
-    sym->f2k_derived = gfc_get_namespace (NULL, 0);
-
-  if (!sym->hash_value)
-      /* Set the hash for the compound name for this type.  */
-    sym->hash_value = gfc_hash_value (sym);
-
-  /* Normally the type is expected to have been completely parsed by the time
-     a field declaration with this type is seen. For unions, maps, and nested
-     structure declarations, we need to indicate that it is okay that we
-     haven't seen any components yet. This will be updated after the structure
-     is fully parsed. */
-  sym->attr.zero_comp = 1;
 
   if (attr.access != ACCESS_UNKNOWN
       && gfc_add_access (&sym->attr, attr.access, sym->name, NULL) == FAILURE)
@@ -8311,6 +8303,10 @@ gfc_match_derived_decl (void)
   /* See if the derived type was labeled as bind(c).  */
   if (attr.is_bind_c != 0)
     sym->attr.is_bind_c = attr.is_bind_c;
+
+  /* Construct the f2k_derived namespace if it is not yet there.  */
+  if (!sym->f2k_derived)
+    sym->f2k_derived = gfc_get_namespace (NULL, 0);
 
   if (extended && !sym->components)
     {
@@ -8344,11 +8340,19 @@ gfc_match_derived_decl (void)
       st->n.sym = sym;
     }
 
-  if (sym->components)
-    sym->attr.zero_comp = 0;
+  if (!sym->hash_value)
+    /* Set the hash for the compound name for this type.  */
+    sym->hash_value = gfc_hash_value (sym);
 
   /* Take over the ABSTRACT attribute.  */
   sym->attr.abstract = attr.abstract;
+
+  /* Normally the type is expected to have been completely parsed by the time
+     a field declaration with this type is seen. For unions, maps, and nested
+     structure declarations, we need to indicate that it is okay that we
+     haven't seen any components yet. This will be updated after the structure
+     is fully parsed. */
+  sym->attr.zero_comp = sym->components == NULL;
 
   gfc_new_block = sym;
 
