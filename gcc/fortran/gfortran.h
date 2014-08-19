@@ -2653,10 +2653,6 @@ gfc_symtree *gfc_use_derived_tree (gfc_symtree *);
 gfc_component *gfc_find_component (gfc_symbol *, const char *, bool, bool,
                                    gfc_ref **);
 
-typedef gfc_try (*compfunc)(gfc_component *, void *);
-gfc_try gfc_traverse_components (gfc_symbol *, compfunc, void *);
-gfc_try gfc_traverse_components_head (gfc_component *, compfunc, void *);
-
 gfc_st_label *gfc_get_st_label (int);
 void gfc_free_st_label (gfc_st_label *);
 void gfc_define_st_label (gfc_st_label *, gfc_sl_type, locus *);

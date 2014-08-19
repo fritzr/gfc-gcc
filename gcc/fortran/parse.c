@@ -2171,10 +2171,9 @@ error:
    are found for the component. */
 
 static gfc_try
-check_component (gfc_component *c, void *data)
+check_component (gfc_component *c, gfc_symbol *sym)
 {
   gfc_component *lock_comp = NULL;
-  gfc_symbol *sym = (gfc_symbol *)data;
   bool coarray, lock_type, allocatable, pointer;
   coarray = lock_type = allocatable = pointer = false;
 
@@ -2344,7 +2343,8 @@ parse_union (void)
         }
     }
 
-    gfc_traverse_components (un, check_component, (void *)un);
+    for (c = un->components; c; c = c->next)
+      check_component (c, un);
 
     /* Add the union as a component in its parent structure. */
     pop_state ();
@@ -2369,6 +2369,7 @@ parse_structure (void)
     gfc_statement st;
     gfc_state_data s;
     gfc_symbol *sym;
+    gfc_component *c;
 
     accept_statement(ST_STRUCTURE_DECL);
     push_state (&s, COMP_STRUCTURE, gfc_new_block);
@@ -2423,7 +2424,8 @@ parse_structure (void)
     * interoperable with C if the type is declared to be bind(c)
     */
     sym = gfc_current_block ();
-    gfc_traverse_components (sym, check_component, (void *)sym);
+    for (c = sym->components; c; c = c->next)
+      check_component (c, sym);
 
     sym->attr.zero_comp = sym->components == NULL;
 
@@ -2441,6 +2443,7 @@ parse_map (void)
     gfc_statement st;
     gfc_state_data s;
     gfc_symbol *sym;
+    gfc_component *c;
 
     accept_statement(ST_MAP);
     push_state (&s, COMP_MAP, gfc_new_block);
@@ -2494,7 +2497,8 @@ parse_map (void)
     * interoperable with C if the type is declared to be bind(c)
     */
     sym = gfc_current_block ();
-    gfc_traverse_components (sym, check_component, (void *)sym);
+    for (c = sym->components; c; c = c->next)
+      check_component (c, sym);
 
     sym->attr.zero_comp = sym->components == NULL;
 
@@ -2513,6 +2517,7 @@ parse_derived (void)
   gfc_statement st;
   gfc_state_data s;
   gfc_symbol *sym;
+  gfc_component *c;
 
   accept_statement (ST_DERIVED_DECL);
   push_state (&s, COMP_DERIVED, gfc_new_block);
@@ -2632,7 +2637,8 @@ endType:
    * interoperable with C if the type is declared to be bind(c)
    */
   sym = gfc_current_block ();
-  gfc_traverse_components (sym, check_component, (void *)sym);
+  for (c = sym->components; c; c = c->next)
+    check_component (c, sym);
 
   sym->attr.zero_comp = !seen_component;
 

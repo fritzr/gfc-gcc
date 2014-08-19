@@ -2021,48 +2021,7 @@ bad:
   return NULL;
 }
 
-/* Traverse the components of sym by calling tfunc(c, data) for each
-   component c associated with sym. Sym may be a union/derived type
-   definition or variable.
-
-   If a call to tfunc() returns FAILURE, stops traversal. Otherwise tfunc()
-   should return SUCCESS. This function returns FAILURE when sym is NULL or
-   tfunc(c,*) returns FAILURE for some component c (SUCCESS otherwise).
-
-   It is up to the traversal function to handle derived type/union components,
-   which may have subcomponents. */
-
-gfc_try
-gfc_traverse_components (gfc_symbol *sym, compfunc tfunc, void *data)
-{
-  if (!tfunc) return FAILURE;
-
-  if (sym == NULL)
-    return FAILURE;
-
-  if (!gfc_fl_struct (sym->attr.flavor))
-    sym = sym->ts.u.derived;
-
-  if (sym == NULL)
-    return FAILURE;
-
-  return gfc_traverse_components_head (sym->components, tfunc, data);
-}
-
-/* As with gfc_traverse_components, but given a component with no context. */
-
-gfc_try
-gfc_traverse_components_head (gfc_component *p, compfunc tfunc, void *data)
-{
-  if (!tfunc) return FAILURE;
-
-  for (; p; p = p->next)
-    if (tfunc (p, data) == FAILURE)
-      return FAILURE;
-  return SUCCESS;
-}
    
-
 static gfc_component *
 find_union_component (gfc_symbol *un, const char *name,
                       bool noaccess, gfc_ref **ref)
