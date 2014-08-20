@@ -3,6 +3,7 @@
       !
       ! Tests the extended integer formats on bitwise and other
       ! functions (BIJK-prefixes).
+      ! The functions in this test may not be implemented.
       !
 
       PROGRAM MAIN

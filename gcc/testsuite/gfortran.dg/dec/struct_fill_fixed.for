@@ -1,8 +1,8 @@
-! { dg-do compile }
-! { dg-options "-fdec-structure -ffixed-form" }
-!
-! Test the %FILL component extension.
-!
+      ! { dg-do compile }
+      ! { dg-options "-fdec-structure" }
+      !
+      ! Test the %FILL component extension.
+      !
       include 'assert.inc'
 
       program main

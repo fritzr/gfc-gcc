@@ -1,39 +1,39 @@
-! { dg-do compile }
-! { dg-options "-fdec-structure" }
-!
-! Tests whether the compiler correctly complains when a member has been
-! declared twice in unions, including a nested sense.
-!
+      ! { dg-do compile }
+      ! { dg-options "-fdec-structure" }
+      !
+      ! Tests whether the compiler correctly complains when a member has been
+      ! declared twice in unions, including a nested sense.
+      !
 
-program main
+      program main
 
-structure /test/
-  union
+      structure /test/
+        union
 
-    map
-      integer x
-    end map
+          map
+            integer x
+          end map
 
-    map
-      integer y
+          map
+            integer y
 
-      union 
+            union 
 
-        map
-          integer x ! { dg-error "already declared" }
-        end map
+              map
+                integer x ! { dg-error "already declared" }
+              end map
 
-        map
-          structure y ! { dg-error "already declared" }
-            integer*1 hour, minute 
-          end structure 
-        end map
+              map
+                structure y ! { dg-error "already declared" }
+                  integer*1 hour, minute 
+                end structure  ! { dg-error }
+              end map
 
-      end union
+            end union
 
-    end map
+          end map
 
-  end union
-end structure
+        end union
+      end structure
 
-end program main
+      end program main

@@ -1,0 +1,54 @@
+# Copyright (C) 2011-2013 Free Software Foundation, Inc.
+
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with GCC; see the file COPYING3.  If not see
+# <http://www.gnu.org/licenses/>.
+#
+# Contributed by Fritz Reese <Reese-Fritz@zai.com>
+
+
+# Test DEC extensions.
+#
+# For some reason the usual drivers don't seem to grab dg-options from the
+# tests here (read: "I don't know what I'm doing"). As a result the main loop
+# tests each file individually, manually extracting the dg-options directive
+# from the source file.
+#
+
+load_lib gfortran-dg.exp
+
+dg-init
+gfortran_init
+
+# Main loop.
+foreach test [lsort [glob -nocomplain $srcdir/$subdir/*.for ] ] {
+    set dg-final-code ""
+    set flags ""
+    set dowhat ""
+    foreach directive [ dg-get-options $test ] {
+      if [ string match "*dg-do*" $directive ] {
+        regsub {dg-do [0-9]+ } $directive "" dowhat
+        set dowhat [ string trim $dowhat ]
+      }
+      if [ string match "*dg-options*" $directive ] {
+        regsub {dg-options [0-9]+ } $directive "" flags
+        set flags [ string trim $flags {" "} ]
+      }
+    }
+
+    verbose "Testing $test, $flags"
+    gfortran-dg-test $test $dowhat $flags
+}
+
+gfortran_finish
+dg-finish

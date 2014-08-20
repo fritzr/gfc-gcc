@@ -13,6 +13,6 @@
       i =  loc ( j )
       j = %loc ( j )
 
-      call assertll (i, j)
+      call assertll ("loc", i, j)
 
       end program
