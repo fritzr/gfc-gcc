@@ -1,5 +1,5 @@
 ! { dg-do run }
-! { dg-options "-finit-local-zero -finit-derived -fdec-structure -fno-range-check" }
+! { dg-options "-fdec-structure -fno-range-check" }
 !
 ! Test old-style initializations for structure components.
 ! 

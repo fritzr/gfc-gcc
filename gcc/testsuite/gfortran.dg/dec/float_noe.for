@@ -11,8 +11,10 @@
       character*20 :: tmp = "1e"
 
       read (tmp,*,ERR=20) d
-      write (*,'(a,g10.4)') "pass", d
-      stop
+      if (d == 1e0) then
+        write (*,'(a,g10.4)') "pass", d
+        stop
+      endif
 
 20    print *, "FAIL!!!!"
       call abort

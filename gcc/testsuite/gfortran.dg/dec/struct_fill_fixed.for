@@ -1,5 +1,5 @@
 ! { dg-do compile }
-! { dg-options "-fdec-structure -fform-fixed" }
+! { dg-options "-fdec-structure -ffixed-form" }
 !
 ! Test the %FILL component extension.
 !
