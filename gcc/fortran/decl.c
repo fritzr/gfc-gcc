@@ -1943,7 +1943,13 @@ variable_decl (int elem)
 
   /* If we are parsing a structure, we allow the name of the symbol to
      be '%FILL', which gives it an anonymous (inaccessible) name. */
-  m = gfc_match ("%%fill");
+  m = MATCH_NO;
+  gfc_gobble_whitespace ();
+  if (gfc_peek_ascii_char () == '%')
+  {
+    gfc_next_ascii_char ();
+    m = gfc_match ("fill");
+  }
   if (m != MATCH_YES)
   {
     m = gfc_match_name (name);
@@ -2059,7 +2065,7 @@ variable_decl (int elem)
   /* Fill components may not have initializers. */
   if (name[0] == '%' && gfc_match_eos () != MATCH_YES) 
   {
-    gfc_error ("Unnamed fields may not have initializers at %C");
+    gfc_error ("Unnamed field at %C may not have initializers");
     m = MATCH_ERROR;
     goto cleanup;
   }
