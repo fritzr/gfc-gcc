@@ -2,7 +2,7 @@
 ! { dg-options "-finit-local-zero -finit-derived -fbackslash" }
 !
 ! Make sure -finit-derived with -finit-local-zero initializes components
-! of local derived type variables to zero without overriding explicit default
+! of local derived type variables to zero without overwriting explicit default
 ! initializers.
 !
       include 'assert.inc'
@@ -15,13 +15,15 @@
         real r1
         logical l1
         character c1
-        ! Make sure explicit default initializers are not overridden
+        ! Make sure explicit default initializers are not overwritten
         integer :: i2 = 1
         real :: r2 = 1.0
         logical :: l2 = .true.
         character :: c2 = 'x'
       end type
       type(ty) t
+      ! Make sure explicit symbol initializer is not overwritten
+      type(ty) :: t2 = ty(1,1.0,.true.,'x',0,0.0,.false.,'\0')
 
       ! Make sure locals are still initialized to zero
       integer ii1
@@ -56,5 +58,15 @@
       call assertrr ("t%r2",  t%r2,  1.0)
       call assert   ("t%l2",  t%l2)
       call assertss ("t%c2",  t%c2, 'x')
+
+      call assertll ("t2%i1",  t2%i1,  1)
+      call assertrr ("t2%r1",  t2%r1,  1.0)
+      call assert   ("t2%l1",  t2%l1)
+      call assertss ("t2%c1",  t2%c1, 'x')
+
+      call assertll ("t2%i2",  t2%i2,  0)
+      call assertrr ("t2%r2",  t2%r2,  0.0)
+      call assert   ("t2%l2",  .not. t2%l2)
+      call assertss ("t2%c2",  t2%c2, '\0')
 
       end
