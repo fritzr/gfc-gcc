@@ -1549,8 +1549,8 @@ components of derived type variables
 @item
 variables that appear in an @code{EQUIVALENCE} statement.
 @end itemize
-To initialize components of derived type variables use
-@option{-finit-derived}.
+Components of derived type variables will be initialized with the values from
+these flags only with @option{-finit-derived}.
 
 Note that the @option{-finit-real=nan} option initializes @code{REAL}
 and @code{COMPLEX} variables with a quiet NaN. For a signalling NaN
