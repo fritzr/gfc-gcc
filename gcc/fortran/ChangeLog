@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 2015-06-23  Release Manager
 
 	* GCC 4.8.5 released.
@@ -161,6 +162,28 @@
 	PR libfortran/61310
 	* intrinsics.texi (CTIME): Remove mention of locale-dependent
 	behavior.
+
+2014-08-21  Fritz Reese  <Reese-Fritz@zai.com>
+
+	* lang.opt: Add -finit-derived.
+	* invoke.texi: Ditto.
+	* options.c (gfc_init_options, gfc_handle_option): Ditto.
+	* gfortran.h (gfc_option): Ditto.
+	(gfc_build_default_init_expr, gfc_apply_init): New prototypes.
+	(gfc_default_initializer): Add boolean parameter for whether to
+	generate component initializations.
+	* class.c (gfc_find_derived_vtab, gfc_find_intrinsic_vtab): Use new
+	interface to gfc_default_initializer.
+	* decl.c (variable_decl, gfc_match_derived_decl): Ditto.
+	(build_struct): Component initialization application moved to
+	expr.c (gfc_apply_init).
+	* resolve.c (build_default_init_expr): Body made public in expr.c.
+	* expr.c (gfc_build_default_init_expr): New from body of
+	resolve.c (build_default_init_expr).
+	(gfc_default_initializer): Generate component initializers if
+	-finit-derived is set and generate parameter is true.
+	(component_init): New helper function for gfc_default_initializer.
+	(gfc_apply_init): New function to update new component initializers.
 
 2014-05-22  Release Manager
 
