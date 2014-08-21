@@ -178,6 +178,7 @@ and warnings}.
 -finit-character=@var{n} -finit-integer=@var{n} -finit-local-zero @gol
 -finit-logical=@var{<true|false>}
 -finit-real=@var{<zero|inf|-inf|nan|snan>} @gol
+-finit-derived @gol
 -fmax-array-constructor=@var{n} -fmax-stack-var-size=@var{n}
 -fno-align-commons @gol
 -fno-automatic -fno-protect-parens -fno-underscoring -fno-whole-file @gol
@@ -1518,11 +1519,13 @@ on the stack. This flag cannot be used together with
 @option{-fmax-stack-var-size=} or @option{-fno-automatic}.
 
 @item -finit-local-zero
+@itemx -finit-derived
 @itemx -finit-integer=@var{n}
 @itemx -finit-real=@var{<zero|inf|-inf|nan|snan>}
 @itemx -finit-logical=@var{<true|false>}
 @itemx -finit-character=@var{n}
 @opindex @code{finit-local-zero}
+@opindex @code{finit-derived}
 @opindex @code{finit-integer}
 @opindex @code{finit-real}
 @opindex @code{finit-logical}
@@ -1537,7 +1540,7 @@ initialization options are provided by the
 the real and imaginary parts of local @code{COMPLEX} variables),
 @option{-finit-logical=@var{<true|false>}}, and
 @option{-finit-character=@var{n}} (where @var{n} is an ASCII character
-value) options.  These options do not initialize
+value) options.  By default these options do not initialize
 @itemize @bullet
 @item
 allocatable arrays
@@ -1546,7 +1549,8 @@ components of derived type variables
 @item
 variables that appear in an @code{EQUIVALENCE} statement.
 @end itemize
-(These limitations may be removed in future releases).
+To initialize components of derived type variables use
+@option{-finit-derived}.
 
 Note that the @option{-finit-real=nan} option initializes @code{REAL}
 and @code{COMPLEX} variables with a quiet NaN. For a signalling NaN

@@ -155,6 +155,7 @@ gfc_init_options (unsigned int decoded_options_count,
   gfc_option.flag_init_logical = GFC_INIT_LOGICAL_OFF;
   gfc_option.flag_init_character = GFC_INIT_CHARACTER_OFF;
   gfc_option.flag_init_character_value = (char)0;
+  gfc_option.flag_init_derived = GFC_INIT_DERIVED_OFF;
   gfc_option.flag_align_commons = 1;
   gfc_option.flag_protect_parens = -1;
   gfc_option.flag_realloc_lhs = -1;
@@ -940,6 +941,10 @@ gfc_handle_option (size_t scode, const char *arg, int value,
       gfc_option.flag_init_logical = GFC_INIT_LOGICAL_FALSE;
       gfc_option.flag_init_character = GFC_INIT_CHARACTER_ON;
       gfc_option.flag_init_character_value = (char)0;
+      break;
+
+    case OPT_finit_derived:
+      gfc_option.flag_init_derived = GFC_INIT_DERIVED_ON;
       break;
 
     case OPT_finit_logical_:

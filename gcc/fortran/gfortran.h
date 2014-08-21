@@ -587,6 +587,13 @@ init_local_integer;
 
 typedef enum
 {
+    GFC_INIT_DERIVED_OFF = 0,
+    GFC_INIT_DERIVED_ON
+}
+init_derived;
+
+typedef enum
+{
   GFC_FCOARRAY_NONE = 0,
   GFC_FCOARRAY_SINGLE,
   GFC_FCOARRAY_LIB
@@ -2290,6 +2297,7 @@ typedef struct
   int flag_module_private;
   int flag_recursive;
   int flag_init_local_zero;
+  int flag_init_derived;
   int flag_init_integer;
   int flag_init_integer_value;
   int flag_init_real;

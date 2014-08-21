@@ -481,6 +481,10 @@ finit-real=
 Fortran RejectNegative Joined
 -finit-real=<zero|nan|inf|-inf>	Initialize local real variables
 
+finit-derived
+Fortran
+Automatically initialize local derived type variables
+
 fmax-array-constructor=
 Fortran RejectNegative Joined UInteger
 -fmax-array-constructor=<n>	Maximum number of objects in an array constructor
