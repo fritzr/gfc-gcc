@@ -2076,7 +2076,7 @@ variable_decl (int elem)
     {
       if (current_ts.type == BT_DERIVED
 	  && !current_attr.pointer && !initializer)
-	initializer = gfc_default_initializer (&current_ts);
+	initializer = gfc_default_initializer (&current_ts, false);
       t = build_struct (name, cl, &initializer, &as);
     }
 
@@ -7662,7 +7662,7 @@ gfc_match_derived_decl (void)
 
       p->ts.type = BT_DERIVED;
       p->ts.u.derived = extended;
-      p->initializer = gfc_default_initializer (&p->ts);
+      p->initializer = gfc_default_initializer (&p->ts, false);
 
       /* Set extension level.  */
       if (extended->attr.extension == 255)

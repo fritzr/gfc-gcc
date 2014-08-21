@@ -2300,7 +2300,8 @@ gfc_find_derived_vtab (gfc_symbol *derived)
 		  gfc_set_sym_referenced (def_init);
 		  def_init->ts.type = BT_DERIVED;
 		  def_init->ts.u.derived = derived;
-		  def_init->value = gfc_default_initializer (&def_init->ts);
+		  def_init->value = gfc_default_initializer (&def_init->ts,
+                                                             false);
 
 		  c->initializer = gfc_lval_expr_from_sym (def_init);
 		}
@@ -2392,7 +2393,7 @@ gfc_find_derived_vtab (gfc_symbol *derived)
 
 have_vtype:
 	  vtab->ts.u.derived = vtype;
-	  vtab->value = gfc_default_initializer (&vtab->ts);
+	  vtab->value = gfc_default_initializer (&vtab->ts, false);
 	}
     }
 
@@ -2666,7 +2667,7 @@ gfc_find_intrinsic_vtab (gfc_typespec *ts)
 	      c->initializer = gfc_get_null_expr (NULL);
 	    }
 	  vtab->ts.u.derived = vtype;
-	  vtab->value = gfc_default_initializer (&vtab->ts);
+	  vtab->value = gfc_default_initializer (&vtab->ts, false);
 	}
     }
 
