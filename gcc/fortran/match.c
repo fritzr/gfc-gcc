@@ -662,39 +662,53 @@ gfc_match_extended_integer (char *buffer, int *radix, int *cnt)
 match
 gfc_match_small_literal_int (int *value, int *cnt)
 {
-    /* Largest number is "99,999,999"; in base 2 is 27 digits */
-    char buffer[28];
-    int v, length, radix;
-    locus old_loc;
-    match m;
+  locus old_loc;
+  char c;
+  int i, j;
 
-    v = -1;
-    if (cnt) *cnt = 0;
-    old_loc = gfc_current_locus;
-    m = gfc_match_extended_integer (NULL, &radix, &length);
-    gfc_current_locus = old_loc;
-    if (m != MATCH_YES)
-        return m;
+  old_loc = gfc_current_locus;
 
-    if ((unsigned)(length+1) < (sizeof (buffer) / sizeof (buffer[0])))
+  *value = -1;
+  gfc_gobble_whitespace ();
+  c = gfc_next_ascii_char ();
+  if (cnt)
+    *cnt = 0;
+
+  if (!ISDIGIT (c))
     {
-        memset (buffer, '\0', sizeof (buffer));
-        gcc_assert (gfc_match_extended_integer (buffer, NULL, NULL)
-                     == MATCH_YES);
-        v = strtol (buffer, NULL, radix);
-    }
-    if (v < 0 || v > 99999999)
-    {
-        gfc_error ("Integer too large at %C");
-        return MATCH_ERROR;
+      gfc_current_locus = old_loc;
+      return MATCH_NO;
     }
 
-    if (value)
-        *value = v;
-    if (cnt)
-        *cnt = length;
-    return MATCH_YES;
+  i = c - '0';
+  j = 1;
+
+  for (;;)
+    {
+      old_loc = gfc_current_locus;
+      c = gfc_next_ascii_char ();
+
+      if (!ISDIGIT (c))
+	break;
+
+      i = 10 * i + c - '0';
+      j++;
+
+      if (i > 99999999)
+	{
+	  gfc_error ("Integer too large at %C");
+	  return MATCH_ERROR;
+	}
+    }
+
+  gfc_current_locus = old_loc;
+
+  *value = i;
+  if (cnt)
+    *cnt = j;
+  return MATCH_YES;
 }
+
 
 /* Match a small, constant integer expression, like in a kind
    statement.  On MATCH_YES, 'value' is set.  */
