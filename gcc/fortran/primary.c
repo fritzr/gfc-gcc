@@ -199,6 +199,18 @@ match_hollerith_constant (gfc_expr **result)
   old_loc = gfc_current_locus;
   gfc_gobble_whitespace ();
 
+  if (gfc_match_literal_int (NULL, 10, NULL) == MATCH_YES)
+  {
+    gfc_gobble_whitespace ();
+    if (gfc_peek_ascii_char () == '#' && gfc_option.flag_dec_extended_int)
+    {
+      /* This is actually an extended integer constant. */
+      gfc_current_locus = old_loc;
+      return MATCH_NO;
+    }
+  }
+  gfc_current_locus = old_loc;
+
   if (match_integer_constant (&e, 0) == MATCH_YES
       && gfc_match_char ('h') == MATCH_YES)
     {
