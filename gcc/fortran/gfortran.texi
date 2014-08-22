@@ -1359,15 +1359,7 @@ flags do not produce warnings.
 * CONVERT specifier::
 * OpenMP::
 * Argument list functions::
-* STRUCTURE and RECORD::
-* UNION and MAP::
-* .XOR. operator::
-@c * CARRIAGECONTROL, READONLY, and SHARED I/O specifiers::
-@c * D/B/I/J/K type prefixes to bitwise/math functions
-@c * Degree versions of trigonometric intrinsics::
-@c * AUTOMATIC and STATIC attributes::
-@c * Extended integer constants::
-@c * Form feed as whitespace::
+* Optional DEC extension support::
 @end menu
 
 @node Old-style kind specifications
@@ -1564,7 +1556,7 @@ type, then the real-literal-constant will be interpreted as a
 
 @node BOZ literal constants
 @subsection BOZ literal constants
-@cindex BOZ literal constants
+@cindex literal constants, BOZ
 
 Besides decimal constants, Fortran also supports binary (@code{b}),
 octal (@code{o}) and hexadecimal (@code{z}) integer constants.  The
@@ -2009,8 +2001,38 @@ For details refer to the g77 manual
 Also, @code{c_by_val.f} and its partner @code{c_by_val.c} of the
 GNU Fortran testsuite are worth a look.
 
+@node Optional DEC extension support
+@subsection Optional DEC extension support
+@cindex extensions, dec
+
+Long long ago in a land far far away, in the time before Fortran standards
+existed, compiler writers loved to add extensions to Fortran for anyone who
+asked them nicely. The most popular of these extensions were implemented by
+Digital Equipment Corporation (DEC). Since they were so popular they were
+maintained in the Digital (and since Intel) compiler long after standards were
+introduced. Unfortunately these extensions remain in use by a number of users.
+
+GNU Fortran provides selective automatic support for some of these
+extensions, described in the previous section @ref{Extensions implemented in
+GNU Fortran}. Other DEC extensions are so heinous that GNU Fortran requires the
+user to explicitly enable them; these are the "optional" DEC extensions,
+described here. Most of the time they are enabled with a compile flag prefaced
+by @option{-fdec-}.
+
+@menu
+* STRUCTURE and RECORD::
+* UNION and MAP::
+* .XOR. operator::
+* Base#value literal constants::
+* I/O specifiers::
+* Type prefixes to integer intrinsic functions::
+* Extended math intrinsics::
+* AUTOMATIC and STATIC attributes::
+* Form feed as whitespace::
+@end menu
+
 @node STRUCTURE and RECORD
-@subsection @code{STRUCTURE} and @code{RECORD}
+@subsubsection @code{STRUCTURE} and @code{RECORD}
 @cindex @code{STRUCTURE}
 @cindex @code{RECORD}
 
@@ -2073,8 +2095,8 @@ will take up sixteen bytes:
 
 @smallexample 
 structure /useless/
-  integer(8) %FILL
   integer(4) i
+  integer(8) %FILL
 end structure
 @end smallexample
 
@@ -2121,11 +2143,11 @@ end type appointment
 section on @ref{UNION and MAP}.
 
 @item Structures support old-style initialization of components, identical to
-those listed in @ref{Old-style variable initialization}.
+those described in @ref{Old-style variable initialization}.
 @end itemize
 
 @node UNION and MAP
-@subsection @code{UNION} and @code{MAP}
+@subsubsection @code{UNION} and @code{MAP}
 @cindex @code{UNION}
 @cindex @code{MAP}
 
@@ -2135,9 +2157,39 @@ automatically enabled with @option{-fdec-structure}.
 
 A @code{UNION} declaration occurs within a structure; within the definition of
 each union is a number of @code{MAP} definitions. Each @code{MAP} shares
-storage with its sibling maps (in the same union) just as with unions in C. The
-major difference is that component references do not indicate which union or
-map the component is in (the compiler gets to figure that out).
+storage with its sibling maps (in the same union), and the size of the union
+is the size of the largest map within it, just as with unions in C. The major
+difference is that component references do not indicate which union or map the
+component is in (the compiler gets to figure that out).
+
+Here is a small example:
+@smallexample
+structure /words_long/
+union
+  map
+    integer(2) w0, w1, w2
+  end map
+  map
+    integer(4) long
+  end map
+end union
+end structure
+@end smallexample
+
+The two maps share memory, and the size of the union is ultimately six bytes:
+
+@example
+0    1    2    3    4   5   6     Byte offset
+-------------------------------
+|    |    |    |    |    |    |
+-------------------------------
+
+^    W0   ^    W1   ^    W2   ^
+ \-------/ \-------/ \-------/
+
+^       LONG        ^  unused ^
+ \-----------------/ \-------/
+@end example
 
 Following is an example mirroring the layout of an Intel x86_64 register:
 
@@ -2180,6 +2232,7 @@ record /reg/ a
 
 ! After this assignment...
 a.rx = z'AABBCCCCFFFFFFFF'
+
 ! The following is true:
 !
 ! a.rx == z'AABBCCCCFFFFFFFF'
@@ -2196,11 +2249,289 @@ a.rx = z'AABBCCCCFFFFFFFF'
 @end example
 
 @node .XOR. operator
-@subsection @code{.XOR.} operator
-@cindex @code{XOR}, operator
+@subsubsection @code{.XOR.} operator
+@cindex operator, @code{XOR}
 
 With @option{-fdec-logical-xor}, @code{.XOR.} is supported as a logical
-operator. It is entirely equivalent to the standard operator @code{.NEQV.}.
+operator. It is entirely equivalent to the standard operator @code{.NEQV.}:
+
+@smallexample
+logical :: a = .true., b = .false., c
+c = a .xor. b ! same as a .neqv. b
+@end smallexample
+
+@node Base#value literal constants
+@subsubsection Base#value literal constants
+
+With the flag @option{-fdec-extended-int} GNU Fortran supports the use of the
+DEC @code{base#value} integer constants. The base may lie anywhere between 2
+and 36. If no base is present (as in @code{#value}) the default base is 16
+(hexadecimal). The letters of the alphabet A-Z represent digits starting at ten
+for bases higher than base ten. In the following example, each assignment
+results in the value 63:
+
+@smallexample
+I = #3D + 2
+J = 16#3f
+K = 2#1000000 - 6#1
+L = -4#3 + 5#231
+M = '3f'x
+N = 36#1R
+@end smallexample
+
+Extended integer literals of this form are also supported in standard variable
+kind specifications (not old-style):
+
+@smallexample
+integer(kind=2#100) I ! valid: 100 base 2 => 4
+integer(5#13)       J ! valid: 13  base 5 => 8
+integer*3#11        K ! UNSUPPORTED
+@end smallexample
+
+@node I/O specifiers
+@subsubsection I/O specifiers
+@cindex I/O
+@cindex @code{CARRIAGECONTROL}
+@cindex @code{READONLY}
+@cindex @code{SHARED}
+
+With @option{-fdec-io} GNU Fortran supports additional DEC extended I/O
+features. Currently implemented are three additional categories of specifiers
+for the @code{OPEN} statement:
+
+@itemize @bullet
+
+@item @code{READONLY}
+
+Specifying @code{READONLY} in an @code{OPEN} statement is equivalent to
+specifying @code{ACTION='READ'}, except that the file is protected from
+deletion on close. A runtime error will be thrown if a unit opened
+@code{READONLY} is closed with @code{STATUS='DELETE'}. @code{READONLY} may not
+be present with the @code{ACTION=} specifier. Example:
+
+@example
+open (unit=fd, file=fname, readonly)
+ ...
+close (unit=fd, status='delete') ! will cause runtime error
+@end example
+
+@item @code{SHARED}, @code{NOSHARED}, @code{SHARE=DENYNONE|DENYRW}
+
+When this specifier is given, runtime file locking occurs based on the option
+given. The locking is performed by @code{fcntl}; see your system's
+documentation for details on the locking performed.
+
+@itemize
+@item @code{DENYNONE} Lock the file with a shared (read) lock (i.e. F_RDLCK) on
+open.
+@item @code{DENYRW} Lock the file with an exclusive (write) lock (i.e. F_WRLCK)
+on open.
+@end itemize
+
+@code{SHARED} is equivalent to @code{SHARE=DENYNONE}, and
+@code{NOSHARED} is equivalent to @code{SHARE=DENYRW}. Examples:
+
+@example
+open (..., action='*')                       ! open with no locking
+
+open (..., action='read',  share='denynone') ! open with shared/read lock
+open (..., action='read',  shared)           ! equivalent to the above
+
+open (..., action='write', share='denyrw')   ! open with exclusive/write lock
+open (..., action='write', noshared)         ! equivalent to the above
+@end example
+
+@item @code{CARRIAGECONTROL=NONE|LIST|FORTRAN}
+
+The @code{CARRIAGECONTROL} specifier dictates how reading and writing between
+records is performed for the given unit at runtime.
+
+@itemize
+@item @code{NONE} - default for unformatted or binary I/O.
+
+When writing, no line feed is written following each record. When reading
+there are no records; the entire read buffer is filled with each read.
+
+@item @code{LIST} - default for regular formatted I/O.
+
+When writing, a space is written before each record and a line feed (or CR-LF)
+is written following each record. This is because of the historical special
+interpretation of the character in the first column of a line.
+
+@item @code{FORTRAN}
+
+When writing, no space is inserted before each record, but a line feed (or
+CR-LF) is still written following each record. This is to allow output into
+the first column of a line for special interpretation. Reading is identical to
+@code{CARRIAGECONTROL=LIST}.
+
+@end itemize
+
+Examples:
+
+@example
+open (unit=3, ..., carriagecontrol='list')
+write (3, *) "hi"
+write (3, *) "there"
+...
+! Output is " hi\n there\n":
+ hi
+ there
+@end example
+@example
+open (unit=3, ..., carriagecontrol='fortran')
+write (3, *) "hi"
+write (3, *) "there"
+...
+! Output is "hi\nthere\n":
+hi
+there
+@end example
+@example
+open (unit=3, ..., carriagecontrol='none')
+write (3, *) "hi"
+write (3, *) "there"
+...
+! Output is " hi there":
+ hi there
+@end example
+@end itemize
+
+@node Type prefixes to integer intrinsic functions
+@subsubsection Type prefixes to integer intrinsic functions
+@cindex intrinsics, integer
+
+Similar to the D/C prefixes to real functions to specify the input/output
+types, DEC offered B/I/J/K prefixes to integer functions to control their
+types. The types implied by each are:
+
+@example
+@code{B} - @code{INTEGER(kind=1)}
+@code{I} - @code{INTEGER(kind=2)}
+@code{J} - @code{INTEGER(kind=4)}
+@code{K} - @code{INTEGER(kind=8)}
+@end example
+
+GNU Fortran supports these with the flag @option{-fdec-intrinsic-ints}.
+Intrinsics for which prefixed versions are available and in what form are noted
+in @ref{Intrinsic Procedures}. The complete list of currently supported
+intrinsics is here:
+
+@multitable .2 .2 .2 .2 .2
+
+@headitem Intrinsic @tab B @tab I @tab J @tab K
+
+@item @code{ABS}
+  @tab @code{BABS} @tab @code{IIABS} @tab @code{JIABS} @tab @code{KIABS}
+@item @code{BTEST}
+  @tab @code{BBTEST} @tab @code{BITEST} @tab @code{BJTEST} @tab @code{BKTEST}
+@item @code{IAND}
+  @tab @code{BIAND} @tab @code{IIAND} @tab @code{JIAND} @tab @code{KIAND}
+@item @code{IBCLR}
+  @tab @code{BBCLR} @tab @code{IIBCLR} @tab @code{JIBCLR} @tab @code{KIBCLR}
+@item @code{IBITS}
+  @tab @code{BBITS} @tab @code{IIBITS} @tab @code{JIBITS} @tab @code{KIBITS}
+@item @code{IBSET}
+  @tab @code{BBSET} @tab @code{IIBSET} @tab @code{JIBSET} @tab @code{KIBSET}
+@item @code{IEOR}
+  @tab @code{BIEOR} @tab @code{IIEOR} @tab @code{JIEOR} @tab @code{KIEOR}
+@item @code{IOR}
+  @tab @code{BIOR} @tab @code{IIOR} @tab @code{JIOR} @tab @code{KIOR}
+@item @code{ISHFT}
+  @tab @code{BSHFT} @tab @code{IISHFT} @tab @code{JISHFT} @tab @code{KISHFT}
+@item @code{ISHFTC}
+  @tab @code{BSHFTC} @tab @code{IISHFTC} @tab @code{JISHFTC} @tab @code{KISHFTC}
+@item @code{MOD}
+  @tab @code{BMOD} @tab @code{IMOD} @tab @code{JMOD} @tab @code{KMOD}
+@item @code{NOT}
+  @tab @code{BNOT} @tab @code{INOT} @tab @code{JNOT} @tab @code{KNOT}
+@item @code{FLOAT}
+  @tab @code{--} @tab @code{FLOATI} @tab @code{FLOATJ} @tab @code{FLOATK}
+@end multitable
+
+@node Extended math intrinsics
+@subsubsection Extended math intrinsics
+@cindex intrinsics, math
+@cindex intrinsics, trigonometric function
+@cindex trigonometric function, degrees
+
+GNU Fortran supports an extended list of mathematical intrinsics with
+@option{-fdec-math}. These intrinsics are listed completely in @ref{Intrinsic
+Procedures} and it is noted that they are optional DEC extensions. 
+
+This flag enables the @ref{COTAN} intrinsic.
+
+This flag also adds trigonometric intrinsics which accept or produce degrees
+instead of radians. The new intrinsics enabled by this option are listed here
+with the corresponding standard radian versions:
+
+@multitable .5 .5
+@headitem Radians @tab Degrees
+@item @ref{ACOS}  @tab @ref{ACOSD}
+@item @ref{ASIN}  @tab @ref{ASIND}
+@item @ref{ATAN}  @tab @ref{ATAND}
+@item @ref{ATAN2} @tab @ref{ATAN2D}
+@item @ref{COS}   @tab @ref{COSD}
+@item @ref{COTAN} @tab @ref{COTAND}
+@item @ref{SIN}   @tab @ref{SIND}
+@item @ref{TAN}   @tab @ref{TAND}
+@end multitable
+
+@node AUTOMATIC and STATIC attributes
+
+@subsubsection @code{AUTOMATIC} and @code{STATIC} attributes
+@cindex variable attributes
+@cindex @code{AUTOMATIC}
+@cindex @code{STATIC}
+
+With @option{-fdec-static} GNU Fortran supports the explicit specification of
+two additional variable attributes: @code{STATIC} and @code{AUTOMATIC}. These
+follow the syntax of the @code{SAVE} attribute.
+
+@code{STATIC} is exactly equivalent to @code{SAVE}.
+
+@code{AUTOMATIC} is the default for local variables smaller than
+@option{-fmax-stack-var-size}, unless @option{-fno-automatic} is given.
+Variables marked @code{AUTOMATIC} will be placed on the stack whenever
+possible. This includes inside a blanket SAVE namespace, but not with
+@option{-fno-automatic} or if the variable is larger than
+@option{-fmax-stack-var-size}.
+
+Examples:
+
+@example
+subroutine f
+  integer, automatic :: i  ! automatic variable
+  integer x, y             ! static variables
+  save
+  ...
+endsubroutine
+@end example
+@example
+subroutine f
+  integer a, b, c, x, y, z
+  static :: x
+  static y
+  automatic z, c
+  ! a, b, c, and z are automatic
+  ! x and y are static
+endsubroutine
+@end example
+@example
+! Compiled with -fno-automatic
+subroutine f
+  integer a, b, c, d
+  automatic :: a  ! warning is produced
+  ! all variables are static
+ensubroutine
+@end example
+
+@node Form feed as whitespace
+@subsubsection Form feed as whitespace
+@cindex form feed
+
+Stuff.
+
 
 @node Extensions not implemented in GNU Fortran
 @section Extensions not implemented in GNU Fortran
