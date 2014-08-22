@@ -1725,6 +1725,9 @@ match_open_element (gfc_open *open)
   m = match_dec_ftag (&tag_shared, open);
   if (m != MATCH_NO)
     return m;
+  m = match_dec_ftag (&tag_noshared, open);
+  if (m != MATCH_NO)
+    return m;
 
   return MATCH_NO;
 }

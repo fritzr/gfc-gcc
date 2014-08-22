@@ -1,21 +1,18 @@
       ! { dg-do compile }
       ! { dg-options "-fdec-io" }
       !
-      ! Tests the SHARED flag. A more complex test should be done
-      ! which actually checks that the correct fcntl() is made at
-      ! runtime.
+      ! Tests compilation of the SHARE= specifier family. A more
+      ! complete test should be created which actually checks that the
+      ! correct fcntl() is made at runtime.
       !
       program main
 
       character*20, parameter :: fname='test.txt'
       integer fd
-      character*100 cdata
 
       open (unit=fd, file=fname, action='read', shared)
-
-      !read (fd,'(a)') cdata
-      !write (*,'(a)') cdata
-
-      close (unit=fd)
+      open (unit=fd, file=fname, action='read', noshared)
+      open (unit=fd, file=fname, action='read', share='denynone')
+      open (unit=fd, file=fname, action='read', share='denyrw')
 
       end program
