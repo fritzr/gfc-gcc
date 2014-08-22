@@ -3113,11 +3113,6 @@ add_functions (void)
 
   if (gfc_option.flag_dec_math)
   {
-  add_sym_1 ("qabs", GFC_ISYM_ABS, CLASS_ELEMENTAL, ACTUAL_YES, BT_REAL, 16, 
-             GFC_STD_GNU, gfc_check_fn_q, gfc_simplify_abs, gfc_resolve_abs,
-             a, BT_REAL, 16, REQUIRED);
-
-
   add_sym_1 ("acosd", GFC_ISYM_ACOS, CLASS_ELEMENTAL, ACTUAL_YES, BT_REAL, dr, 
              GFC_STD_GNU, gfc_check_fn_r, gfc_simplify_atrigd, gfc_resolve_acos,
 	     x, BT_REAL, dr, REQUIRED);

@@ -291,9 +291,8 @@ Enable the logical @code{.XOR.} function (same as @code{.NEQV.}).
 
 @item -fdec-math
 @opindex @code{fdec-math}
-Enable extra math intrinsics, such as: @code{QABS}, degree-valued trig
-functions, etc... For a list of supported intrinsics see the full
-documentation.
+Enable extra math intrinsics, such as degree-valued trig functions.
+For a list of supported intrinsics see the full documentation.
 
 @item -ffeed
 @opindex @code{ffeed}
