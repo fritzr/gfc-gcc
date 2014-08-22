@@ -1338,7 +1338,8 @@ purely for backward compatibility with legacy compilers.  By default,
 extensions, but to warn about the use of the latter.  Specifying
 either @option{-std=f95}, @option{-std=f2003} or @option{-std=f2008}
 disables both types of extensions, and @option{-std=legacy} allows both
-without warning.
+without warning. Those extensions which are enabled by specific compile
+flags do not produce warnings.
 
 @menu
 * Old-style kind specifications::
@@ -1359,6 +1360,14 @@ without warning.
 * OpenMP::
 * Argument list functions::
 * STRUCTURE and RECORD::
+* UNION and MAP::
+* .XOR. operator::
+@c * CARRIAGECONTROL, READONLY, and SHARED I/O specifiers::
+@c * D/B/I/J/K type prefixes to bitwise/math functions
+@c * Degree versions of trigonometric intrinsics::
+@c * AUTOMATIC and STATIC attributes::
+@c * Extended integer constants::
+@c * Form feed as whitespace::
 @end menu
 
 @node Old-style kind specifications
@@ -1646,6 +1655,37 @@ zero, and @code{.TRUE.} is interpreted as one.  When converting from
 However, there is no implicit conversion of @code{INTEGER} values in
 @code{if}-statements, nor of @code{LOGICAL} or @code{INTEGER} values
 in I/O operations.
+
+As a further extension, when the flag @option{-fdec-bitwise-ops} is asserted
+any logical operators with at least one @code{INTEGER} operand implicitly
+use the corresponding bitwise intrinsic function instead of the logical
+operation. The result is an integer type with the same kind of the largest
+integer operand. A complete list of the conversions that take place is given
+here:
+
+@smallexample
+  .NOT.  X -> NOT(X)
+X .AND.  Y -> IAND(X,Y)
+X .OR.   Y -> IOR(X,Y)
+X .XOR.  Y -> IEOR(X,Y)*
+X .NEQV. Y -> IEOR(X,Y)
+X .EQV.  Y -> NOT(IEOR(X,Y))
+@end smallexample
+@emph{See @ref{.XOR. operator}}
+
+For example, with @option{-fdec-bitwise-ops}, the following two examples are
+equivalent:
+
+@smallexample
+      INTEGER :: i, j
+      LOGICAL :: l
+      j = i .AND. l
+@end smallexample
+@smallexample
+      INTEGER :: i, j
+      LOGICAL :: l
+      j = IAND(i, l)
+@end smallexample
 
 @node Hollerith constants support
 @subsection Hollerith constants support
@@ -1960,6 +2000,9 @@ C
       end
 @end smallexample
 
+Use of @code{%LOC()} as an rvalue is supported with the flag
+@option{-floc-rval} (its behavior is identical to the @code{LOC()} intrinsic).
+
 For details refer to the g77 manual
 @uref{http://gcc.gnu.org/@/onlinedocs/@/gcc-3.4.6/@/g77/@/index.html#Top}.
 
@@ -1973,9 +2016,9 @@ GNU Fortran testsuite are worth a look.
 
 Record structures are a pre-Fortran-90 DEC extension to create
 user-defined aggregate data types. Support for record structures in GNU
-Fortran can be enabled with the @code{-fdec-structure} compile option.
+Fortran can be enabled with the @option{-fdec-structure} compile option.
 If you have a choice, you should instead use Fortran 90's ``derived types'',
-which have a different syntax.
+which have a different syntax. 
 
 In many cases, record structures can easily be converted to derived types.
 To convert, replace @code{STRUCTURE /}@var{structure-name}@code{/}
@@ -1983,6 +2026,10 @@ by @code{TYPE} @var{type-name}.  Additionally, replace
 @code{RECORD /}@var{structure-name}@code{/} by
 @code{TYPE(}@var{type-name}@code{)}. Finally, in the component access,
 replace the period (@code{.}) by the percent sign (@code{%}).
+
+Note that component access by period can be enabled for derived types
+separately from structure/record support with @option{-fdec-member-dot};
+however, it is enabled automatically with @option{-fdec-structure}.
 
 Here is an example of code using the non portable record structure syntax:
 
@@ -2013,36 +2060,147 @@ print *, store_catalog(12)
 @end example
 
 @noindent
-This code can easily be rewritten in the Fortran 90 syntax as following:
+Structures and derived types differ in a few ways:
+ 
+@itemize @bullet
+@item Structures act like derived types with the @code{SEQUENCE} attribute.
+Otherwise they may contain no specifiers.
+
+@item Structures may contain a variable with the name @code{%FILL}; this will
+create an anonymous component which cannot be referenced but fills space just
+like a component for alignment purposes. For example, the following structure
+will take up sixteen bytes:
+
+@smallexample 
+structure /useless/
+  integer(8) %FILL
+  integer(4) i
+end structure
+@end smallexample
+
+@item Structures may share names with other symbols. For example, the following
+is invalid for derived types, but valid for structures:
+
+@smallexample
+structure /Header/
+  ! ...
+end structure
+record /Header/ header
+@end smallexample
+
+@item Structures may be defined 'ad-hoc' within another parent structure. The
+type names for these structures may be ommitted, in which case the structure
+type itself is anonymous, and other structures of the same type cannot be
+instantiated. The following shows some examples:
 
 @example
-! ``STRUCTURE /name/ ... END STRUCTURE'' becomes
-! ``TYPE name ... END TYPE''
-TYPE item
-  INTEGER id
-  CHARACTER(LEN=200) description
-  REAL price
-END TYPE
+type appointment
+  ! 'ad-hoc' structure definition; app_time is an array of two 'time'
+  structure /time/ app_time (2) 
+    integer(1) hour, minute
+  end structure
+  character(10) memo
+end type appointment
 
-! ``RECORD /name/ variable'' becomes ``TYPE(name) variable''
-TYPE(item) pear, store_catalog(100)
+! The 'time' structure is still usable
+record /time/ now
+now = time(5, 30)
 
-! Instead of using a dot (.) to access fields of a record, the
-! standard syntax uses a percent sign (%)
-pear%id = 92316
-pear%description = "juicy D'Anjou pear"
-pear%price = 0.15
-store_catalog(7)%id = 7831
-store_catalog(7)%description = "milk bottle"
-store_catalog(7)%price = 1.2
+...
 
-! Assignments of a whole variable do not change
-store_catalog(12) = pear
-print *, store_catalog(12)
+type appointment
+  ! anonymous ad-hoc structure definition
+  structure start, end
+    integer(1) hour, minute
+  end structure
+  character(10) memo
+end type appointment
 @end example
 
+@item Structures may contain @code{UNION} declarations. For more detail see the
+section on @ref{UNION and MAP}.
 
+@item Structures support old-style initialization of components, identical to
+those listed in @ref{Old-style variable initialization}.
+@end itemize
 
+@node UNION and MAP
+@subsection @code{UNION} and @code{MAP}
+@cindex @code{UNION}
+@cindex @code{MAP}
+
+Unions are a DEC extension which were commonly used with the non-standard
+@ref{STRUCTURE and RECORD} extensions. Use of @code{UNION} and @code{MAP} is
+automatically enabled with @option{-fdec-structure}.
+
+A @code{UNION} declaration occurs within a structure; within the definition of
+each union is a number of @code{MAP} definitions. Each @code{MAP} shares
+storage with its sibling maps (in the same union) just as with unions in C. The
+major difference is that component references do not indicate which union or
+map the component is in (the compiler gets to figure that out).
+
+Following is an example mirroring the layout of an Intel x86_64 register:
+
+@example
+structure /reg/
+  union    ! rax
+    map
+      integer*8 rx         ! rax
+    end map
+    map
+      integer*4 rh         ! rah
+      union   ! eax
+        map
+          integer*4 rl     ! ral
+        end map
+        map
+          integer*4 ex     ! eax
+        end map
+        map
+          integer*2 eh     ! eah
+          union     ! ax
+            map
+              integer*2 el ! eal
+            end map
+            map
+              integer*2 x  ! ax
+            end map
+            map
+              integer*1 h  ! ah
+              integer*1 l  ! al
+            end map
+          end union ! ax
+        end map
+      end union ! eax
+    end map
+  end union ! rax
+end structure
+
+record /reg/ a
+
+! After this assignment...
+a.rx = z'AABBCCCCFFFFFFFF'
+! The following is true:
+!
+! a.rx == z'AABBCCCCFFFFFFFF'
+! a.rh ==         z'FFFFFFFF'
+! a.rl == z'AABBCCCC'
+!
+! a.ex == z'AABBCCCC'
+! a.eh ==     z'CCCC'
+! a.el == z'AABB'
+!
+!  a.x == z'AABB'
+!  a.h ==   z'BB'
+!  a.l == z'AA'
+@end example
+
+@node .XOR. operator
+@subsection @code{.XOR.} operator
+@cindex @code{XOR}, operator
+
+With @option{-fdec-logical-xor}, @code{.XOR.} is supported as a logical
+operator. It is entirely equivalent to the standard operator @code{.NEQV.}.
 
 @node Extensions not implemented in GNU Fortran
 @section Extensions not implemented in GNU Fortran
@@ -2063,27 +2221,14 @@ code that uses them running with the GNU Fortran compiler.
 @c      http://tinyurl.com/2u4h5y
 
 @menu
-@c * UNION and MAP::
 * ENCODE and DECODE statements::
 * Variable FORMAT expressions::
 @c * Q edit descriptor::
-@c * AUTOMATIC statement::
 @c * TYPE and ACCEPT I/O Statements::
-@c * .XOR. operator::
-@c * CARRIAGECONTROL, DEFAULTFILE, DISPOSE and RECORDTYPE I/O specifiers::
+@c * DEFAULTFILE, DISPOSE and RECORDTYPE I/O specifiers::
 @c * Omitted arguments in procedure call::
 * Alternate complex function syntax::
 @end menu
-
-
-@c @node UNION and MAP
-@c @subsection @code{UNION} and @code{MAP}
-@c @cindex @code{UNION}
-@c @cindex @code{MAP}
-@c
-@c For help writing this one, see
-@c http://www.eng.umd.edu/~nsw/ench250/fortran1.htm#UNION and
-@c http://www.tacc.utexas.edu/services/userguides/pgi/pgiws_ug/pgi32u06.htm
 
 
 @node ENCODE and DECODE statements
