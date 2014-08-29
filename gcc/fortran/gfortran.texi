@@ -2492,10 +2492,9 @@ follow the syntax of the @code{SAVE} attribute.
 
 @code{AUTOMATIC} is the default for local variables smaller than
 @option{-fmax-stack-var-size}, unless @option{-fno-automatic} is given.
-Variables marked @code{AUTOMATIC} will be placed on the stack whenever
-possible. This includes inside a blanket SAVE namespace, but not with
-@option{-fno-automatic} or if the variable is larger than
-@option{-fmax-stack-var-size}.
+Variables marked @code{AUTOMATIC} will be stack automatic variables whenever
+possible. This attribute overrides @option{-fno-automatic},
+@option{-fmax-stack-var-size}, and blanket @code{SAVE} statements.
 
 Examples:
 
@@ -2511,7 +2510,7 @@ endsubroutine
 subroutine f
   integer a, b, c, x, y, z
   static :: x
-  static y
+  save y
   automatic z, c
   ! a, b, c, and z are automatic
   ! x and y are static
@@ -2521,8 +2520,8 @@ endsubroutine
 ! Compiled with -fno-automatic
 subroutine f
   integer a, b, c, d
-  automatic :: a  ! warning is produced
-  ! all variables are static
+  automatic :: a
+  ! a is automatic; b, c, and d are static
 ensubroutine
 @end example
 

@@ -3762,11 +3762,8 @@ gfc_is_var_automatic (gfc_symbol *sym)
     return true;
   /* Variables with explicit AUTOMATIC attribute. */
   if (sym->attr.automatic)
-  {
-    gfc_warning_now ("%s at %L marked AUTOMATIC in blanket SAVE namespace "
-             "so variable will not be SAVEd", sym->name, &sym->declared_at);
     return true;
-  }
+
   return false;
 }
 
