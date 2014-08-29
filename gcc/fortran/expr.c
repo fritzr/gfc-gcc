@@ -4126,7 +4126,7 @@ component_init (gfc_component *c, bool generate)
   if (c->initializer) return c->initializer;
 
   /* Recursively handle derived type components */
-  if (c->ts.type == BT_DERIVED || c->ts.type == BT_CLASS)
+  if (generate && (c->ts.type == BT_DERIVED || c->ts.type == BT_CLASS))
     init = gfc_default_initializer (&c->ts, true);
 
   else if (c->ts.type == BT_UNION && c->ts.u.derived->components)
