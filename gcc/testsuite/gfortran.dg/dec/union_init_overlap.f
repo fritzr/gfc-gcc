@@ -18,18 +18,21 @@
       structure /test/
       integer :: i = 8
       union
-      map
+      map ! { dg-warning "overwritten by initializer" }
       integer*2 :: x = 1600
       integer*2 :: y = 1600
       end map
-      map
-      integer*4 :: z = 7777777 ! { dg-warning "overwritten by initializer" }
+      map ! { dg-warning "overwritten by initializer" }
+      integer*4 :: z = 7777777
       end map
-      map
+      map ! { dg-warning "overwritten by initializer" }
       integer*4 a,b,c,d
-      integer*2 :: e = 100 ! { dg-warning "overwritten by initializer" }
+      integer*2 :: e = 100
       end map
       end union
       end structure
+
+      record /test/ t
+      print *, t.z
 
       end program

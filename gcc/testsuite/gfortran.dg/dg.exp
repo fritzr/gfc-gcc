@@ -29,6 +29,10 @@ if ![info exists DEFAULT_FFLAGS] then {
 dg-init
 
 # Main loop.
+
+gfortran-dg-runtest [lsort \
+       [glob -nocomplain $srcdir/$subdir/dec/*.\[fF\] ] ] $DEFAULT_FFLAGS
+
 gfortran-dg-runtest [lsort \
        [glob -nocomplain $srcdir/$subdir/*.\[fF\]{,90,95,03,08} ] ] $DEFAULT_FFLAGS
 

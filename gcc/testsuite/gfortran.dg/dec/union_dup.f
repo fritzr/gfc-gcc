@@ -11,11 +11,11 @@
         union
 
           map
-            integer x
+            integer x ! { dg-error "already declared" }
           end map
 
           map
-            integer y
+            integer y ! { dg-error "already declared" }
 
             union 
 
@@ -26,7 +26,7 @@
               map
                 structure y ! { dg-error "already declared" }
                   integer*1 hour, minute 
-                end structure  ! { dg-error }
+                end structure  ! { dg-error "Expecting END MAP" }
               end map
 
             end union

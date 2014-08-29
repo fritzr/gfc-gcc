@@ -8,9 +8,9 @@
       include 'assert.inc'
       program main
       implicit integer(a-z)
-      integer(kind=2#100) I ! 100 base 2 => 4
-      integer(5#13)       J ! 13  base 5 => 8
-      integer*3#11     :: K ! { dg-error "Old-style.*INTEGER.3" }
+      integer*3#11        :: H ! { dg-error "Old-style.*INTEGER.3" }
+      integer(kind=2#100) I    ! 100 base 2 => 4
+      integer(5#13)       J, K ! 13  base 5 => 8
       I     = #3D + 2
       J     = 16 # 3f
       K     = 2 #  1000000 - 6   # 1 
@@ -27,7 +27,7 @@
       write (*,3#22) x'BEEF'! { dg-error "Syntax error" }
 3#22  format (z8)           ! { dg-error "character in" }
       call assertll ("i", i,  63)
-      call assertll ("j", j,  63)
+      call assertqq ("j", j,  63_8) ! J should have kind 8
       call assertqq ("k", k,  63_8) ! K should have kind 8
       call assertll ("l", l, -63)
       call assertll ("m", m,  63)
