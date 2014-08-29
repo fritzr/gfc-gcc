@@ -396,6 +396,10 @@ end program test_abort
 @fnindex CABS
 @fnindex DABS
 @fnindex IABS
+@fnindex BABS
+@fnindex IIABS
+@fnindex JIABS
+@fnindex KIABS
 @fnindex ZABS
 @fnindex CDABS
 @cindex absolute value
@@ -445,6 +449,14 @@ end program test_abs
 @item @code{IABS(A)}  @tab @code{INTEGER(4) A} @tab @code{INTEGER(4)} @tab Fortran 77 and later
 @item @code{ZABS(A)}  @tab @code{COMPLEX(8) A} @tab @code{COMPLEX(8)} @tab GNU extension
 @item @code{CDABS(A)} @tab @code{COMPLEX(8) A} @tab @code{COMPLEX(8)} @tab GNU extension
+@item @code{BABS(A)}  @tab @code{INTEGER(1) A} @tab @code{INTEGER(1)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{IIABS(A)}  @tab @code{INTEGER(2) A} @tab @code{INTEGER(2)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{JIABS(A)}  @tab @code{INTEGER(4) A} @tab @code{INTEGER(4)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{KIABS(A)}  @tab @code{INTEGER(8) A} @tab @code{INTEGER(8)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
 @end multitable
 @end table
 
@@ -2433,6 +2445,10 @@ The return value is of type @code{LOGICAL} and of the default kind.
 @node BTEST
 @section @code{BTEST} --- Bit test function
 @fnindex BTEST
+@fnindex BBTEST
+@fnindex BITEST
+@fnindex BJTEST
+@fnindex BKTEST
 @cindex bits, testing
 
 @table @asis
@@ -2470,6 +2486,21 @@ program test_btest
     end do
 end program test_btest
 @end smallexample
+
+@item @emph{Specific names}:
+@multitable @columnfractions .20 .20 .20 .25
+@item Name            @tab Argument            @tab Return type       @tab Standard
+@item @code{BTEST} @tab @code{INTEGER I} @tab @code{INTEGER(4)}
+  @tab Fortran 77 and later
+@item @code{BBTEST} @tab @code{INTEGER(1) I} @tab @code{INTEGER(1)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{BITEST} @tab @code{INTEGER(2) I} @tab @code{INTEGER(2)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{BJTEST} @tab @code{INTEGER(4) I} @tab @code{INTEGER(4)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{BKTEST} @tab @code{INTEGER(8) I} @tab @code{INTEGER(8)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@end multitable
 @end table
 
 
@@ -6589,6 +6620,21 @@ PROGRAM test_iand
 END PROGRAM
 @end smallexample
 
+@item @emph{Specific names}:
+@multitable @columnfractions .20 .20 .20 .25
+@item Name            @tab Argument            @tab Return type       @tab Standard
+@item @code{IAND(I,J)} @tab @code{INTEGER I,J} @tab @code{INTEGER}
+  @tab Fortran 77 and later
+@item @code{BIAND(I,J)} @tab @code{INTEGER(1) I,J} @tab @code{INTEGER(1)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{IIAND(I,J)} @tab @code{INTEGER(2) I,J} @tab @code{INTEGER(2)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{JIAND(I,J)} @tab @code{INTEGER(4) I,J} @tab @code{INTEGER(4)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{KIAND(I,J)} @tab @code{INTEGER(8) I,J} @tab @code{INTEGER(8)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@end multitable
+
 @item @emph{See also}:
 @ref{IOR}, @ref{IEOR}, @ref{IBITS}, @ref{IBSET}, @ref{IBCLR}, @ref{NOT}
 
@@ -6730,6 +6776,21 @@ Elemental function
 The return value is of type @code{INTEGER} and of the same kind as
 @var{I}.
 
+@item @emph{Specific names}:
+@multitable @columnfractions .20 .20 .20 .25
+@item Name            @tab Argument            @tab Return type       @tab Standard
+@item @code{IBCLR} @tab @code{INTEGER I} @tab @code{INTEGER}
+  @tab Fortran 77 and later
+@item @code{BBCLR} @tab @code{INTEGER(1) I} @tab @code{INTEGER(1)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{IIBCLR} @tab @code{INTEGER(2) I} @tab @code{INTEGER}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{JIBCLR} @tab @code{INTEGER(4) I} @tab @code{INTEGER}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{KIBCLR} @tab @code{INTEGER(8) I} @tab @code{INTEGER}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@end multitable
+
 @item @emph{See also}:
 @ref{IBITS}, @ref{IBSET}, @ref{IAND}, @ref{IOR}, @ref{IEOR}, @ref{MVBITS}
 
@@ -6771,6 +6832,21 @@ Elemental function
 The return value is of type @code{INTEGER} and of the same kind as
 @var{I}.
 
+@item @emph{Specific names}:
+@multitable @columnfractions .20 .20 .20 .25
+@item Name            @tab Argument            @tab Return type       @tab Standard
+@item @code{IBITS} @tab @code{INTEGER I} @tab @code{INTEGER}
+  @tab Fortran 77 and later
+@item @code{BBITS} @tab @code{INTEGER(1) I} 
+  @tab @code{INTEGER(1)} @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{IIBITS} @tab @code{INTEGER(2) I}
+  @tab @code{INTEGER(2)} @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{JIBITS} @tab @code{INTEGER(4) I} 
+  @tab @code{INTEGER(4)} @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{KIBITS} @tab @code{INTEGER(8) I} 
+  @tab @code{INTEGER(8)} @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@end multitable
+
 @item @emph{See also}:
 @ref{BIT_SIZE}, @ref{IBCLR}, @ref{IBSET}, @ref{IAND}, @ref{IOR}, @ref{IEOR}
 @end table
@@ -6805,6 +6881,21 @@ Elemental function
 @item @emph{Return value}:
 The return value is of type @code{INTEGER} and of the same kind as
 @var{I}.
+
+@item @emph{Specific names}:
+@multitable @columnfractions .20 .20 .20 .25
+@item Name            @tab Argument            @tab Return type       @tab Standard
+@item @code{IBSET} @tab @code{INTEGER I} @tab @code{INTEGER}
+  @tab Fortran 77 and later
+@item @code{BBSET} @tab @code{INTEGER(1) I} @tab @code{INTEGER(1)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{IIBSET} @tab @code{INTEGER(2) I} @tab @code{INTEGER(2)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{JIBSET} @tab @code{INTEGER(4) I} @tab @code{INTEGER(4)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{KIBSET} @tab @code{INTEGER(8) I} @tab @code{INTEGER(8)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@end multitable
 
 @item @emph{See also}:
 @ref{IBCLR}, @ref{IBITS}, @ref{IAND}, @ref{IOR}, @ref{IEOR}, @ref{MVBITS}
@@ -6966,6 +7057,21 @@ permitted.)
 The return type is @code{INTEGER}, of the same kind as the
 arguments.  (If the argument kinds differ, it is of the same kind as
 the larger argument.)
+
+@item @emph{Specific names}:
+@multitable @columnfractions .20 .20 .20 .25
+@item Name            @tab Argument            @tab Return type       @tab Standard
+@item @code{IEOR(I,J)} @tab @code{INTEGER I,J} @tab @code{INTEGER}
+  @tab Fortran 77 and later
+@item @code{BIEOR(I,J)} @tab @code{INTEGER(1) I,J} @tab @code{INTEGER(1)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{IIEOR(I,J)} @tab @code{INTEGER(2) I,J} @tab @code{INTEGER(2)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{JIEOR(I,J)} @tab @code{INTEGER(4) I,J} @tab @code{INTEGER(4)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{KIEOR(I,J)} @tab @code{INTEGER(8) I,J} @tab @code{INTEGER(8)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@end multitable
 
 @item @emph{See also}:
 @ref{IOR}, @ref{IAND}, @ref{IBITS}, @ref{IBSET}, @ref{IBCLR}, @ref{NOT}
@@ -7270,6 +7376,21 @@ The return type is @code{INTEGER}, of the same kind as the
 arguments.  (If the argument kinds differ, it is of the same kind as
 the larger argument.)
 
+@item @emph{Specific names}:
+@multitable @columnfractions .20 .20 .20 .25
+@item Name            @tab Argument            @tab Return type       @tab Standard
+@item @code{IOR(I,J)} @tab @code{INTEGER I,J} @tab @code{INTEGER}
+  @tab Fortran 77 and later
+@item @code{BIOR(I,J)} @tab @code{INTEGER(1) I,J} @tab @code{INTEGER(1)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{IIOR(I,J)} @tab @code{INTEGER(2) I,J} @tab @code{INTEGER(2)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{JIOR(I,J)} @tab @code{INTEGER(4) I,J} @tab @code{INTEGER(4)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{KIOR(I,J)} @tab @code{INTEGER(8) I,J} @tab @code{INTEGER(8)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@end multitable
+
 @item @emph{See also}:
 @ref{IEOR}, @ref{IAND}, @ref{IBITS}, @ref{IBSET}, @ref{IBCLR}, @ref{NOT}
 @end table
@@ -7554,6 +7675,21 @@ Elemental function
 The return value is of type @code{INTEGER} and of the same kind as
 @var{I}.
 
+@item @emph{Specific names}:
+@multitable @columnfractions .20 .20 .20 .25
+@item Name            @tab Argument            @tab Return type       @tab Standard
+@item @code{ISHFT} @tab @code{INTEGER I} @tab @code{INTEGER}
+  @tab Fortran 77 and later
+@item @code{BSHFT} @tab @code{INTEGER(1) I} 
+  @tab @code{INTEGER(1)} @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{IISHFT} @tab @code{INTEGER(2) I} 
+  @tab @code{INTEGER(2)} @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{JISHFT} @tab @code{INTEGER(4) I} 
+  @tab @code{INTEGER(4)} @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{KISHFT} @tab @code{INTEGER(8) I}
+  @tab @code{INTEGER(8)} @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@end multitable
+
 @item @emph{See also}:
 @ref{ISHFTC}
 @end table
@@ -7597,6 +7733,21 @@ the value must be greater than zero and less than or equal to
 @item @emph{Return value}:
 The return value is of type @code{INTEGER} and of the same kind as
 @var{I}.
+
+@item @emph{Specific names}:
+@multitable @columnfractions .20 .20 .20 .25
+@item Name            @tab Argument            @tab Return type       @tab Standard
+@item @code{ISHFTC(I)} @tab @code{INTEGER I} @tab @code{INTEGER}
+  @tab Fortran 77 and later
+@item @code{BSHFTC} @tab @code{INTEGER(1) I} @tab @code{INTEGER(1)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{IISHFTC} @tab @code{INTEGER(2) I} @tab @code{INTEGER(2)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{JISHFTC} @tab @code{INTEGER(4) I} @tab @code{INTEGER(4)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{KISHFTC} @tab @code{INTEGER(8) I} @tab @code{INTEGER(8)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@end multitable
 
 @item @emph{See also}:
 @ref{ISHFT}
@@ -9476,6 +9627,14 @@ end program test_mod
 @item @code{MOD(A,P)}  @tab @code{INTEGER A,P} @tab @code{INTEGER} @tab Fortran 95 and later
 @item @code{AMOD(A,P)} @tab @code{REAL(4) A,P} @tab @code{REAL(4)} @tab Fortran 95 and later
 @item @code{DMOD(A,P)} @tab @code{REAL(8) A,P} @tab @code{REAL(8)} @tab Fortran 95 and later
+@item @code{BMOD(A,P)} @tab @code{INTEGER(1) A,P} @tab @code{INTEGER(1)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{IMOD(A,P)} @tab @code{INTEGER(2) A,P} @tab @code{INTEGER(2)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{JMOD(A,P)} @tab @code{INTEGER(4) A,P} @tab @code{INTEGER(4)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{KMOD(A,P)} @tab @code{INTEGER(8) A,P} @tab @code{INTEGER(8)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
 @end multitable
 
 @item @emph{See also}:
@@ -9853,6 +10012,21 @@ Elemental function
 @item @emph{Return value}:
 The return type is @code{INTEGER}, of the same kind as the
 argument.
+
+@item @emph{Specific names}:
+@multitable @columnfractions .20 .20 .20 .25
+@item Name            @tab Argument            @tab Return type       @tab Standard
+@item @code{NOT(I)} @tab @code{INTEGER I} @tab @code{INTEGER}
+  @tab Fortran 77 and later
+@item @code{BNOT(I)} @tab @code{INTEGER(1) I} @tab @code{INTEGER(1)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{INOT(I)} @tab @code{INTEGER(2) I} @tab @code{INTEGER(2)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{JNOT(I)} @tab @code{INTEGER(4) I} @tab @code{INTEGER(4)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{KNOT(I)} @tab @code{INTEGER(8) I} @tab @code{INTEGER(8)}
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@end multitable
 
 @item @emph{See also}:
 @ref{IAND}, @ref{IEOR}, @ref{IOR}, @ref{IBITS}, @ref{IBSET}, @ref{IBCLR}
@@ -10817,6 +10991,12 @@ end program test_real
 @item @code{FLOAT(A)}  @tab @code{INTEGER(4)}  @tab @code{REAL(4)}  @tab Fortran 77 and later
 @item @code{DFLOAT(A)} @tab @code{INTEGER(4)}  @tab @code{REAL(8)}  @tab GNU extension
 @item @code{SNGL(A)}   @tab @code{INTEGER(8)}  @tab @code{REAL(4)}  @tab Fortran 77 and later
+@item @code{FLOATI(A)}   @tab @code{INTEGER(2)}  @tab @code{REAL(4)} 
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{FLOATJ(A)}   @tab @code{INTEGER(4)}  @tab @code{REAL(4)} 
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
+@item @code{FLOATK(A)}   @tab @code{INTEGER(8)}  @tab @code{REAL(4)} 
+  @tab GNU extension (enabled with -fdec-intrinsic-ints)
 @end multitable
 
 

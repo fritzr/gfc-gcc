@@ -2255,10 +2255,10 @@ a.rx = z'AABBCCCCFFFFFFFF'
 With @option{-fdec-logical-xor}, @code{.XOR.} is supported as a logical
 operator. It is entirely equivalent to the standard operator @code{.NEQV.}:
 
-@smallexample
+@example
 logical :: a = .true., b = .false., c
 c = a .xor. b ! same as a .neqv. b
-@end smallexample
+@end example
 
 @node Base#value literal constants
 @subsubsection Base#value literal constants
@@ -2270,23 +2270,23 @@ and 36. If no base is present (as in @code{#value}) the default base is 16
 for bases higher than base ten. In the following example, each assignment
 results in the value 63:
 
-@smallexample
+@example
 I = #3D + 2
 J = 16#3f
 K = 2#1000000 - 6#1
 L = -4#3 + 5#231
 M = '3f'x
 N = 36#1R
-@end smallexample
+@end example
 
 Extended integer literals of this form are also supported in standard variable
 kind specifications (not old-style):
 
-@smallexample
+@example
 integer(kind=2#100) I ! valid: 100 base 2 => 4
 integer(5#13)       J ! valid: 13  base 5 => 8
 integer*3#11        K ! UNSUPPORTED
-@end smallexample
+@end example
 
 @node I/O specifiers
 @subsubsection I/O specifiers
@@ -2421,31 +2421,31 @@ intrinsics is here:
 
 @headitem Intrinsic @tab B @tab I @tab J @tab K
 
-@item @code{ABS}
+@item @code{@ref{ABS}}
   @tab @code{BABS} @tab @code{IIABS} @tab @code{JIABS} @tab @code{KIABS}
-@item @code{BTEST}
+@item @code{@ref{BTEST}}
   @tab @code{BBTEST} @tab @code{BITEST} @tab @code{BJTEST} @tab @code{BKTEST}
-@item @code{IAND}
+@item @code{@ref{IAND}}
   @tab @code{BIAND} @tab @code{IIAND} @tab @code{JIAND} @tab @code{KIAND}
-@item @code{IBCLR}
+@item @code{@ref{IBCLR}}
   @tab @code{BBCLR} @tab @code{IIBCLR} @tab @code{JIBCLR} @tab @code{KIBCLR}
-@item @code{IBITS}
+@item @code{@ref{IBITS}}
   @tab @code{BBITS} @tab @code{IIBITS} @tab @code{JIBITS} @tab @code{KIBITS}
-@item @code{IBSET}
+@item @code{@ref{IBSET}}
   @tab @code{BBSET} @tab @code{IIBSET} @tab @code{JIBSET} @tab @code{KIBSET}
-@item @code{IEOR}
+@item @code{@ref{IEOR}}
   @tab @code{BIEOR} @tab @code{IIEOR} @tab @code{JIEOR} @tab @code{KIEOR}
-@item @code{IOR}
+@item @code{@ref{IOR}}
   @tab @code{BIOR} @tab @code{IIOR} @tab @code{JIOR} @tab @code{KIOR}
-@item @code{ISHFT}
+@item @code{@ref{ISHFT}}
   @tab @code{BSHFT} @tab @code{IISHFT} @tab @code{JISHFT} @tab @code{KISHFT}
-@item @code{ISHFTC}
+@item @code{@ref{ISHFTC}}
   @tab @code{BSHFTC} @tab @code{IISHFTC} @tab @code{JISHFTC} @tab @code{KISHFTC}
-@item @code{MOD}
+@item @code{@ref{MOD}}
   @tab @code{BMOD} @tab @code{IMOD} @tab @code{JMOD} @tab @code{KMOD}
-@item @code{NOT}
+@item @code{@ref{NOT}}
   @tab @code{BNOT} @tab @code{INOT} @tab @code{JNOT} @tab @code{KNOT}
-@item @code{FLOAT}
+@item @code{@ref{REAL}}
   @tab @code{--} @tab @code{FLOATI} @tab @code{FLOATJ} @tab @code{FLOATK}
 @end multitable
 
@@ -2467,14 +2467,14 @@ with the corresponding standard radian versions:
 
 @multitable .5 .5
 @headitem Radians @tab Degrees
-@item @ref{ACOS}  @tab @ref{ACOSD}
-@item @ref{ASIN}  @tab @ref{ASIND}
-@item @ref{ATAN}  @tab @ref{ATAND}
-@item @ref{ATAN2} @tab @ref{ATAN2D}
-@item @ref{COS}   @tab @ref{COSD}
-@item @ref{COTAN} @tab @ref{COTAND}
-@item @ref{SIN}   @tab @ref{SIND}
-@item @ref{TAN}   @tab @ref{TAND}
+@item @code{@ref{ACOS}}  @tab @code{@ref{ACOSD}}
+@item @code{@ref{ASIN}}  @tab @code{@ref{ASIND}}
+@item @code{@ref{ATAN}}  @tab @code{@ref{ATAND}}
+@item @code{@ref{ATAN2}} @tab @code{@ref{ATAN2D}}
+@item @code{@ref{COS}}   @tab @code{@ref{COSD}}
+@item @code{@ref{COTAN}} @tab @code{@ref{COTAND}}
+@item @code{@ref{SIN}}   @tab @code{@ref{SIND}}
+@item @code{@ref{TAN}}   @tab @code{@ref{TAND}}
 @end multitable
 
 @node AUTOMATIC and STATIC attributes
@@ -2522,14 +2522,17 @@ subroutine f
   integer a, b, c, d
   automatic :: a
   ! a is automatic; b, c, and d are static
-ensubroutine
+endsubroutine
 @end example
 
 @node Form feed as whitespace
 @subsubsection Form feed as whitespace
 @cindex form feed
 
-Stuff.
+Historically, DEC allowed insertion of form feed characters ('\f', ASCII 0x0C)
+at the beginning of lines for nice output to line printers. GNU Fortran
+supports the interpretation of form feed characters in source as whitespace
+with @option{-ffeed}.
 
 
 @node Extensions not implemented in GNU Fortran
