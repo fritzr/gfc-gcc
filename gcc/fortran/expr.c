@@ -4124,7 +4124,6 @@ component_init (gfc_component *c, bool generate)
   gfc_expr *init = NULL;
 
   if (c->initializer) return c->initializer;
-  if (!generate) return NULL;
 
   /* Recursively handle derived type components */
   if (c->ts.type == BT_DERIVED || c->ts.type == BT_CLASS)
@@ -4138,18 +4137,25 @@ component_init (gfc_component *c, bool generate)
 
     /* Try to take an existing initializer from a map. */
     gfc_constructor *ctor;
+    init = get_last_init (c->ts.u.derived, &map);
+
+    if (!map)
+    {
+      gcc_assert (init == NULL);
+      /* If no maps had an explicit initializer, and generate is not set, then
+         this union has no initializer. Otherwise generate an initializer from
+         the first map. */
+      /* TODO: Use the largest map / initialize the entire union.
+         This can only be determined in translation (?) */
+      if (!generate)
+        return NULL;
+      map = c->ts.u.derived->components;
+      init = gfc_default_initializer (&map->ts, true);
+    }
+
     ctor = gfc_constructor_get ();
-    ctor->expr = get_last_init (c->ts.u.derived, &map);
-
-    /* If no maps had an explicit initializer, generate a default
-       initializer for just the first map.
-       TODO: Use the largest map / initialize the entire union.
-       This can only be determined in translation (?) */
-    if (!map) map = c->ts.u.derived->components;
-
+    ctor->expr = init;
     ctor->n.component = map;
-    if (!ctor->expr)
-      ctor->expr = gfc_default_initializer (&map->ts, true);
 
     init = gfc_get_structure_constructor_expr (c->ts.type, c->ts.kind, &c->loc);
     init->ts = c->ts;
@@ -4157,7 +4163,7 @@ component_init (gfc_component *c, bool generate)
   }
 
   /* Simple components */
-  else
+  else if (generate)
   {
     init = gfc_build_default_init_expr (&c->ts, &c->loc);
     gfc_apply_init (&c->ts, &c->attr, init);
