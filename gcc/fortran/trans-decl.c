@@ -4275,15 +4275,15 @@ check_constant_initializer (gfc_expr *expr, gfc_typespec *ts, bool array,
 	return false;
       cm = expr->ts.u.derived->components;
       for (c = gfc_constructor_first (expr->value.constructor);
-          c; c = gfc_constructor_next (c), cm = cm->next)
-       {
-         if (!c->expr || cm->attr.allocatable)
-           continue;
-         if (!check_constant_initializer (c->expr, &cm->ts,
-                                          cm->attr.dimension,
-                                          cm->attr.pointer))
-           return false;
-       }
+	   c; c = gfc_constructor_next (c), cm = cm->next)
+	{
+	  if (!c->expr || cm->attr.allocatable)
+	    continue;
+	  if (!check_constant_initializer (c->expr, &cm->ts,
+					   cm->attr.dimension,
+					   cm->attr.pointer))
+	    return false;
+	}
       return true;
     default:
       return expr->expr_type == EXPR_CONSTANT;

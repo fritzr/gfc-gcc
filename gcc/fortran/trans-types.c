@@ -2502,31 +2502,31 @@ gfc_get_derived_type (gfc_symbol * derived)
      pointer component (PR24092). If this happens, the fields
      will be built and so we can return the type.  */
   for (c = derived->components; c; c = c->next)
-  {
-    if (c->ts.type != BT_DERIVED && c->ts.type != BT_CLASS)
-      continue;
+    {
+      if (c->ts.type != BT_DERIVED && c->ts.type != BT_CLASS)
+	continue;
 
-    if ((!c->attr.pointer && !c->attr.proc_pointer)
-        || c->ts.u.derived->backend_decl == NULL)
-      c->ts.u.derived->backend_decl = gfc_get_derived_type (c->ts.u.derived);
+      if ((!c->attr.pointer && !c->attr.proc_pointer)
+	  || c->ts.u.derived->backend_decl == NULL)
+	c->ts.u.derived->backend_decl = gfc_get_derived_type (c->ts.u.derived);
 
-    if (c->ts.u.derived->attr.is_iso_c)
-      {
-        /* Need to copy the modified ts from the derived type.  The
-           typespec was modified because C_PTR/C_FUNPTR are translated
-           into (void *) from derived types.  */
-        c->ts.type = c->ts.u.derived->ts.type;
-        c->ts.kind = c->ts.u.derived->ts.kind;
-        c->ts.f90_type = c->ts.u.derived->ts.f90_type;
-        if (c->initializer)
-          {
-            c->initializer->ts.type = c->ts.type;
-            c->initializer->ts.kind = c->ts.kind;
-            c->initializer->ts.f90_type = c->ts.f90_type;
-            c->initializer->expr_type = EXPR_NULL;
-          }
-      }
-  }
+      if (c->ts.u.derived->attr.is_iso_c)
+        {
+          /* Need to copy the modified ts from the derived type.  The
+             typespec was modified because C_PTR/C_FUNPTR are translated
+             into (void *) from derived types.  */
+          c->ts.type = c->ts.u.derived->ts.type;
+          c->ts.kind = c->ts.u.derived->ts.kind;
+          c->ts.f90_type = c->ts.u.derived->ts.f90_type;
+	  if (c->initializer)
+	    {
+	      c->initializer->ts.type = c->ts.type;
+	      c->initializer->ts.kind = c->ts.kind;
+	      c->initializer->ts.f90_type = c->ts.f90_type;
+	      c->initializer->expr_type = EXPR_NULL;
+	    }
+        }
+    }
 
   if (TYPE_FIELDS (derived->backend_decl))
     return derived->backend_decl;

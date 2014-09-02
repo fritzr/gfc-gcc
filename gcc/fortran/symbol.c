@@ -1883,19 +1883,19 @@ gfc_add_component (gfc_symbol *sym, const char *name,
      unique internal names which will never conflict.
      Don't use gfc_find_component here because it calls gfc_use_derived,
      but the derived type may not be fully defined yet. */
+  tail = NULL;
+
   for (p = sym->components; p; p = p->next)
     {
       if (strcmp (p->name, name) == 0)
-        {
-          gfc_error ("Component '%s' at %C already declared at %L",
-                     name, &p->loc);
-          return FAILURE;
-        }
-    }
+	{
+	  gfc_error ("Component '%s' at %C already declared at %L",
+		     name, &p->loc);
+	  return FAILURE;
+	}
 
-  tail = NULL;
-  for (p = sym->components; p; p = p->next)
       tail = p;
+    }
 
   if (sym->attr.extension
 	&& gfc_find_component (sym->components->ts.u.derived, name, true, true, NULL))
@@ -1920,6 +1920,7 @@ gfc_add_component (gfc_symbol *sym, const char *name,
   *component = p;
   return SUCCESS;
 }
+
 
 /* Recursive function to switch derived types of all symbol in a
    namespace.  */
