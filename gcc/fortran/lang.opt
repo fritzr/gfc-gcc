@@ -205,6 +205,10 @@ Wampersand
 Fortran Warning
 Warn about missing ampersand in continued character constants
 
+Warglist-types
+Fortran Warning
+Warn about type mismatches for %loc() or %val() as actual arguments
+
 Warray-temporaries
 Fortran Warning
 Warn about creation of array temporaries
