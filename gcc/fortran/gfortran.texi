@@ -2417,7 +2417,7 @@ Intrinsics for which prefixed versions are available and in what form are noted
 in @ref{Intrinsic Procedures}. The complete list of currently supported
 intrinsics is here:
 
-@multitable .2 .2 .2 .2 .2
+@multitable @columnfractions .2 .2 .2 .2 .2
 
 @headitem Intrinsic @tab B @tab I @tab J @tab K
 
@@ -2465,7 +2465,7 @@ This flag also adds trigonometric intrinsics which accept or produce degrees
 instead of radians. The new intrinsics enabled by this option are listed here
 with the corresponding standard radian versions:
 
-@multitable .5 .5
+@multitable @columnfractions .5 .5
 @headitem Radians @tab Degrees
 @item @code{@ref{ACOS}}  @tab @code{@ref{ACOSD}}
 @item @code{@ref{ASIN}}  @tab @code{@ref{ASIND}}
