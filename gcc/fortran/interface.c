@@ -2569,6 +2569,12 @@ compare_actual_formal (gfc_actual_arglist **ap, gfc_formal_arglist *formal,
       if (f->sym == NULL && a->expr == NULL)
 	goto match;
 
+      /* With -Wno-arglist-types, ignore mismatches with arglist funcs. */
+      if (!gfc_option.warn_arglist_types && a->name
+          && (   strncmp (a->name, "%VAL", 4) == 0
+              || strncmp (a->name, "%LOC", 4) == 0))
+        goto match;
+
       if (f->sym == NULL)
 	{
 	  if (where)
@@ -2616,13 +2622,8 @@ compare_actual_formal (gfc_actual_arglist **ap, gfc_formal_arglist *formal,
 	  return 0;
 	}
 
-      
-      /* With -Wno-arglist-types, ignore type mismatches with arglist funcs. */
-      if ((gfc_option.warn_arglist_types || (a->name
-              && (   strncmp (a->name, "%VAL", 4) != 0
-                  && strncmp (a->name, "%LOC", 4) != 0)))
-          && !compare_parameter (f->sym, a->expr, ranks_must_agree,
-                                 is_elemental, where))
+      if (!compare_parameter (f->sym, a->expr, ranks_must_agree,
+                              is_elemental, where))
 	return 0;
 
       /* TS 29113, 6.3p2.  */
