@@ -2264,6 +2264,12 @@ variable_decl (int elem)
 	  && !current_attr.pointer && !initializer)
 	initializer = gfc_default_initializer (&current_ts, false);
       t = build_struct (name, cl, &initializer, &as);
+
+      /* If we match a nested structure definition we expect to see the
+         body even if the component declarations blow up, so we need to keep
+         the structure type around.  */
+      if (gfc_new_block && gfc_new_block->attr.flavor == FL_STRUCT)
+        gfc_commit_symbol (gfc_new_block);
     }
 
   m = (t == SUCCESS) ? MATCH_YES : MATCH_ERROR;
@@ -2753,7 +2759,7 @@ done:
 /* Matches a RECORD declaration. */
 
 static match
-match_record_decl(const char *name)
+match_record_decl (const char *name)
 {
     locus old_loc;
     old_loc = gfc_current_locus;
@@ -2989,8 +2995,14 @@ gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
       /* Match ad-hoc STRUCTURE declarations; only valid within another
          derived/structure declaration. */
       m = gfc_match (" structure");
-      if (m == MATCH_YES && gfc_comp_is_derived (gfc_current_state ()))
+      if (m == MATCH_ERROR)
+        return MATCH_ERROR;
+      else if (m == MATCH_YES)
       {
+        if (   gfc_current_state () != COMP_STRUCTURE
+            && gfc_current_state () != COMP_MAP)
+          return MATCH_ERROR;
+
         m = gfc_match_structure_decl ();
         if (m == MATCH_YES)
         {
@@ -4623,7 +4635,8 @@ gfc_match_data_decl (void)
 	 which has its components defined.  */
       if (sym != NULL && gfc_fl_struct (sym->attr.flavor)
 	  && (current_ts.u.derived->components != NULL
-	      || current_ts.u.derived->attr.zero_comp))
+	      || current_ts.u.derived->attr.zero_comp
+              || current_ts.u.derived == gfc_new_block))
 	goto ok;
 
       /* Now we have an error, which we signal, and then fix up
@@ -8009,7 +8022,7 @@ get_struct_decl (const char *name, sym_flavor fl, locus *decl,
      structure declarations, we need to indicate that it is okay that we
      haven't seen any components yet. This will be updated after the structure
      is fully parsed. */
-  sym->attr.zero_comp = 1;
+  sym->attr.zero_comp = 0;
 
   /* Structures always act like derived-types with the SEQUENCE attribute */
   gfc_add_sequence (&sym->attr, sym->name, NULL);
