@@ -2759,7 +2759,7 @@ done:
 /* Matches a RECORD declaration. */
 
 static match
-match_record_decl (const char *name)
+match_record_decl(const char *name)
 {
     locus old_loc;
     old_loc = gfc_current_locus;
@@ -2995,14 +2995,8 @@ gfc_match_decl_type_spec (gfc_typespec *ts, int implicit_flag)
       /* Match ad-hoc STRUCTURE declarations; only valid within another
          derived/structure declaration. */
       m = gfc_match (" structure");
-      if (m == MATCH_ERROR)
-        return MATCH_ERROR;
-      else if (m == MATCH_YES)
+      if (m == MATCH_YES && gfc_comp_is_derived (gfc_current_state ()))
       {
-        if (   gfc_current_state () != COMP_STRUCTURE
-            && gfc_current_state () != COMP_MAP)
-          return MATCH_ERROR;
-
         m = gfc_match_structure_decl ();
         if (m == MATCH_YES)
         {

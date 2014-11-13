@@ -2539,24 +2539,10 @@ parse_derived (void)
 	case ST_NONE:
 	  unexpected_eof ();
 
-        /* Nested structure declarations should be captured as ST_DATA_DECL. */
-        case ST_STRUCTURE_DECL:
-          /* Let a more specific error make it to decode_statement(). */
-          if (gfc_error_check () == 0)
-            gfc_error ("Syntax error in nested structure declaration at %C");
-          reject_statement ();
-          /* Skip the rest of this statement. */
-          gfc_error_recovery ();
-          break;
-
 	case ST_DATA_DECL:
 	case ST_PROCEDURE:
 	  accept_statement (st);
 	  seen_component = 1;
-          /* The data declaration was a nested/ad-hoc STRUCTURE field */
-          if (gfc_new_block && gfc_new_block != gfc_current_block ()
-                            && gfc_new_block->attr.flavor == FL_STRUCT)
-              parse_structure ();
 	  break;
 
 	case ST_FINAL:

@@ -12,7 +12,7 @@
         integer*2 year 
       end structure 
 
-      type appointment
+      structure /appointment/
       record/date/app_date 
       structure /time/ app_time (2) 
         integer*1       hour, minute 
@@ -25,7 +25,7 @@
         end structure
       end structure
       logical         app_flag 
-      end type
+      end structure
 
       record /appointment/ tomorrow
       record /time/ now
