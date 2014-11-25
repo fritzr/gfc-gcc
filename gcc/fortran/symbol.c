@@ -2086,7 +2086,10 @@ gfc_find_component (gfc_symbol *sym, const char *name,
   if (name == NULL || sym == NULL)
     return NULL;
 
-  sym = gfc_use_derived (sym);
+  if (sym->attr.flavor == FL_DERIVED)
+    sym = gfc_use_derived (sym);
+  else
+    gcc_assert (gfc_fl_struct (sym->attr.flavor));
 
   if (sym == NULL)
     return NULL;
