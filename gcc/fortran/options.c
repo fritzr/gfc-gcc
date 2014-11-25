@@ -186,6 +186,7 @@ gfc_init_options (unsigned int decoded_options_count,
   gfc_option.rtcheck = 0;
   gfc_option.coarray = GFC_FCOARRAY_NONE;
 
+  gfc_option.flag_lazy_types = 0;
   gfc_option.flag_loc_rval = 0;
   set_dec_flags (0);
 
@@ -1151,6 +1152,10 @@ gfc_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_fcoarray_:
       gfc_handle_coarray_option (arg);
+      break;
+
+    case OPT_flazy_types:
+      gfc_option.flag_lazy_types = 1;
       break;
 
     case OPT_floc_rval:

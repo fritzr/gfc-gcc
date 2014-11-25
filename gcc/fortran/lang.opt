@@ -533,6 +533,10 @@ finit-derived
 Fortran
 Automatically initialize local derived type variables
 
+flazy-types
+Fortran
+Suppress warnings and errors relating to type mismatches
+
 floc-rval
 Fortran
 Enable the use of %LOC as an rvalue, like the built-in LOC().
