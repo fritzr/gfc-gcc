@@ -4088,7 +4088,8 @@ resolve_operator (gfc_expr *e)
       goto bad_op;
 
     case INTRINSIC_NOT:
-      if (op1->ts.type == BT_LOGICAL)
+      if (op1->ts.type == BT_LOGICAL 
+          || (gfc_option.flag_lazy_types && op1->ts.type == BT_INTEGER))
 	{
 	  e->ts.type = BT_LOGICAL;
 	  e->ts.kind = op1->ts.kind;
@@ -4136,7 +4137,10 @@ resolve_operator (gfc_expr *e)
 	  break;
 	}
 
-      if (gfc_numeric_ts (&op1->ts) && gfc_numeric_ts (&op2->ts))
+      if ((gfc_numeric_ts (&op1->ts) && gfc_numeric_ts (&op2->ts))
+        || (gfc_option.flag_lazy_types
+            && (   (op1->ts.type == BT_LOGICAL || op1->ts.type == BT_INTEGER)
+                && (op2->ts.type == BT_LOGICAL || op2->ts.type == BT_INTEGER))))
 	{
 	  gfc_type_convert_binary (e, 1);
 
@@ -9487,7 +9491,9 @@ gfc_resolve_blocks (gfc_code *b, gfc_namespace *ns)
 	{
 	case EXEC_IF:
 	  if (t == SUCCESS && b->expr1 != NULL
-	      && (b->expr1->ts.type != BT_LOGICAL || b->expr1->rank != 0))
+	      && (b->expr1->ts.type != BT_LOGICAL || b->expr1->rank != 0)
+              && (!gfc_option.flag_lazy_types
+                  || b->expr1->ts.type != BT_INTEGER))
 	    gfc_error ("IF clause at %L requires a scalar LOGICAL expression",
 		       &b->expr1->where);
 	  break;
@@ -10471,7 +10477,9 @@ resolve_code (gfc_code *code, gfc_namespace *ns)
 	case EXEC_IF:
 	  if (t == SUCCESS && code->expr1 != NULL
 	      && (code->expr1->ts.type != BT_LOGICAL
-		  || code->expr1->rank != 0))
+		  || code->expr1->rank != 0)
+              && (!gfc_option.flag_lazy_types
+                  || code->expr1->ts.type != BT_INTEGER))
 	    gfc_error ("IF clause at %L requires a scalar LOGICAL expression",
 		       &code->expr1->where);
 	  break;
