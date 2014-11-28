@@ -3949,6 +3949,39 @@ gfc_match_print (void)
 }
 
 
+static match type_print_matched = MATCH_NO;
+
+/* This matcher is called BEFORE we match a derived type declaration. Only
+   if we have seen no legitimate errors so far and we do not match a derived
+   type declaration can we match TYPE as an alias for PRINT.  */
+
+match
+gfc_match_type_print_maybe (void)
+{
+  if (gfc_error_flag_test () != 0)
+    return (type_print_matched = MATCH_NO);
+
+  type_print_matched = gfc_match_print ();
+
+  return MATCH_NO;
+}
+
+/* Match TYPE as an alias for PRINT. We can only get here if matching type has
+   failed for both derived type declarations and variable specifications.  */
+
+match
+gfc_match_type_print (void)
+{
+  if (gfc_error_flag_test () != 0)
+    return MATCH_NO;
+
+  if (type_print_matched == MATCH_YES)
+    gcc_assert(MATCH_YES == gfc_match_print ());
+
+  return (type_print_matched == MATCH_YES) ? MATCH_YES : MATCH_NO;
+}
+
+
 /* Free a gfc_inquire structure.  */
 
 void

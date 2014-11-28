@@ -251,6 +251,8 @@ match gfc_match_read (void);
 match gfc_match_wait (void);
 match gfc_match_write (void);
 match gfc_match_print (void);
+match gfc_match_type_print_maybe (void);
+match gfc_match_type_print (void);
 
 /* matchexp.c.  */
 match gfc_match_defined_op_name (char *, int);
