@@ -4097,13 +4097,20 @@ resolve_operator (gfc_expr *e)
           return resolve_function (e);
         }
 
-      if (op1->ts.type == BT_LOGICAL
-          || (gfc_option.flag_lazy_types && op1->ts.type == BT_INTEGER))
+      if (op1->ts.type == BT_LOGICAL)
 	{
 	  e->ts.type = BT_LOGICAL;
 	  e->ts.kind = op1->ts.kind;
 	  break;
 	}
+          
+      else if (gfc_option.flag_lazy_types && op1->ts.type == BT_INTEGER)
+        {
+          e->ts.type = BT_LOGICAL;
+          e->ts.kind = op1->ts.kind;
+          gfc_convert_type (op1, &e->ts, 1);
+          break;
+        }
 
       sprintf (msg, _("Operand of .not. operator at %%L is %s"),
 	       gfc_typename (&op1->ts));
