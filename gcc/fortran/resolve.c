@@ -4067,18 +4067,33 @@ resolve_operator (gfc_expr *e)
 	  break;
 	}
 
-      /* Logical ops on integers become bitwise ops with -fdec-bitwise-ops */
-      else if (gfc_option.flag_dec_bitwise_ops &&
-              (op1->ts.type == BT_INTEGER || op2->ts.type == BT_INTEGER))
+      if ((op1->ts.type == BT_INTEGER || op2->ts.type == BT_INTEGER)
+          && (op1->ts.type == BT_LOGICAL || op2->ts.type == BT_LOGICAL))
         {
-          e->ts.type = BT_INTEGER;
-          e->ts.kind = gfc_kind_max (op1, op2);
-          if (op1->ts.type == BT_LOGICAL)
-              gfc_convert_type (op1, &op2->ts, 1);
-          else if (op2->ts.type == BT_LOGICAL)
-              gfc_convert_type (op2, &op1->ts, 1);
-          e = logical_to_bitwise (e);
-          return resolve_function (e);
+          /* -fdec-bitwise-ops: Logical ops on integers become bitwise ops */
+          if (gfc_option.flag_dec_bitwise_ops)
+            {
+              e->ts.type = BT_INTEGER;
+              e->ts.kind = gfc_kind_max (op1, op2);
+              if (op1->ts.type == BT_LOGICAL)
+                  gfc_convert_type (op1, &e->ts, 1);
+              if (op2->ts.type == BT_LOGICAL)
+                  gfc_convert_type (op2, &e->ts, 1);
+              e = logical_to_bitwise (e);
+              return resolve_function (e);
+            }
+
+          /* -flazy-types: Implicitly convert integers to logicals */
+          else if (gfc_option.flag_lazy_types)
+            {
+              e->ts.type = BT_LOGICAL;
+              e->ts.kind = gfc_kind_max (op1, op2);
+              if (op1->ts.type == BT_INTEGER)
+                gfc_convert_type (op1, &e->ts, 1);
+              if (op2->ts.type == BT_INTEGER)
+                gfc_convert_type (op2, &e->ts, 1);
+              break;
+            }
         }
 
       sprintf (msg, _("Operands of logical operator '%s' at %%L are %s/%s"),
