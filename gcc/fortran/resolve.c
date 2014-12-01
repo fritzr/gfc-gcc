@@ -4088,22 +4088,22 @@ resolve_operator (gfc_expr *e)
       goto bad_op;
 
     case INTRINSIC_NOT:
-      if (op1->ts.type == BT_LOGICAL 
-          || (gfc_option.flag_lazy_types && op1->ts.type == BT_INTEGER))
-	{
-	  e->ts.type = BT_LOGICAL;
-	  e->ts.kind = op1->ts.kind;
-	  break;
-	}
-
       /* Logical ops on integers become bitwise ops with -fdec-bitwise-ops */
-      else if (gfc_option.flag_dec_bitwise_ops && op1->ts.type == BT_INTEGER)
+      if (gfc_option.flag_dec_bitwise_ops && op1->ts.type == BT_INTEGER)
         {
           e->ts.type = BT_INTEGER;
           e->ts.kind = op1->ts.kind;
           e = logical_to_bitwise (e);
           return resolve_function (e);
         }
+
+      if (op1->ts.type == BT_LOGICAL
+          || (gfc_option.flag_lazy_types && op1->ts.type == BT_INTEGER))
+	{
+	  e->ts.type = BT_LOGICAL;
+	  e->ts.kind = op1->ts.kind;
+	  break;
+	}
 
       sprintf (msg, _("Operand of .not. operator at %%L is %s"),
 	       gfc_typename (&op1->ts));
