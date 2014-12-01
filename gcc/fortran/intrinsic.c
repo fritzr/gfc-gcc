@@ -4721,9 +4721,9 @@ gfc_convert_type_warn (gfc_expr *expr, gfc_typespec *ts, int eflag, int wflag)
     goto bad;
 
   /* At this point, a conversion is necessary. A warning may be needed.
-     With -flazy-types, don't warn between integers and logicals.  */
+     With -flazy-logicals, don't warn between integers and logicals.  */
   if ((gfc_option.warn_std & sym->standard) != 0
-      && !(gfc_option.flag_lazy_types 
+      && !(gfc_option.flag_lazy_logicals 
            && (from_ts.type == BT_INTEGER || from_ts.type == BT_LOGICAL)
            && (    ts->type == BT_INTEGER ||     ts->type == BT_LOGICAL)))
     {

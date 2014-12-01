@@ -533,9 +533,9 @@ finit-derived
 Fortran
 Automatically initialize local derived type variables
 
-flazy-types
+flazy-logicals
 Fortran
-Suppress warnings and errors relating to type mismatches
+Suppress type-checking between integers and logicals
 
 floc-rval
 Fortran

@@ -816,7 +816,8 @@ resolve_omp_clauses (gfc_code *code)
       gfc_expr *expr = omp_clauses->if_expr;
       if (gfc_resolve_expr (expr) == FAILURE
 	   || ((expr->ts.type != BT_LOGICAL || expr->rank != 0)
-               && (!gfc_option.flag_lazy_types || expr->ts.type != BT_INTEGER)))
+               && (!gfc_option.flag_lazy_logicals
+                   || expr->ts.type != BT_INTEGER)))
 	gfc_error ("IF clause at %L requires a scalar LOGICAL expression",
 		   &expr->where);
     }

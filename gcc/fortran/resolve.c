@@ -4083,8 +4083,8 @@ resolve_operator (gfc_expr *e)
               return resolve_function (e);
             }
 
-          /* -flazy-types: Implicitly convert integers to logicals */
-          else if (gfc_option.flag_lazy_types)
+          /* -flazy-logicals: Implicitly convert integers to logicals */
+          else if (gfc_option.flag_lazy_logicals)
             {
               e->ts.type = BT_LOGICAL;
               e->ts.kind = gfc_kind_max (op1, op2);
@@ -4119,7 +4119,7 @@ resolve_operator (gfc_expr *e)
 	  break;
 	}
           
-      else if (gfc_option.flag_lazy_types && op1->ts.type == BT_INTEGER)
+      else if (gfc_option.flag_lazy_logicals && op1->ts.type == BT_INTEGER)
         {
           e->ts.type = BT_LOGICAL;
           e->ts.kind = op1->ts.kind;
@@ -4160,7 +4160,7 @@ resolve_operator (gfc_expr *e)
 	}
 
       if ((gfc_numeric_ts (&op1->ts) && gfc_numeric_ts (&op2->ts))
-        || (gfc_option.flag_lazy_types
+        || (gfc_option.flag_lazy_logicals
             && (   (op1->ts.type == BT_LOGICAL || op1->ts.type == BT_INTEGER)
                 && (op2->ts.type == BT_LOGICAL || op2->ts.type == BT_INTEGER))))
 	{
@@ -9514,7 +9514,7 @@ gfc_resolve_blocks (gfc_code *b, gfc_namespace *ns)
 	case EXEC_IF:
 	  if (t == SUCCESS && b->expr1 != NULL
 	      && (b->expr1->ts.type != BT_LOGICAL || b->expr1->rank != 0)
-              && (!gfc_option.flag_lazy_types
+              && (!gfc_option.flag_lazy_logicals
                   || b->expr1->ts.type != BT_INTEGER))
 	    gfc_error ("IF clause at %L requires a scalar LOGICAL expression",
 		       &b->expr1->where);
@@ -10500,7 +10500,7 @@ resolve_code (gfc_code *code, gfc_namespace *ns)
 	  if (t == SUCCESS && code->expr1 != NULL
 	      && (code->expr1->ts.type != BT_LOGICAL
 		  || code->expr1->rank != 0)
-              && (!gfc_option.flag_lazy_types
+              && (!gfc_option.flag_lazy_logicals
                   || code->expr1->ts.type != BT_INTEGER))
 	    gfc_error ("IF clause at %L requires a scalar LOGICAL expression",
 		       &code->expr1->where);

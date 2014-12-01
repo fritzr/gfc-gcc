@@ -2339,7 +2339,7 @@ typedef struct
   int flag_dec_io;
   int flag_dec_intrinsic_ints;
   int flag_dec_static;
-  int flag_lazy_types;
+  int flag_lazy_logicals;
   int flag_loc_rval;
   int flag_feed;
 

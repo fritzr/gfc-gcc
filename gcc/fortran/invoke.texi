@@ -149,7 +149,7 @@ and warnings}.
 -Wimplicit-procedure -Wintrinsic-shadow -Wintrinsics-std @gol
 -Wline-truncation -Wno-align-commons -Wno-tabs -Wreal-q-constant @gol
 -Wsurprising -Wunderflow -Wunused-parameter -Wrealloc-lhs Wrealloc-lhs-all @gol
--Wtarget-lifetime -Warglist-types -flazy-types @gol
+-Wtarget-lifetime -Warglist-types -flazy-logicals @gol
 -fmax-errors=@var{n} -fsyntax-only -pedantic -pedantic-errors
 }
 
@@ -754,11 +754,11 @@ These options control the amount and kinds of errors and warnings produced
 by GNU Fortran:
 
 @table @gcctabopt
-@item -flazy-types
-@opindex @code{flazy-types}
-Disables many errors and warnings relating to the type-checking system in GNU
-Fortran which may be seen as 'strict' compared to older compilers. This flag is
-for compatibility only and should be avoided at all costs.
+@item -flazy-logicals
+@opindex @code{flazy-logicals}
+Disables many errors and warnings relating to conversions between integers and
+logicals which may seem 'strict' compared to older compilers. This flag is
+for compatibility only and should be generally avoided.
 
 @item -fmax-errors=@var{n}
 @opindex @code{fmax-errors=}@var{n}
