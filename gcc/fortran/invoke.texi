@@ -149,7 +149,7 @@ and warnings}.
 -Wimplicit-procedure -Wintrinsic-shadow -Wintrinsics-std @gol
 -Wline-truncation -Wno-align-commons -Wno-tabs -Wreal-q-constant @gol
 -Wsurprising -Wunderflow -Wunused-parameter -Wrealloc-lhs Wrealloc-lhs-all @gol
--Wtarget-lifetime -Warglist-types -flazy-logicals @gol
+-Wtarget-lifetime -Warglist-types -flazy-logicals -flogical-compat @gol
 -fmax-errors=@var{n} -fsyntax-only -pedantic -pedantic-errors
 }
 
@@ -759,6 +759,12 @@ by GNU Fortran:
 Disables many errors and warnings relating to conversions between integers and
 logicals which may seem 'strict' compared to older compilers. This flag is
 for compatibility only and should be generally avoided.
+
+@item -flogical-compat
+@opindex @code{flogical-compat}
+Treat logicals like older compilers; that is, keep their values as integers and
+only test the lsb for 0 or 1 rather than the standard zero/non-zero. This flag
+is for compatibility only and should be generally avoided.
 
 @item -fmax-errors=@var{n}
 @opindex @code{fmax-errors=}@var{n}

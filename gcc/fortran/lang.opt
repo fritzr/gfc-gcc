@@ -541,6 +541,10 @@ floc-rval
 Fortran
 Enable the use of %LOC as an rvalue, like the built-in LOC().
 
+flogical-compat
+Fortran
+Convert logicals and integers in compatibility mode
+
 fmax-array-constructor=
 Fortran RejectNegative Joined UInteger
 -fmax-array-constructor=<n>	Maximum number of objects in an array constructor

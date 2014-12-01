@@ -188,6 +188,7 @@ gfc_init_options (unsigned int decoded_options_count,
 
   gfc_option.flag_lazy_logicals = 0;
   gfc_option.flag_loc_rval = 0;
+  gfc_option.flag_logical_compat = 0;
   set_dec_flags (0);
 
   set_default_std_flags ();
@@ -1160,6 +1161,10 @@ gfc_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_floc_rval:
       gfc_option.flag_loc_rval = 1;
+      break;
+
+    case OPT_flogical_compat:
+      gfc_option.flag_logical_compat = 1;
       break;
 
     case OPT_fdec:
