@@ -244,7 +244,7 @@ The options enabled by this switch are: @option{-fdollar-ok}
 @option{-fdec-structure} @option{-fdec-member-dot} @option{-fdec-extended-int}
 @option{-fdec-math} @option{-fdec-logical-xor} @option{-fdec-bitwise-ops}
 @option{-fd-lines-as-comments} @option{-fdec-io} @option{-ffeed}
-@option{-fdec-intrinsic-ints} @option{-fdec-static}
+@option{-fdec-intrinsic-ints} @option{-fdec-static} @option{-flazy-logicals}
 
 @item -fdec-intrinsic-ints
 @opindex @code{fdec-intrinsic-ints}
@@ -756,9 +756,11 @@ by GNU Fortran:
 @table @gcctabopt
 @item -flazy-logicals
 @opindex @code{flazy-logicals}
-Disables many errors and warnings relating to conversions between integers and
-logicals which may seem 'strict' compared to older compilers. This flag is
-for compatibility only and should be generally avoided.
+Disables errors and warnings when using integers as conditional expressions in
+if statements and as operands to logical operators. Implies -fdec-bitwise-ops.
+With this option, integer conditional expressions are considered true if the 
+least significant bit of the integer is non-zero, as with older compilers.
+This flag is for compatibility only and should be generally avoided.
 
 @item -fmax-errors=@var{n}
 @opindex @code{fmax-errors=}@var{n}
