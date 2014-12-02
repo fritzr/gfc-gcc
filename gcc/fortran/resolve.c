@@ -3954,6 +3954,20 @@ logical_to_bitwise (gfc_expr *e)
   e->value.function.isym = gfc_intrinsic_function_by_id(isym);
   e->value.function.name = e->value.function.isym->name;
   e->value.function.esym = NULL;
+  if (!e->symtree || !e->symtree->n.sym)
+    {
+      gfc_symbol *sym;
+      gfc_get_ha_sym_tree (e->value.function.isym->name, &e->symtree);
+      sym = e->symtree->n.sym;
+      sym->result = sym;
+      sym->attr.flavor = FL_PROCEDURE;
+      sym->attr.function = 1;
+      sym->attr.elemental = 1;
+      sym->attr.pure = 1;
+      sym->attr.referenced = 1;
+      gfc_intrinsic_symbol (sym);
+      gfc_commit_symbol (sym);
+    }
 
   args->name = e->value.function.isym->formal->name;
   if (e->value.function.isym->formal->next)
