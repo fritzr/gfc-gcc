@@ -64,6 +64,7 @@ set_dec_flags (int value)
     gfc_option.flag_dec_member_dot = value;
     gfc_option.flag_dec_math = value;
     gfc_option.flag_dec_logical_xor = value;
+    gfc_option.flag_lazy_logicals = value;
     gfc_option.flag_dec_bitwise_ops = value;
     gfc_option.flag_dec_io = value;
     gfc_option.flag_dec_intrinsic_ints = value;
@@ -186,7 +187,6 @@ gfc_init_options (unsigned int decoded_options_count,
   gfc_option.rtcheck = 0;
   gfc_option.coarray = GFC_FCOARRAY_NONE;
 
-  gfc_option.flag_lazy_logicals = 0;
   gfc_option.flag_loc_rval = 0;
   gfc_option.flag_logical_compat = 0;
   set_dec_flags (0);
@@ -1157,6 +1157,7 @@ gfc_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_flazy_logicals:
       gfc_option.flag_lazy_logicals = 1;
+      gfc_option.flag_dec_bitwise_ops = 1;
       break;
 
     case OPT_floc_rval:

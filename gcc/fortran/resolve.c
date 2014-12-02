@@ -4095,20 +4095,6 @@ resolve_operator (gfc_expr *e)
           return resolve_function (e);
         }
 
-      /* -flazy-logicals: Implicitly convert integers to logicals */
-      else if (gfc_option.flag_lazy_logicals
-               && (op1->ts.type == BT_LOGICAL || op2->ts.type == BT_LOGICAL)
-               && (op1->ts.type == BT_INTEGER || op2->ts.type == BT_INTEGER))
-        {
-          e->ts.type = BT_LOGICAL;
-          e->ts.kind = gfc_kind_max (op1, op2);
-          if (op1->ts.type == BT_INTEGER)
-            gfc_convert_type (op1, &e->ts, 1);
-          if (op2->ts.type == BT_INTEGER)
-            gfc_convert_type (op2, &e->ts, 1);
-          break;
-        }
-
       sprintf (msg, _("Operands of logical operator '%s' at %%L are %s/%s"),
 	       gfc_op2string (e->value.op.op), gfc_typename (&op1->ts),
 	       gfc_typename (&op2->ts));
@@ -4131,14 +4117,6 @@ resolve_operator (gfc_expr *e)
 	  e->ts.kind = op1->ts.kind;
 	  break;
 	}
-          
-      else if (gfc_option.flag_lazy_logicals && op1->ts.type == BT_INTEGER)
-        {
-          e->ts.type = BT_LOGICAL;
-          e->ts.kind = op1->ts.kind;
-          gfc_convert_type (op1, &e->ts, 1);
-          break;
-        }
 
       sprintf (msg, _("Operand of .not. operator at %%L is %s"),
 	       gfc_typename (&op1->ts));

@@ -3639,6 +3639,7 @@ add_conv (bt from_type, int from_kind, bt to_type, int to_kind, int standard)
 static void
 add_conversions (void)
 {
+  int std;
   int i, j;
 
   /* Integer-Integer conversions.  */
@@ -3726,14 +3727,18 @@ add_conversions (void)
       }
 
   /* Integer-Logical and Logical-Integer conversions.  */
-  if ((gfc_option.allow_std & GFC_STD_LEGACY) != 0)
+  std = GFC_STD_LEGACY;
+  if (gfc_option.flag_lazy_logicals)
+    std = GFC_STD_GNU;
+  if (gfc_option.flag_lazy_logicals
+      || (gfc_option.allow_std & GFC_STD_LEGACY) != 0)
     for (i=0; gfc_integer_kinds[i].kind; i++)
       for (j=0; gfc_logical_kinds[j].kind; j++)
 	{
 	  add_conv (BT_INTEGER, gfc_integer_kinds[i].kind,
-		    BT_LOGICAL, gfc_logical_kinds[j].kind, GFC_STD_LEGACY);
+		    BT_LOGICAL, gfc_logical_kinds[j].kind, std);
 	  add_conv (BT_LOGICAL, gfc_logical_kinds[j].kind,
-		    BT_INTEGER, gfc_integer_kinds[i].kind, GFC_STD_LEGACY);
+		    BT_INTEGER, gfc_integer_kinds[i].kind, std);
 	}
 }
 
