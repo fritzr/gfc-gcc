@@ -8192,6 +8192,7 @@ gfc_match_type_predict (gfc_statement *st)
   char name[GFC_MAX_SYMBOL_LEN + 1];
   match m;
   locus old_loc;
+  gfc_symbol *sym;
 
   m = gfc_match ("type");
   if (m != MATCH_YES)
@@ -8249,7 +8250,18 @@ gfc_match_type_predict (gfc_statement *st)
       return gfc_match_print ();
     }
 
-  /* By now we have "TYPE <name> <EOS>". Let the parser take it from here. */
+  /* By now we have "TYPE <name> <EOS>". If the name is already a defined
+   * symbol, a derived type declaration would be an error, so assume print.  */
+  if (gfc_find_symbol (name, NULL, 1, &sym))
+    return MATCH_ERROR;
+
+  if (sym != NULL)
+  {
+    gfc_current_locus = old_loc;
+    *st = ST_WRITE;
+    return gfc_match_print ();
+  }
+
   return MATCH_NO;
 }
 
