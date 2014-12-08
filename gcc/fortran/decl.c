@@ -8196,6 +8196,10 @@ gfc_match_type_predict (gfc_statement *st)
   m = gfc_match ("type");
   if (m != MATCH_YES)
     return m;
+  /* If we already have an error in the buffer, it is probably from failing to
+   * match a derived type data declaration. Let it happen. */
+  else if (gfc_error_flag_test ())
+    return MATCH_NO;
 
   old_loc = gfc_current_locus;
   *st = ST_NONE;

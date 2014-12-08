@@ -514,7 +514,6 @@ decode_statement (void)
       match ("target", gfc_match_target, ST_ATTR_DECL);
       match ("type", gfc_match_derived_decl, ST_DERIVED_DECL);
       match ("type is", gfc_match_type_is, ST_TYPE_IS);
-      match ("type", gfc_match_print, ST_WRITE);
       break;
 
     case 'u':
