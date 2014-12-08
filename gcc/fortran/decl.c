@@ -8180,6 +8180,77 @@ gfc_match_structure_decl (void)
     return MATCH_YES;
 }
 
+
+/* This function always returns MATCH_NONE so that any matching it does is
+ * undone by the parser. It does some preprocessing to determine which matcher
+ * should be used later to match a statement beginning with "TYPE". This is
+ * used to disambiguate TYPE as an alias for PRINT from derived type
+ * declarations and TYPE IS statements. This matcher may not return MATCH_YES
+ * because the parser  */
+
+match
+gfc_match_type_predict (gfc_statement *st)
+{
+  char name[GFC_MAX_SYMBOL_LEN + 1];
+  match m;
+  locus old_loc;
+
+  m = gfc_match ("type");
+  if (m != MATCH_YES)
+    return m;
+
+  old_loc = gfc_current_locus;
+  *st = ST_NONE;
+
+  /* If we see an attribute list before anything else it's definitely a derived
+   * type declaration. */
+  if (gfc_match (" ,") == MATCH_YES || gfc_match (" ::") == MATCH_YES)
+    {
+      gfc_current_locus = old_loc;
+      *st = ST_DERIVED_DECL;
+      return gfc_match_derived_decl ();
+    }
+
+  /* By now "TYPE" has already been matched. If we do not see a name, this may
+   * be something like "TYPE *" or "TYPE <fmt>".  */
+  m = gfc_match_name (name);
+  if (m != MATCH_YES)
+    {
+      /* Let print match if it can, otherwise throw an error from
+       * gfc_match_derived_decl.  */
+      gfc_current_locus = old_loc;
+      if (gfc_match_print () == MATCH_YES)
+        {
+          *st = ST_WRITE;
+          return MATCH_YES;
+        }
+      else
+        {
+          gfc_current_locus = old_loc;
+          *st = ST_DERIVED_DECL;
+          return gfc_match_derived_decl ();
+        }
+    }
+
+  /* A derived type declaration requires an EOS. Without it, assume print. */
+  m = gfc_match_eos ();
+  if (m == MATCH_NO)
+    {
+      *st = ST_WRITE;
+      if (strncmp ("is", name, 3) == 0 && gfc_match_type_is () == MATCH_YES)
+        {
+          *st = ST_TYPE_IS;
+          return MATCH_YES;
+        }
+      gfc_current_locus = old_loc;
+      return gfc_match_print ();
+    }
+
+  /* By now we have "TYPE <name> <EOS>". Let the parser take it from here. */
+  return MATCH_NO;
+}
+
+
 /* Match the beginning of a derived type declaration.  If a type name
    was the result of a function, then it is possible to have a symbol
    already to be known as a derived type yet have no components.  */

@@ -169,6 +169,7 @@ match gfc_match_union (void);
 match gfc_match_structure_decl (void);
 match gfc_match_derived_decl (void);
 match gfc_match_final_decl (void);
+match gfc_match_type_predict (gfc_statement *);
 
 match gfc_match_implicit_none (void);
 match gfc_match_implicit (void);
@@ -251,8 +252,6 @@ match gfc_match_read (void);
 match gfc_match_wait (void);
 match gfc_match_write (void);
 match gfc_match_print (void);
-match gfc_match_type_print_maybe (void);
-match gfc_match_type_print (void);
 
 /* matchexp.c.  */
 match gfc_match_defined_op_name (char *, int);

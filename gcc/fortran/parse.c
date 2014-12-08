@@ -362,6 +362,11 @@ decode_statement (void)
   gfc_undo_symbols ();
   gfc_current_locus = old_locus;
 
+  if (gfc_match_type_predict (&st) == MATCH_YES)
+    return st;
+  gfc_undo_symbols ();
+  gfc_current_locus = old_locus;
+
   match (NULL, gfc_match_do, ST_DO);
   match (NULL, gfc_match_block, ST_BLOCK);
   match (NULL, gfc_match_associate, ST_ASSOCIATE);
@@ -507,10 +512,9 @@ decode_statement (void)
 
     case 't':
       match ("target", gfc_match_target, ST_ATTR_DECL);
-      match ("type", gfc_match_type_print_maybe, ST_WRITE);
       match ("type", gfc_match_derived_decl, ST_DERIVED_DECL);
       match ("type is", gfc_match_type_is, ST_TYPE_IS);
-      match ("type", gfc_match_type_print, ST_WRITE);
+      match ("type", gfc_match_print, ST_WRITE);
       break;
 
     case 'u':
