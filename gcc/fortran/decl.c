@@ -8181,12 +8181,10 @@ gfc_match_structure_decl (void)
 }
 
 
-/* This function always returns MATCH_NONE so that any matching it does is
- * undone by the parser. It does some preprocessing to determine which matcher
- * should be used later to match a statement beginning with "TYPE". This is
- * used to disambiguate TYPE as an alias for PRINT from derived type
- * declarations and TYPE IS statements. This matcher may not return MATCH_YES
- * because the parser  */
+/* This function does some work to determine which matcher should be used to
+ * match a statement beginning with "TYPE". This is used to disambiguate TYPE
+ * as an alias for PRINT from derived type declarations, TYPE IS statements,
+ * and derived type data declarations. */
 
 match
 gfc_match_type_predict (gfc_statement *st)
@@ -8237,6 +8235,7 @@ gfc_match_type_predict (gfc_statement *st)
   if (m == MATCH_NO)
     {
       *st = ST_WRITE;
+      /* Check for TYPE IS first. */
       if (strncmp ("is", name, 3) == 0 && gfc_match_type_is () == MATCH_YES)
         {
           *st = ST_TYPE_IS;
