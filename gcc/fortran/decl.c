@@ -8250,15 +8250,17 @@ gfc_match_type_predict (gfc_statement *st)
     }
   else
     {
-      /* By now we have "TYPE <name> <EOS>". Try matching a derived type
-       * declaration first - it will complain if the symbol exists and should
-       * be printed.  */
+      /* By now we have "TYPE <name> <EOS>". Check first if the name is an
+       * intrinsic typename - if so let gfc_match_derived_decl dump an error.
+       * Otherwise if gfc_match_derived_decl fails it's probably an existing
+       * symbol which can be printed. */
 
       gfc_current_locus = old_loc;
-      if (gfc_match_derived_decl () == MATCH_YES)
+      m = gfc_match_derived_decl ();
+      if (gfc_is_intrinsic_typename (name) || m == MATCH_YES)
         {
           *st = ST_DERIVED_DECL;
-          return MATCH_YES;
+          return m;
         }
       gfc_current_locus = old_loc;
       *st = ST_WRITE;
