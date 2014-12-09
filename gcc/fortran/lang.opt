@@ -561,6 +561,10 @@ fstack-arrays
 Fortran
 Put all local arrays on stack.
 
+ftype-print
+Fortran
+Interpret TYPE as an alias for PRINT
+
 fmodule-private
 Fortran
 Set default accessibility of module entities to PRIVATE.

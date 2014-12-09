@@ -8193,6 +8193,10 @@ gfc_match_type (gfc_statement *st)
   match m;
   locus old_loc;
 
+  /* Requires -ftype-print.  */
+  if (!gfc_option.flag_type_print)
+    return MATCH_NO;
+
   m = gfc_match ("type");
   if (m != MATCH_YES)
     return m;

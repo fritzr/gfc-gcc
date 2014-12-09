@@ -2342,6 +2342,7 @@ typedef struct
   int flag_lazy_logicals;
   int flag_loc_rval;
   int flag_feed;
+  int flag_type_print;
 
   int fpe;
   int rtcheck;

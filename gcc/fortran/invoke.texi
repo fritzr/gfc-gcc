@@ -118,7 +118,7 @@ by type.  Explanations are in the following sections.
 -fd-lines-as-comments @gol
 -fdec -fdec-extended-int -fdec-member-dot -fdec-structure -fdec-math @gol
 -fdec-logical-xor -fdec-bitwise-ops -fdec-io fdec-intrinsic-ints -ffeed @gol
--fdec-static @gol
+-fdec-static -ftype-print @gol
 -fdefault-double-8 -fdefault-integer-8 -fdefault-real-8 -fdollar-ok @gol
 -ffixed-line-length-@var{n} -ffixed-line-length-none -ffree-form @gol
 -ffree-line-length-@var{n} -ffree-line-length-none -fimplicit-none @gol
@@ -245,6 +245,7 @@ The options enabled by this switch are: @option{-fdollar-ok}
 @option{-fdec-math} @option{-fdec-logical-xor} @option{-fdec-bitwise-ops}
 @option{-fd-lines-as-comments} @option{-fdec-io} @option{-ffeed}
 @option{-fdec-intrinsic-ints} @option{-fdec-static} @option{-flazy-logicals}
+@option{-ftype-print}
 
 @item -fdec-intrinsic-ints
 @opindex @code{fdec-intrinsic-ints}
@@ -298,6 +299,11 @@ For a list of supported intrinsics see the full documentation.
 @item -ffeed
 @opindex @code{ffeed}
 Treat form feed (@code{\f}) characters as whitespace in the source.
+
+@item -ftype-print
+@opindex @code{ftype-print}
+Interpret TYPE as an alias for PRINT whenever it can be disambiguated from
+derived type data and type declarations and TYPE IS statements.
 
 @item -fdefault-double-8
 @opindex @code{fdefault-double-8}
