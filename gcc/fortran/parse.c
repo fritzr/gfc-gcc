@@ -362,7 +362,8 @@ decode_statement (void)
   gfc_undo_symbols ();
   gfc_current_locus = old_locus;
 
-  if (gfc_match_type_predict (&st) == MATCH_YES)
+  /* Try to match TYPE as an alias for PRINT.  */
+  if (gfc_match_type (&st) == MATCH_YES)
     return st;
   gfc_undo_symbols ();
   gfc_current_locus = old_locus;
