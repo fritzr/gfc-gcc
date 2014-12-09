@@ -8192,7 +8192,6 @@ gfc_match_type_predict (gfc_statement *st)
   char name[GFC_MAX_SYMBOL_LEN + 1];
   match m;
   locus old_loc;
-  gfc_typespec ts;
 
   m = gfc_match ("type");
   if (m != MATCH_YES)
@@ -8237,7 +8236,8 @@ gfc_match_type_predict (gfc_statement *st)
   if (m == MATCH_NO)
     {
       /* Check manually for TYPE IS (%n) - this is invalid print syntax.  */
-      if (strncmp ("is", name, 3) == 0 && gfc_match ("(%n)", name) == MATCH_YES)
+      if (strncmp ("is", name, 3) == 0
+          && gfc_match (" ( %n )", name) == MATCH_YES)
         {
           gfc_current_locus = old_loc;
           gcc_assert (gfc_match (" is") == MATCH_YES);
