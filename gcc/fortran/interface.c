@@ -2572,6 +2572,7 @@ compare_actual_formal (gfc_actual_arglist **ap, gfc_formal_arglist *formal,
       /* With -Wno-arglist-types, ignore mismatches with arglist funcs. */
       if (!gfc_option.warn_arglist_types && a->name
           && (   strncmp (a->name, "%VAL", 4) == 0
+              || strncmp (a->name, "%REF", 4) == 0
               || strncmp (a->name, "%LOC", 4) == 0))
         goto match;
 
