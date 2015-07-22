@@ -1,5 +1,5 @@
 ! { dg-do compile }
-! { dg-options "-Wno-arglist-types" }
+! { dg-options "-Wno-argtype-mismatch" }
 !
 ! Don't warn when %val()/%loc() cause type mismatches in arguments
 !

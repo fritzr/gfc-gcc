@@ -149,8 +149,7 @@ and warnings}.
 -Wimplicit-procedure -Wintrinsic-shadow -Wintrinsics-std @gol
 -Wline-truncation -Wno-align-commons -Wno-tabs -Wreal-q-constant @gol
 -Wsurprising -Wunderflow -Wunused-parameter -Wrealloc-lhs Wrealloc-lhs-all @gol
--Wtarget-lifetime -Warglist-types -Wargtype-mismatch @gol
--Wscalar-rank-mismatch @gol
+-Wtarget-lifetime -Wargtype-mismatch -Wscalar-rank-mismatch @gol
 -flazy-logicals -fmax-errors=@var{n} -fsyntax-only -pedantic -pedantic-errors
 }
 
@@ -1045,12 +1044,6 @@ This option is implied by @option{-Wextra}.
 @opindex @code{Wtargt-lifetime}
 Warn if the pointer in a pointer assignment might be longer than the its
 target. This option is implied by @option{-Wall}.
-
-@item -Warglist-types
-@opindex @code{Warglist-types}
-Warn when the use of an argument list function (%ref, %val, or %loc) causes
-a type mismatch between formal/actual arguments in a function call.
-Enabled by default.
 
 @item -Wargtype-mismatch
 @opindex @code{Wargtype-mismatch}

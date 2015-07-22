@@ -1,5 +1,5 @@
 ! { dg-do compile }
-! { dg-options "-Warglist-types" }
+! { dg-options "-Wargtype-mismatch" }
 !
 ! Warn when %val()/%loc() cause type mismatches in arguments
 !
