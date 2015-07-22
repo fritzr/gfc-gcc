@@ -1048,14 +1048,14 @@ target. This option is implied by @option{-Wall}.
 
 @item -Warglist-types
 @opindex @code{Warglist-types}
-Disabling this prevents warnings when the argument list functions %val() or
-%loc() cause a type mismatch between formal/actual arguments in a function
-call. Enabled by default.
+Warn when the use of an argument list function (%ref, %val, or %loc) causes
+a type mismatch between formal/actual arguments in a function call.
+Enabled by default.
 
 @item -Wargtype-mismatch
 @opindex @code{Wargtype-mismatch}
-Disabling this prevents warnings when the type differs between a formal and
-actual argument across any function call. Enabled by default.
+Warn when the type of formal and actual arguments do not match.
+Enabled by default.
 
 @item -Wscalar-rank-mismatch
 @opindex @code[Wscalar-rank-mismatch}
