@@ -273,6 +273,10 @@ Wrealloc-lhs-all
 Fortran Warning
 Warn when a left-hand-side variable is reallocated
 
+Wscalar-rank-mismatch
+Fortran Warning
+Warn about mismatches between scalar and rank-1 function arguments
+
 Wtarget-lifetime
 Fortran Warning
 Warn if the pointer in a pointer assignment might outlive its target

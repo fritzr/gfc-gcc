@@ -136,6 +136,7 @@ gfc_init_options (unsigned int decoded_options_count,
   gfc_option.warn_target_lifetime = 0;
   gfc_option.warn_arglist_types = 1;
   gfc_option.warn_argtype_mismatch = 1;
+  gfc_option.warn_scalar_rank_mismatch = 1;
   gfc_option.max_errors = 25;
 
   gfc_option.flag_all_intrinsics = 0;

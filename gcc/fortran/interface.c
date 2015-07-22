@@ -1909,6 +1909,12 @@ static void
 argument_rank_mismatch (const char *name, locus *where,
 			int rank1, int rank2)
 {
+  /* Prevent warnings for scalar vs. rank-1 with -Wno-argrank-scalar-mismatch */
+  if (!gfc_option.warn_scalar_rank_mismatch
+      && ((rank1 == 0 && rank2 == 1) || (rank1 == 1 && rank2 == 0)))
+    {
+      return;
+    }
 
   /* TS 29113, C407b.  */
   if (rank2 == -1)

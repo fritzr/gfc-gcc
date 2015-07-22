@@ -2284,6 +2284,7 @@ typedef struct
   int warn_target_lifetime;
   int warn_arglist_types;
   int warn_argtype_mismatch;
+  int warn_scalar_rank_mismatch;
   int max_errors;
 
   int flag_all_intrinsics;

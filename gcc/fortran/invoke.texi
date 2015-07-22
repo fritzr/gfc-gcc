@@ -149,8 +149,9 @@ and warnings}.
 -Wimplicit-procedure -Wintrinsic-shadow -Wintrinsics-std @gol
 -Wline-truncation -Wno-align-commons -Wno-tabs -Wreal-q-constant @gol
 -Wsurprising -Wunderflow -Wunused-parameter -Wrealloc-lhs Wrealloc-lhs-all @gol
--Wtarget-lifetime -Warglist-types -Wargtype-mismatch -flazy-logicals @gol
--fmax-errors=@var{n} -fsyntax-only -pedantic -pedantic-errors
+-Wtarget-lifetime -Warglist-types -Wargtype-mismatch @gol
+-Wscalar-rank-mismatch @gol
+-flazy-logicals -fmax-errors=@var{n} -fsyntax-only -pedantic -pedantic-errors
 }
 
 @item Debugging Options
@@ -1055,6 +1056,11 @@ call. Enabled by default.
 @opindex @code{Wargtype-mismatch}
 Disabling this prevents warnings when the type differs between a formal and
 actual argument across any function call. Enabled by default.
+
+@item -Wscalar-rank-mismatch
+@opindex @code[Wscalar-rank-mismatch}
+Warn when an argument of rank 1 is passed to a function expecting a scalar or
+vice-versa. Enabled by default.
 
 @item -Werror
 @opindex @code{Werror}
