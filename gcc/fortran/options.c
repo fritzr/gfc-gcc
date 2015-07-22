@@ -135,6 +135,7 @@ gfc_init_options (unsigned int decoded_options_count,
   gfc_option.warn_compare_reals = 0;
   gfc_option.warn_target_lifetime = 0;
   gfc_option.warn_arglist_types = 1;
+  gfc_option.warn_argtype_mismatch = 1;
   gfc_option.max_errors = 25;
 
   gfc_option.flag_all_intrinsics = 0;
@@ -500,7 +501,6 @@ set_Wall (int setting)
   gfc_option.warn_real_q_constant = setting;
   gfc_option.warn_unused_dummy_argument = setting;
   gfc_option.warn_target_lifetime = setting;
-  gfc_option.warn_arglist_types = setting;
 
   warn_return_type = setting;
   warn_uninitialized = setting;
@@ -755,6 +755,10 @@ gfc_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_Warglist_types:
       gfc_option.warn_arglist_types = value;
+      break;
+
+    case OPT_Wargtype_mismatch:
+      gfc_option.warn_argtype_mismatch = value;
       break;
 
     case OPT_fall_intrinsics:

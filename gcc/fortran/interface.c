@@ -2008,7 +2008,8 @@ compare_parameter (gfc_symbol *formal, gfc_expr *actual,
       return 0;
     }
 
-  if ((actual->expr_type != EXPR_NULL || actual->ts.type != BT_UNKNOWN)
+  if (gfc_option.warn_argtype_mismatch
+      && (actual->expr_type != EXPR_NULL || actual->ts.type != BT_UNKNOWN)
       && actual->ts.type != BT_HOLLERITH
       && formal->ts.type != BT_ASSUMED
       && !gfc_compare_types (&formal->ts, &actual->ts)

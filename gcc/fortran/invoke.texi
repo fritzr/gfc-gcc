@@ -149,7 +149,7 @@ and warnings}.
 -Wimplicit-procedure -Wintrinsic-shadow -Wintrinsics-std @gol
 -Wline-truncation -Wno-align-commons -Wno-tabs -Wreal-q-constant @gol
 -Wsurprising -Wunderflow -Wunused-parameter -Wrealloc-lhs Wrealloc-lhs-all @gol
--Wtarget-lifetime -Warglist-types -flazy-logicals @gol
+-Wtarget-lifetime -Warglist-types -Wargtype-mismatch -flazy-logicals @gol
 -fmax-errors=@var{n} -fsyntax-only -pedantic -pedantic-errors
 }
 
@@ -819,7 +819,7 @@ This currently includes @option{-Waliasing}, @option{-Wampersand},
 @option{-Wconversion}, @option{-Wsurprising}, @option{-Wc-binding-type},
 @option{-Wintrinsics-std}, @option{-Wno-tabs}, @option{-Wintrinsic-shadow},
 @option{-Wline-truncation}, @option{-Wtarget-lifetime},
-@option{-Warglist-types}, @option{-Wreal-q-constant} and @option{-Wunused}.
+@option{-Wreal-q-constant} and @option{-Wunused}.
 
 @item -Waliasing
 @opindex @code{Waliasing}
@@ -1049,7 +1049,12 @@ target. This option is implied by @option{-Wall}.
 @opindex @code{Warglist-types}
 Disabling this prevents warnings when the argument list functions %val() or
 %loc() cause a type mismatch between formal/actual arguments in a function
-call. Enabled by default. This option is implied by @option{-Wall}.
+call. Enabled by default.
+
+@item -Wargtype-mismatch
+@opindex @code{Wargtype-mismatch}
+Disabling this prevents warnings when the type differs between a formal and
+actual argument across any function call. Enabled by default.
 
 @item -Werror
 @opindex @code{Werror}

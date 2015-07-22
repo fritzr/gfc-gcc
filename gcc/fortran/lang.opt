@@ -209,6 +209,10 @@ Warglist-types
 Fortran Warning
 Warn about type mismatches for %loc() or %val() as actual arguments
 
+Wargtype-mismatch
+Fortran Warning
+Warn about type mismatches between formal and actual function arguments
+
 Warray-temporaries
 Fortran Warning
 Warn about creation of array temporaries
