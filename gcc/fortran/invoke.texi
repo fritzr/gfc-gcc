@@ -1051,7 +1051,7 @@ Warn when the type of formal and actual arguments do not match.
 Enabled by default.
 
 @item -Wscalar-rank-mismatch
-@opindex @code[Wscalar-rank-mismatch}
+@opindex @code{Wscalar-rank-mismatch}
 Warn when an argument of rank 1 is passed to a function expecting a scalar or
 vice-versa. Enabled by default.
 
