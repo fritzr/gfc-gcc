@@ -757,6 +757,10 @@ gfc_handle_option (size_t scode, const char *arg, int value,
       gfc_option.warn_argtype_mismatch = value;
       break;
 
+    case OPT_Wscalar_rank_mismatch:
+      gfc_option.warn_scalar_rank_mismatch = value;
+      break;
+
     case OPT_fall_intrinsics:
       gfc_option.flag_all_intrinsics = 1;
       break;
