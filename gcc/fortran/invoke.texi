@@ -149,7 +149,7 @@ and warnings}.
 -Wimplicit-procedure -Wintrinsic-shadow -Wintrinsics-std @gol
 -Wline-truncation -Wno-align-commons -Wno-tabs -Wreal-q-constant @gol
 -Wsurprising -Wunderflow -Wunused-parameter -Wrealloc-lhs Wrealloc-lhs-all @gol
--Wtarget-lifetime -Wargtype-mismatch -Wscalar-rank-mismatch @gol
+-Wtarget-lifetime -Wargument-mismatch @gol
 -flazy-logicals -fmax-errors=@var{n} -fsyntax-only -pedantic -pedantic-errors
 }
 
@@ -1045,15 +1045,10 @@ This option is implied by @option{-Wextra}.
 Warn if the pointer in a pointer assignment might be longer than the its
 target. This option is implied by @option{-Wall}.
 
-@item -Wargtype-mismatch
-@opindex @code{Wargtype-mismatch}
-Warn when the type of formal and actual arguments do not match.
+@item -Wargument-mismatch
+@opindex @code{Wargument-mismatch}
+Warn when the type or rank of formal and actual arguments do not match.
 Enabled by default.
-
-@item -Wscalar-rank-mismatch
-@opindex @code{Wscalar-rank-mismatch}
-Warn when an argument of rank 1 is passed to a function expecting a scalar or
-vice-versa. Enabled by default.
 
 @item -Werror
 @opindex @code{Werror}

@@ -205,7 +205,7 @@ Wampersand
 Fortran Warning
 Warn about missing ampersand in continued character constants
 
-Wargtype-mismatch
+Wargument-mismatch
 Fortran Warning
 Warn about type mismatches between formal and actual function arguments
 
@@ -268,10 +268,6 @@ Warn when a left-hand-side array variable is reallocated
 Wrealloc-lhs-all
 Fortran Warning
 Warn when a left-hand-side variable is reallocated
-
-Wscalar-rank-mismatch
-Fortran Warning
-Warn about mismatches between scalar and rank-1 function arguments
 
 Wtarget-lifetime
 Fortran Warning

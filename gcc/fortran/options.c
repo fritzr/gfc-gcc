@@ -134,8 +134,7 @@ gfc_init_options (unsigned int decoded_options_count,
   gfc_option.warn_realloc_lhs_all = 0;
   gfc_option.warn_compare_reals = 0;
   gfc_option.warn_target_lifetime = 0;
-  gfc_option.warn_argtype_mismatch = 1;
-  gfc_option.warn_scalar_rank_mismatch = 1;
+  gfc_option.warn_argument_mismatch = 1;
   gfc_option.max_errors = 25;
 
   gfc_option.flag_all_intrinsics = 0;
@@ -753,12 +752,8 @@ gfc_handle_option (size_t scode, const char *arg, int value,
       gfc_option.warn_unused_dummy_argument = value;
       break;
 
-    case OPT_Wargtype_mismatch:
-      gfc_option.warn_argtype_mismatch = value;
-      break;
-
-    case OPT_Wscalar_rank_mismatch:
-      gfc_option.warn_scalar_rank_mismatch = value;
+    case OPT_Wargument_mismatch:
+      gfc_option.warn_argument_mismatch = value;
       break;
 
     case OPT_fall_intrinsics:

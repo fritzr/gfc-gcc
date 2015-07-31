@@ -1909,12 +1909,6 @@ static void
 argument_rank_mismatch (const char *name, locus *where,
 			int rank1, int rank2)
 {
-  /* Prevent warnings for scalar vs. rank-1 with -Wno-argrank-scalar-mismatch */
-  if (!gfc_option.warn_scalar_rank_mismatch
-      && ((rank1 == 0 && rank2 == 1) || (rank1 == 1 && rank2 == 0)))
-    {
-      return;
-    }
 
   /* TS 29113, C407b.  */
   if (rank2 == -1)
@@ -2014,8 +2008,7 @@ compare_parameter (gfc_symbol *formal, gfc_expr *actual,
       return 0;
     }
 
-  if (gfc_option.warn_argtype_mismatch
-      && (actual->expr_type != EXPR_NULL || actual->ts.type != BT_UNKNOWN)
+  if ((actual->expr_type != EXPR_NULL || actual->ts.type != BT_UNKNOWN)
       && actual->ts.type != BT_HOLLERITH
       && formal->ts.type != BT_ASSUMED
       && !gfc_compare_types (&formal->ts, &actual->ts)
@@ -2573,7 +2566,8 @@ compare_actual_formal (gfc_actual_arglist **ap, gfc_formal_arglist *formal,
 	  return 0;
 	}
 
-      if (f->sym == NULL && a->expr == NULL)
+      if (!gfc_option.warn_argument_mismatch
+          || (f->sym == NULL && a->expr == NULL))
 	goto match;
 
       if (f->sym == NULL)
