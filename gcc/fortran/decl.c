@@ -8114,7 +8114,7 @@ match
 gfc_match_structure_decl (void)
 {
     /* Counter used to give anonymous structures unique internal names. */
-    int gfc_structure_id = 0;
+    static unsigned int gfc_structure_id = 0;
     char name[GFC_MAX_SYMBOL_LEN + 1];
     gfc_interface *intr;
     gfc_symbol *sym;
