@@ -11048,7 +11048,7 @@ build_init_assign (gfc_symbol *sym, gfc_expr *init)
   init_st->expr2 = init;
 }
 
-/* Whether or not we can create an initializer for a the given symbol.  */
+/* Whether or not we can create an initializer for the given symbol.  */
 
 static bool
 can_create_init (gfc_symbol *sym)
