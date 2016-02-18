@@ -11048,8 +11048,7 @@ build_init_assign (gfc_symbol *sym, gfc_expr *init)
   init_st->expr2 = init;
 }
 
-/* Whether or not we can create an initializer for a given derived type
-   variable.  */
+/* Whether or not we can create an initializer for a the given symbol.  */
 
 static bool
 can_create_init (gfc_symbol *sym)
@@ -11059,6 +11058,7 @@ can_create_init (gfc_symbol *sym)
     return false;
   a = &sym->attr;
 
+  /* These symbols should never have a default initialization.  */
   return !(
        a->allocatable
     || a->external
@@ -13972,8 +13972,20 @@ resolve_symbol (gfc_symbol *sym)
   /* If we have come this far we can apply default-initializers, as
      described in 14.7.5, to those variables that have not already
      been assigned one.  */
-  if (sym->ts.type == BT_DERIVED && can_create_initializer (sym))
-    apply_default_init (sym);
+  if (sym->ts.type == BT_DERIVED
+      && !sym->value
+      && !sym->attr.allocatable
+      && !sym->attr.alloc_comp)
+  {
+    symbol_attribute *a = &sym->attr;
+
+    if ((!a->save && !a->dummy && !a->pointer
+          && !a->in_common && !a->use_assoc
+          && (a->referenced || a->result)
+          && !(a->function && sym != sym->result))
+        || (a->dummy && a->intent == INTENT_OUT && !a->pointer))
+      apply_default_init (sym);
+  }
 
   if (sym->ts.type == BT_CLASS && sym->ns == gfc_current_ns
       && sym->attr.dummy && sym->attr.intent == INTENT_OUT
