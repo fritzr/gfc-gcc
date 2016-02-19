@@ -8116,7 +8116,6 @@ gfc_match_structure_decl (void)
     /* Counter used to give anonymous structures unique internal names. */
     static unsigned int gfc_structure_id = 0;
     char name[GFC_MAX_SYMBOL_LEN + 1];
-    gfc_interface *intr;
     gfc_symbol *sym;
     match m;
     locus where;
@@ -8168,13 +8167,6 @@ gfc_match_structure_decl (void)
     sprintf (name, gfc_dt_upper_string (name));
     if (get_struct_decl (name, FL_STRUCT, &where, &sym) == FAILURE)
       return MATCH_ERROR;
-
-    intr = gfc_get_interface ();
-    intr->sym = sym;
-    intr->where = where;
-    sym->generic = intr;
-    sym->attr.if_source = IFSRC_DECL;
-    sym->attr.generic = 1;
 
     gfc_new_block = sym;
     return MATCH_YES;
