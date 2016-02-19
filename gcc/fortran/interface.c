@@ -383,15 +383,12 @@ gfc_match_end_interface (void)
 }
 
 
+/* Compare components according to 4.4.2 of the Fortran standard.  */
+
 static int
-compare_components (gfc_component *cmp1, gfc_component *cmp2)
+compare_components (gfc_component *cmp1, gfc_component *cmp2,
+    gfc_symbol *derived1, gfc_symbol *derived2)
 {
-  if (cmp1 == cmp2)
-    return 1;
-
-  if (gfc_compare_types (&cmp1->ts, &cmp2->ts) == 0)
-    return 0;
-
   /* UNIONs, MAPs, and anonymous STRUCTURE components all have internal
      names of the form uU*, mM*, sS*, etc... Ignore differences here;
      we must do a deeper comparison. */
@@ -414,6 +411,21 @@ compare_components (gfc_component *cmp1, gfc_component *cmp2)
     return 0;
 
   if (cmp1->attr.dimension && gfc_compare_array_spec (cmp1->as, cmp2->as) == 0)
+    return 0;
+
+  /* Make sure that link lists do not put this function into an
+     endless recursive loop!  */
+  if (!(cmp1->ts.type == BT_DERIVED && derived1 == cmp1->ts.u.derived)
+      && !(cmp2->ts.type == BT_DERIVED && derived2 == cmp2->ts.u.derived)
+      && gfc_compare_types (&cmp1->ts, &cmp2->ts) == 0)
+    return 0;
+
+  else if ( (cmp1->ts.type == BT_DERIVED && derived1 == cmp1->ts.u.derived)
+        && !(cmp2->ts.type == BT_DERIVED && derived2 == cmp2->ts.u.derived))
+    return 0;
+
+  else if (!(cmp1->ts.type == BT_DERIVED && derived1 == cmp1->ts.u.derived)
+        &&  (cmp2->ts.type == BT_DERIVED && derived2 == cmp2->ts.u.derived))
     return 0;
 
   return 1;
