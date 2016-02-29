@@ -511,8 +511,9 @@ gfc_compare_derived_types (gfc_symbol *derived1, gfc_symbol *derived2)
      to lowercase). Compare anonymous type names specially because each
      gets a unique name when it is declared. */
   anonymous = (derived1->name[0] == derived2->name[0]
-   && derived1->name[1] == (char) TOUPPER (derived1->name[0])
-   && derived2->name[1] == (char) TOUPPER (derived2->name[0]));
+      && derived1->name[1] && derived2->name[1] && derived2->name[2]
+      && derived1->name[1] == (char) TOUPPER (derived1->name[0])
+      && derived2->name[2] == (char) TOUPPER (derived2->name[0]));
 
   /* Special case for comparing derived types across namespaces.  If the
      true names and module names are the same and the module name is
