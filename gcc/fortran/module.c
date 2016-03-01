@@ -4324,6 +4324,12 @@ load_needed (pointer_info *p)
   mio_symbol (sym);
   sym->attr.use_assoc = 1;
 
+  /* Unliked derived types, a STRUCTURE may share names with other symbols.
+     We greedily converted the the symbol name to lowercase before we knew its
+     type, so now we must fix it. */
+  if (sym->attr.flavor == FL_STRUCT)
+    sym->name = gfc_dt_upper_string (sym->name);
+
   /* Mark as only or rename for later diagnosis for explicitly imported
      but not used warnings; don't mark internal symbols such as __vtab,
      __def_init etc. Only mark them if they have been explicitly loaded.  */
