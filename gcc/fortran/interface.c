@@ -467,7 +467,8 @@ gfc_compare_union_types (gfc_symbol *un1, gfc_symbol *un2)
          the same component, because one map field is created with its type
          declaration. Therefore don't worry about recursion here. */
       /* TODO: worry about recursion into parent types of the unions? */
-      if (compare_components (cmp1, cmp2) == 0)
+      if (compare_components (cmp1, cmp2,
+            map1->ts.u.derived, map2->ts.u.derived) == 0)
         return 0;
 
       cmp1 = cmp1->next;
@@ -556,7 +557,7 @@ gfc_compare_derived_types (gfc_symbol *derived1, gfc_symbol *derived2)
 	 endless recursive loop!  */
       if (     !(cmp1->ts.type == BT_DERIVED && derived1 == cmp1->ts.u.derived)
             && !(cmp2->ts.type == BT_DERIVED && derived2 == cmp2->ts.u.derived)
-            && compare_components (cmp1, cmp2) == 0)
+            && compare_components (cmp1, cmp2, derived1, derived2) == 0)
 	return 0;
 
       else if ( (cmp1->ts.type == BT_DERIVED && derived1 == cmp1->ts.u.derived)
