@@ -12992,14 +12992,19 @@ static gfc_try
 resolve_fl_union (gfc_symbol *sym)
 {
   gfc_component *map;
+  gfc_try success;
 
   gcc_assert (sym->attr.flavor == FL_UNION);
 
+  success = SUCCESS;
   for (map = sym->components; map; map = map->next)
   {
     if (resolve_component (map, (void *)sym) == FAILURE)
-      return FAILURE;
+      success = FAILURE;
   }
+
+  if (success != SUCCESS)
+    return FAILURE;
 
   if (sym->components)
     add_dt_to_dt_list (sym);
@@ -13016,6 +13021,7 @@ resolve_fl_derived0 (gfc_symbol *sym)
 {
   gfc_symbol* super_type;
   gfc_component *c;
+  gfc_try success;
 
   if (sym->attr.unlimited_polymorphic)
     return SUCCESS;
@@ -13047,11 +13053,15 @@ resolve_fl_derived0 (gfc_symbol *sym)
 			   : sym->components;
 
   /* Resolve all components of this type. */
+  success = SUCCESS;
   for (; c; c = c->next)
   {
     if (resolve_component (c, (void *)sym) == FAILURE)
-      return FAILURE;
+      success = FAILURE;
   }
+
+  if (success != SUCCESS)
+    return FAILURE;
 
   check_defined_assignments (sym);
 
