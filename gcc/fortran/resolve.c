@@ -12673,7 +12673,10 @@ resolve_component (gfc_component *c, void *data)
 
       if (!sym->attr.vtype
           && check_proc_interface (ifc, &c->loc) == FAILURE)
-        return FAILURE;
+        {
+          c->tb->error = 1;
+          return FAILURE;
+        }
 
       if (ifc->attr.if_source || ifc->attr.intrinsic)
         {
@@ -12716,7 +12719,10 @@ resolve_component (gfc_component *c, void *data)
               gfc_charlen *cl = gfc_new_charlen (sym->ns, ifc->ts.u.cl);
               if (cl->length && !cl->resolved
                   && gfc_resolve_expr (cl->length) == FAILURE)
-                return FAILURE;
+                {
+                  c->tb->error = 1;
+                  return FAILURE;
+                }
               c->ts.u.cl = cl;
             }
         }
@@ -12821,8 +12827,11 @@ resolve_component (gfc_component *c, void *data)
         }
 
       if (gfc_type_is_extensible (sym) && me_arg->ts.type != BT_CLASS)
-        gfc_error ("Non-polymorphic passed-object dummy argument of '%s'"
-                   " at %L", c->name, &c->loc);
+        {
+          gfc_error ("Non-polymorphic passed-object dummy argument of '%s'"
+                     " at %L", c->name, &c->loc);
+          return FAILURE;
+        }
 
     }
 
