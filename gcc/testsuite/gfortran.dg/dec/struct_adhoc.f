@@ -1,71 +1,52 @@
-      ! { dg-do run }
-      ! { dg-options "-fdec-structure" }
-      !
-      ! Test nested/ad-hoc structure definitions.
-      !
-      include 'assert.inc'
+! { dg-do run }
+! { dg-options "-ffree-form -fdec-structure" }
+!
+! Test nested STRUCTURE definitions.
+!
 
-      program main
+subroutine aborts (s)
+  character(*), intent(in) :: s
+  print *, s
+  call abort()
+end subroutine
 
-      structure /date/
-        integer*1 day, month 
-        integer*2 year 
-      end structure 
+structure /s3/
+  real p
+  structure /s4/ recrd, recrd_a(3)
+    integer i, j
+  end structure
+  real q
+end structure
 
-      structure /appointment/
-      record/date/app_date 
-      structure /time/ app_time (2) 
-        integer*1       hour, minute 
-      end structure 
-      structure/memo/app_memo (4)
-        record/time/when
-        character*20       why
-        structure /person/ who
-            character*10   name
-        end structure
-      end structure
-      logical         app_flag 
-      end structure
+record /s3/ r3
+record /s4/ r4
 
-      record /appointment/ tomorrow
-      record /time/ now
+r3.p = 1.3579
+r4.i = 0
+r4.j = 1
+r3.recrd = r4
+r3.recrd_a(1) = r3.recrd
+r3.recrd_a(2).i = 1
+r3.recrd_a(2).j = 0
 
-      tomorrow.app_date = date(6, 17, 2014)
-      tomorrow.app_time(1) = time(15, 0)
-      tomorrow.app_time(2) = time(16, 0)
-      tomorrow.app_memo(1).when = now
-      tomorrow.app_memo(1).why = "Kill"
-      tomorrow.app_memo(2).when = now
-      tomorrow.app_memo(2).why = "fortran"
-      tomorrow.app_memo(3).when = now
-      tomorrow.app_memo(3).why = "with"
-      tomorrow.app_memo(4).when = now
-      tomorrow.app_memo(4).why = "fire"
-      tomorrow.app_flag = .true.
+if (r3.p .ne. 1.3579) then
+  call aborts("r3.p")
+endif
 
-      call assertbb("tomorrow.app_date.day",   tomorrow.app_date.day,
-     & 6_1)
-      call assertbb("tomorrow.app_date.month", tomorrow.app_date.month, 
-     & 17_1)
-      call assertii("tomorrow.app_date.year",  tomorrow.app_date.year,  
-     & 2014_2)
-      call assertbb("tomorrow.app_time(1).hour", 
-     & tomorrow.app_time(1).hour, 15_1)
-      call assertbb("tomorrow.app_time(1).minute", 
-     & tomorrow.app_time(1).minute, 0_1)
-      call assertbb("tomorrow.app_time(2).hour", 
-     & tomorrow.app_time(2).hour, 16_1)
-      call assertbb("tomorrow.app_time(2).minute", 
-     & tomorrow.app_time(2).minute, 0_1)
-      call assert  ("tomorrow.app_flag",       tomorrow.app_flag)
+if (r4.i .ne. 0) then
+  call aborts("r4.i")
+endif
 
-      call assertss("tomorrow.app_memo(1).why",
-     & tomorrow.app_memo(1).why, "Kill")
-      call assertss("tomorrow.app_memo(2).why", 
-     & tomorrow.app_memo(2).why, "fortran")
-      call assertss("tomorrow.app_memo(3).why", 
-     & tomorrow.app_memo(3).why, "with")
-      call assertss("tomorrow.app_memo(4).why", 
-     & tomorrow.app_memo(4).why, "fire")
+if (r4.j .ne. 1) then
+  call aborts("r4.j")
+endif
 
-      end program
+if (r3.recrd.i .ne. 0 .or. r3.recrd.j .ne. 1) then
+  call aborts("r3.recrd")
+endif
+
+if (r3.recrd_a(2).i .ne. 1 .or. r3.recrd_a(2).j .ne. 0) then
+  call aborts("r3.recrd_a(2)")
+endif
+
+end
