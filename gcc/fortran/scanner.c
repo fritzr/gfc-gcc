@@ -332,14 +332,9 @@ add_path_to_list (gfc_directorylist **list, const char *path,
   if (stat (q, &st))
     {
       if (errno != ENOENT)
-	gfc_warning_now ("Include directory \"%s\": %s", path,
-			 xstrerror(errno));
-      else
-	{
-	  /* FIXME:  Also support -Wmissing-include-dirs.  */
-	  if (warn)
-	    gfc_warning_now ("Nonexistent include directory \"%s\"", path);
-	}
+        gfc_warning ("Include directory %s: %s", path, xstrerror(errno));
+      else if (warn && gfc_option.warn_missing_include_dirs)
+        gfc_warning ("Nonexistent include directory %s", path);
       return;
     }
   else if (!S_ISDIR (st.st_mode))

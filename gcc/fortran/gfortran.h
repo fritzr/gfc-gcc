@@ -2284,6 +2284,7 @@ typedef struct
   int warn_target_lifetime;
   int warn_argument_mismatch;
   int warn_format_tab;
+  int warn_missing_include_dirs;
   int max_errors;
 
   int flag_all_intrinsics;

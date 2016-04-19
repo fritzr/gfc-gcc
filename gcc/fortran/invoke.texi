@@ -246,6 +246,7 @@ The options enabled by this switch are: @option{-fdollar-ok}
 @option{-fd-lines-as-comments} @option{-fdec-io} @option{-ffeed}
 @option{-fdec-intrinsic-ints} @option{-fdec-static} @option{-flazy-logicals}
 @option{-ftype-print} @option{-Wno-format-tab}
+@option{-Wno-missing-include-dirs}
 
 @item -fdec-intrinsic-ints
 @opindex @code{fdec-intrinsic-ints}

@@ -51,6 +51,18 @@ set_default_std_flags (void)
   gfc_option.warn_std = GFC_STD_F95_DEL | GFC_STD_LEGACY;
 }
 
+static void
+set_missing_include_dirs (int value)
+{
+  gfc_option.warn_missing_include_dirs = value;
+
+  /* We might have buffered an include dir warning, so clear it.
+     (We know the buffered warning is an include dir warning because all
+     other warnings issued during cmdline parsing use gfc_warning_now.) */
+  if (!value)
+    gfc_clear_warning ();
+}
+
 /* Set all the DEC extension flags. */
 
 static void
@@ -60,6 +72,7 @@ set_dec_flags (int value)
     if (value) gfc_option.flag_d_lines = 0; /* -fd-lines-as-comments */
     if (value) gfc_option.flag_loc_rval = 1;
     if (value) gfc_option.warn_format_tab = 0;
+    if (value) set_missing_include_dirs (0);
     gfc_option.flag_dec_extended_int = value;
     gfc_option.flag_dec_structure  = value;
     gfc_option.flag_dec_member_dot = value;
@@ -137,6 +150,7 @@ gfc_init_options (unsigned int decoded_options_count,
   gfc_option.warn_target_lifetime = 0;
   gfc_option.warn_argument_mismatch = 1;
   gfc_option.warn_format_tab = 1;
+  gfc_option.warn_missing_include_dirs = 1;
   gfc_option.max_errors = 25;
 
   gfc_option.flag_all_intrinsics = 0;
@@ -197,6 +211,8 @@ gfc_init_options (unsigned int decoded_options_count,
 
   /* Initialize cpp-related options.  */
   gfc_cpp_init_options (decoded_options_count, decoded_options);
+
+  gfc_buffer_error (1);
 }
 
 
@@ -284,6 +300,9 @@ gfc_post_options (const char **pfilename)
   const char *filename = *pfilename, *canon_source_file = NULL;
   char *source_path;
   int i;
+
+  gfc_warning_check ();
+  gfc_buffer_error (0);
 
   /* Excess precision other than "fast" requires front-end
      support.  */
@@ -760,6 +779,10 @@ gfc_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_Wformat_tab:
       gfc_option.warn_format_tab = value;
+      break;
+
+    case OPT_Wmissing_include_dirs:
+      set_missing_include_dirs (value);
       break;
 
     case OPT_fall_intrinsics:

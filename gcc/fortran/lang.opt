@@ -261,6 +261,10 @@ Wintrinsics-std
 Fortran Warning
 Warn on intrinsics not part of the selected standard
 
+Wmissing-include-dirs
+Fortran
+; Documented in C/C++
+
 Wreal-q-constant
 Fortran Warning
 Warn about real-literal-constants with 'q' exponent-letter
