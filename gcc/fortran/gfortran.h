@@ -2283,6 +2283,7 @@ typedef struct
   int warn_compare_reals;
   int warn_target_lifetime;
   int warn_argument_mismatch;
+  int warn_format_tab;
   int max_errors;
 
   int flag_all_intrinsics;

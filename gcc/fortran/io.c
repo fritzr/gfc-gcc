@@ -207,7 +207,10 @@ next_char_not_space (bool *error)
       if (c == '\t')
 	{
 	  if (gfc_option.allow_std & GFC_STD_GNU)
-	    gfc_warning ("Extension: Tab character in format at %C");
+            {
+              if (gfc_option.warn_format_tab)
+                gfc_warning ("Extension: Tab character in format at %C");
+            }
 	  else
 	    {
 	      gfc_error ("Extension: Tab character in format at %C");

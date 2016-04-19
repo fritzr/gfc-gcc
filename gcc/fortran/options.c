@@ -59,6 +59,7 @@ set_dec_flags (int value)
     if (value) gfc_option.flag_dollar_ok = 1;
     if (value) gfc_option.flag_d_lines = 0; /* -fd-lines-as-comments */
     if (value) gfc_option.flag_loc_rval = 1;
+    if (value) gfc_option.warn_format_tab = 0;
     gfc_option.flag_dec_extended_int = value;
     gfc_option.flag_dec_structure  = value;
     gfc_option.flag_dec_member_dot = value;
@@ -135,6 +136,7 @@ gfc_init_options (unsigned int decoded_options_count,
   gfc_option.warn_compare_reals = 0;
   gfc_option.warn_target_lifetime = 0;
   gfc_option.warn_argument_mismatch = 1;
+  gfc_option.warn_format_tab = 1;
   gfc_option.max_errors = 25;
 
   gfc_option.flag_all_intrinsics = 0;
@@ -754,6 +756,10 @@ gfc_handle_option (size_t scode, const char *arg, int value,
 
     case OPT_Wargument_mismatch:
       gfc_option.warn_argument_mismatch = value;
+      break;
+
+    case OPT_Wformat_tab:
+      gfc_option.warn_format_tab = value;
       break;
 
     case OPT_fall_intrinsics:

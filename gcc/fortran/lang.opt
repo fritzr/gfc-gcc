@@ -237,6 +237,10 @@ Wextra
 Fortran Warning
 Print extra (possibly unwanted) warnings
 
+Wformat-tab
+Fortran Warning
+Warn about tabs in format specifiers
+
 Wfunction-elimination
 Fortran Warning
 Warn about function call elimination

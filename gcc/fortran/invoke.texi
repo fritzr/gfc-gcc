@@ -149,7 +149,7 @@ and warnings}.
 -Wimplicit-procedure -Wintrinsic-shadow -Wintrinsics-std @gol
 -Wline-truncation -Wno-align-commons -Wno-tabs -Wreal-q-constant @gol
 -Wsurprising -Wunderflow -Wunused-parameter -Wrealloc-lhs Wrealloc-lhs-all @gol
--Wtarget-lifetime -Wargument-mismatch @gol
+-Wtarget-lifetime -Wargument-mismatch -Wformat-tab @gol
 -flazy-logicals -fmax-errors=@var{n} -fsyntax-only -pedantic -pedantic-errors
 }
 
@@ -245,7 +245,7 @@ The options enabled by this switch are: @option{-fdollar-ok}
 @option{-fdec-math} @option{-fdec-logical-xor} @option{-fdec-bitwise-ops}
 @option{-fd-lines-as-comments} @option{-fdec-io} @option{-ffeed}
 @option{-fdec-intrinsic-ints} @option{-fdec-static} @option{-flazy-logicals}
-@option{-ftype-print}
+@option{-ftype-print} @option{-Wno-format-tab}
 
 @item -fdec-intrinsic-ints
 @opindex @code{fdec-intrinsic-ints}
@@ -1049,6 +1049,12 @@ target. This option is implied by @option{-Wall}.
 @opindex @code{Wargument-mismatch}
 Warn when the type or rank of formal and actual arguments do not match.
 Enabled by default.
+
+@item -Wformat-tab
+@opindex @code{Wformat-tab}
+Warn when a tab appears in a format specifier. Enabled by default. Note that
+this is still a GNU extension, and tabs in a format specifier will be an error
+if the standard is specified other than @option{-std=gnu}.
 
 @item -Werror
 @opindex @code{Werror}
