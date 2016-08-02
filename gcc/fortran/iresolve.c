@@ -651,6 +651,23 @@ gfc_resolve_cosh (gfc_expr *f, gfc_expr *x)
     = gfc_get_string ("__cosh_%c%d", gfc_type_letter (x->ts.type), x->ts.kind);
 }
 
+
+/* Our replacement of elements of a trig call with an EXPR_OP (e.g.
+   multiplying the result or operands by a factor to convert to/from degrees)
+   will cause the resolve_* function to be invoked again when resolving the
+   freshly created EXPR_OP. See gfc_resolve_trigd, gfc_resolve_atrigd,
+   gfc_resolve_cotan. We must observe this and avoid recursively creating
+   layers of nested EXPR_OP expressions.  */
+
+static bool
+is_trig_resolved (gfc_expr *f)
+{
+  /* We know we've already resolved the function if we see the lib call
+     starting with '__'.  */
+  return f->value.function.name != NULL
+    && 0 == strncmp("__", f->value.function.name, 2);
+}
+
 /* Return a shallow copy of the function expression f. The original expression
    has its pointers cleared so that it may be freed without affecting the
    shallow copy. This is similar to gfc_copy_expr, but doesn't perform a deep
@@ -688,6 +705,9 @@ void
 gfc_resolve_cotan (gfc_expr *f, gfc_expr *x)
 {
   gfc_expr *result, *fcopy, *one;
+
+  if (is_trig_resolved (f))
+    return;
 
   gfc_resolve_tan (f, x);
   one = gfc_get_constant_expr (f->ts.type, f->ts.kind, &f->where);
@@ -2711,6 +2731,9 @@ resolve_trig_call (gfc_expr *f, gfc_expr *x)
 void
 gfc_resolve_trigd (gfc_expr *f, gfc_expr *x)
 {
+  if (is_trig_resolved (f))
+    return;
+
   x = get_radians (x);
   f->value.function.actual->expr = x;
 
@@ -2724,6 +2747,9 @@ void
 gfc_resolve_atrigd (gfc_expr *f, gfc_expr *x)
 {
   gfc_expr *result, *fcopy;
+
+  if (is_trig_resolved (f))
+    return;
 
   resolve_trig_call (f, x);
 
