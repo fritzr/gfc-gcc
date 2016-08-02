@@ -14,14 +14,18 @@
 
       ! Expected
       F_OE = 52.5091181879_4
+      F_OXE = xf*52.5091181879_4
       D_OE = 52.5091181879_8
+      D_OXE = xd*52.5091181879_8
       !Q_OE = 52.5091181879_16
 
       ! Actual
       F_OA =  ASIND (F_I)
       F_OC =  ASIND (0.79345021_4)
+      F_OX = xf* ASIND (F_I)
       D_OA = DASIND (D_I)
       D_OC = DASIND (0.79345021_8)
+      D_OX = xd*DASIND (D_I)
       !Q_OA = QASIND (Q_I)
       !Q_OC = QASIND (0.79345021_16)
 

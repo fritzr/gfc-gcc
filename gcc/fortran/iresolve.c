@@ -651,6 +651,67 @@ gfc_resolve_cosh (gfc_expr *f, gfc_expr *x)
     = gfc_get_string ("__cosh_%c%d", gfc_type_letter (x->ts.type), x->ts.kind);
 }
 
+/* Return a shallow copy of the function expression f. The original expression
+   has its pointers cleared so that it may be freed without affecting the
+   shallow copy. This is similar to gfc_copy_expr, but doesn't perform a deep
+   copy of the argument list, allowing it to be reused somewhere else,
+   setting the expression up nicely for gfc_replace_expr.  */
+
+static gfc_expr *
+copy_replace_function_shallow (gfc_expr *f)
+{
+  gfc_expr *fcopy;
+  gfc_actual_arglist *args;
+
+  /* The only thing deep-copied in gfc_copy_expr() is args.  */
+  args = f->value.function.actual;
+  f->value.function.actual = NULL;
+  fcopy = gfc_copy_expr (f);
+  fcopy->value.function.actual = args;
+
+  /* Clear the old function so the shallow copy is not affected if the old
+     expression is freed.  */
+  f->value.function.name = NULL;
+  f->value.function.isym = NULL;
+  f->value.function.actual = NULL;
+  f->value.function.esym = NULL;
+  f->shape = NULL;
+  f->ref = NULL;
+
+  return fcopy;
+}
+
+
+/* Resolve cotan(x) = 1/tan(x).  */
+
+void
+gfc_resolve_cotan (gfc_expr *f, gfc_expr *x)
+{
+  gfc_expr *result, *fcopy, *one;
+
+  gfc_resolve_tan (f, x);
+  one = gfc_get_constant_expr (f->ts.type, f->ts.kind, &f->where);
+
+  switch (f->ts.type)
+    {
+      case BT_REAL:
+        mpfr_set_ui (one->value.real, 1, GFC_RND_MODE);
+        break;
+
+      case BT_COMPLEX:
+        mpc_set_ui (one->value.complex, 1, GFC_MPC_RND_MODE);
+        break;
+
+      default:
+        gcc_unreachable ();
+    }
+
+  /* Replace f [tan(x)] with 1/f [cotan(x)].  */
+  fcopy = copy_replace_function_shallow (f);
+  result = gfc_divide (one, fcopy);
+  gfc_replace_expr (f, result);
+}
+
 
 void
 gfc_resolve_count (gfc_expr *f, gfc_expr *mask, gfc_expr *dim, gfc_expr *kind)
@@ -2547,7 +2608,6 @@ gfc_resolve_system (gfc_expr *f, gfc_expr *n ATTRIBUTE_UNUSED)
   f->value.function.name = gfc_get_string (PREFIX ("system"));
 }
 
-
 void
 gfc_resolve_tan (gfc_expr *f, gfc_expr *x)
 {
@@ -2563,6 +2623,124 @@ gfc_resolve_tanh (gfc_expr *f, gfc_expr *x)
   f->ts = x->ts;
   f->value.function.name
     = gfc_get_string ("__tanh_%c%d", gfc_type_letter (x->ts.type), x->ts.kind);
+}
+
+
+/* Build an expression for converting degrees to radians. */
+
+static gfc_expr *
+get_radians (gfc_expr *deg)
+{
+  mpfr_t tmp;
+  gfc_expr *result, *factor; /* pi / 180 */
+
+  gcc_assert (deg->ts.type == BT_REAL);
+
+  factor = gfc_get_constant_expr (deg->ts.type, deg->ts.kind, &deg->where);
+
+  /* Factor = pi / 180 */
+  mpfr_init (tmp);
+  mpfr_set_d (tmp, 180.0l, GFC_RND_MODE);
+  mpfr_const_pi (factor->value.real, GFC_RND_MODE);
+  mpfr_div (factor->value.real, factor->value.real, tmp, GFC_RND_MODE);
+  mpfr_clear (tmp);
+
+  /* rad = deg * (pi / 180) */
+  result = gfc_multiply (deg, factor);
+  return result;
+}
+
+
+/* Build an expression for converting radians to degrees. */
+
+static gfc_expr *
+get_degrees (gfc_expr *rad)
+{
+  mpfr_t tmp;
+  gfc_expr *result, *factor; /* 180 / pi */
+
+  gcc_assert (rad->ts.type == BT_REAL);
+
+  factor = gfc_get_constant_expr (rad->ts.type, rad->ts.kind, &rad->where);
+
+  /* Factor = 180 / pi */
+  mpfr_init (tmp);
+  mpfr_const_pi (tmp, GFC_RND_MODE);
+  mpfr_set_d (factor->value.real, 180.0l, GFC_RND_MODE);
+  mpfr_div (factor->value.real, factor->value.real, tmp, GFC_RND_MODE);
+  mpfr_clear (tmp);
+
+  /* deg = rad * (180 / pi) */
+  result = gfc_multiply (rad, factor);
+  return result;
+}
+
+
+/* Resolve a call to a trig function.  */
+
+static void
+resolve_trig_call (gfc_expr *f, gfc_expr *x)
+{
+  switch (f->value.function.isym->id)
+    {
+      case GFC_ISYM_ACOS:
+        return gfc_resolve_acos (f, x);
+      case GFC_ISYM_ASIN:
+        return gfc_resolve_asin (f, x);
+      case GFC_ISYM_ATAN:
+        return gfc_resolve_atan (f, x);
+      case GFC_ISYM_ATAN2:
+        /* NB. arg3 is unused for atan2 */
+        return gfc_resolve_atan2 (f, x, NULL);
+      case GFC_ISYM_COS:
+        return gfc_resolve_cos (f, x);
+      case GFC_ISYM_COTAN:
+        return gfc_resolve_cotan (f, x);
+      case GFC_ISYM_SIN:
+        return gfc_resolve_sin (f, x);
+      case GFC_ISYM_TAN:
+        return gfc_resolve_tan (f, x);
+      default: break;
+    }
+
+  gcc_unreachable ();
+}
+
+/* Resolve degree trig function as trigd(x) = trig(radians(x)).  */
+
+void
+gfc_resolve_trigd (gfc_expr *f, gfc_expr *x)
+{
+  x = get_radians (x);
+  f->value.function.actual->expr = x;
+
+  resolve_trig_call (f, x);
+}
+
+
+/* Resolve degree inverse trig function as atrigd(x) = degrees(atrig(x)).  */
+
+void
+gfc_resolve_atrigd (gfc_expr *f, gfc_expr *x)
+{
+  gfc_expr *result, *fcopy;
+
+  resolve_trig_call (f, x);
+
+  fcopy = copy_replace_function_shallow (f);
+  result = get_degrees (fcopy);
+  gfc_replace_expr (f, result);
+}
+
+
+/* Resolve atan2d(x) = degrees(atan2(x)).  */
+
+void
+gfc_resolve_atan2d (gfc_expr *f, gfc_expr *x, gfc_expr *y ATTRIBUTE_UNUSED)
+{
+  /* Note that we lose the second arg here - that's okay because it is
+     unused in gfc_resolve_atan2 anyway.  */
+  gfc_resolve_atrigd (f, x);
 }
 
 

@@ -14,14 +14,18 @@
 
       ! Expected
       F_OE = 57.7922906336_4
+      F_OXE = xf*57.7922906336_4
       D_OE = 57.7922906336_8
+      D_OXE = xd*57.7922906336_8
       !Q_OE = 57.7922906336_16
 
       ! Actual
       F_OA =  ATAND (F_I)
       F_OC =  ATAND (1.5874993_4)
+      F_OX = xf* ATAND (F_I)
       D_OA = DATAND (D_I)
       D_OC = DATAND (1.5874993_8)
+      D_OX = xd*DATAND (D_I)
       !Q_OA = QATAND (Q_I)
       !Q_OC = QATAND (1.5874993_16)
 
