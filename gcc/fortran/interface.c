@@ -383,19 +383,46 @@ gfc_match_end_interface (void)
 }
 
 
+/* Return whether the component was defined anonymously.  */
+
+static bool
+is_anonymous_component (gfc_component *cmp)
+{
+  /* Only UNION and MAP components are anonymous.  In the case of a MAP,
+     the derived type symbol is FL_STRUCT and the component name looks like mM*.
+     This is the only case in which the second character of a component name is
+     uppercase.  */
+  return cmp->ts.type == BT_UNION
+    || (cmp->ts.type == BT_DERIVED
+        && cmp->ts.u.derived->attr.flavor == FL_STRUCT
+        && cmp->name[0] && cmp->name[1] && ISUPPER (cmp->name[1]));
+}
+
+
+/* Return whether the derived type was defined anonymously.  */
+
+static bool
+is_anonymous_dt (gfc_symbol *derived)
+{
+  /* UNION and MAP types are always anonymous. Otherwise, only nested STRUCTURE
+     types can be anonymous.  For anonymous MAP/STRUCTURE, we have FL_STRUCT
+     and the type name looks like XX*.  This is the only case in which the
+     second character of a type name is uppercase.  */
+  return derived->attr.flavor == FL_UNION
+    || (derived->attr.flavor == FL_STRUCT
+        && derived->name[0] && derived->name[1] && ISUPPER (derived->name[1]));
+}
+
+
 /* Compare components according to 4.4.2 of the Fortran standard.  */
 
 static int
 compare_components (gfc_component *cmp1, gfc_component *cmp2,
     gfc_symbol *derived1, gfc_symbol *derived2)
 {
-  /* UNIONs, MAPs, and anonymous STRUCTURE components all have internal
-     names of the form uU*, mM*, sS*, etc... Ignore differences here;
-     we must do a deeper comparison. */
-  if (strcmp (cmp1->name, cmp2->name) != 0
-      && !(   cmp1->name[1] == (char) TOUPPER (cmp1->name[0])
-           && cmp2->name[1] == (char) TOUPPER (cmp2->name[0])
-           && cmp1->name[0] == cmp2->name[0]))
+  /* Compare names, but not for anonymous components such as UNION or MAP.  */
+  if (!is_anonymous_component (cmp1) && !is_anonymous_component (cmp1)
+      && strcmp (cmp1->name, cmp2->name) != 0)
     return 0;
 
   if (cmp1->attr.access != cmp2->attr.access)
@@ -500,21 +527,11 @@ int
 gfc_compare_derived_types (gfc_symbol *derived1, gfc_symbol *derived2)
 {
   gfc_component *cmp1, *cmp2;
-  bool anonymous = false;
 
   if (derived1 == derived2)
     return 1;
 
   gcc_assert (derived1 && derived2);
-
-  /* MAP and anonymous STRUCTURE types have internal names of the form
-     mM* and sS* (we can get away with this because source names are converted
-     to lowercase). Compare anonymous type names specially because each
-     gets a unique name when it is declared. */
-  anonymous = (derived1->name[0] == derived2->name[0]
-      && derived1->name[1] && derived2->name[1] && derived2->name[2]
-      && derived1->name[1] == (char) TOUPPER (derived1->name[0])
-      && derived2->name[2] == (char) TOUPPER (derived2->name[0]));
 
   /* Special case for comparing derived types across namespaces.  If the
      true names and module names are the same and the module name is
@@ -524,7 +541,9 @@ gfc_compare_derived_types (gfc_symbol *derived1, gfc_symbol *derived2)
       && strcmp (derived1->module, derived2->module) == 0)
     return 1;
 
-  if (strcmp (derived1->name, derived2->name) != 0 && !anonymous)
+  /* Compare names, but not for anonymous types such as UNION or MAP.  */
+  if (!is_anonymous_dt (derived1) && !is_anonymous_dt (derived2)
+      && strcmp (derived1->name, derived2->name) != 0)
     return 0;
 
   /* Compare type via the rules of the standard.  Both types must have
