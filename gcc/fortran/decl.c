@@ -7351,10 +7351,16 @@ cleanup:
 match
 gfc_match_parameter (void)
 {
+  const char *term = " )%t";
   match m;
 
   if (gfc_match_char ('(') == MATCH_NO)
-    return MATCH_NO;
+    {
+      /* With legacy PARAMETER statements, don't expect a terminating ')'.  */
+      if (!gfc_notify_std (GFC_STD_LEGACY, "PARAMETER without '()' at %C"))
+        return MATCH_NO;
+      term = " %t";
+    }
 
   for (;;)
     {
@@ -7362,7 +7368,7 @@ gfc_match_parameter (void)
       if (m != MATCH_YES)
 	break;
 
-      if (gfc_match (" )%t") == MATCH_YES)
+      if (gfc_match (term) == MATCH_YES)
 	break;
 
       if (gfc_match_char (',') != MATCH_YES)

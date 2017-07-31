@@ -2029,6 +2029,7 @@ by @option{-fdec-}.
 * Extended math intrinsics::
 * AUTOMATIC and STATIC attributes::
 * Form feed as whitespace::
+* Legacy PARAMETER statements::
 @end menu
 
 @node STRUCTURE and RECORD
@@ -2533,6 +2534,22 @@ Historically, DEC allowed insertion of form feed characters ('\f', ASCII 0x0C)
 at the beginning of lines for nice output to line printers. GNU Fortran
 supports the interpretation of form feed characters in source as whitespace
 with @option{-ffeed}.
+
+@node Legacy PARAMETER statements
+@subsubsection Legacy PARAMETER statements
+@cindex PARAMETER
+
+For compatibility, GNU Fortran supports legacy PARAMETER statements without
+parentheses with @option{-std=legacy}.  A warning is emitted if used with
+@option{-std=gnu}, and an error is acknowledged with a real Fortran standard
+flag (@option{-std=f95}, etc...).  These statements take the following form:
+
+@smallexample
+implicit real (E)
+paraneter e = 2.718282
+real c
+parameter c = 3.0e8
+@end smallexample
 
 
 @node Extensions not implemented in GNU Fortran
