@@ -68,23 +68,33 @@ set_missing_include_dirs (int value)
 static void
 set_dec_flags (int value)
 {
-    if (value) gfc_option.flag_dollar_ok = 1;
-    if (value) gfc_option.flag_d_lines = 0; /* -fd-lines-as-comments */
-    if (value) gfc_option.flag_loc_rval = 1;
-    if (value) gfc_option.warn_format_tab = 0;
-    if (value) set_missing_include_dirs (0);
-    gfc_option.flag_dec_extended_int = value;
-    gfc_option.flag_dec_structure  = value;
-    gfc_option.flag_dec_member_dot = value;
-    gfc_option.flag_dec_math = value;
-    gfc_option.flag_dec_logical_xor = value;
-    gfc_option.flag_lazy_logicals = value;
-    gfc_option.flag_dec_bitwise_ops = value;
-    gfc_option.flag_dec_io = value;
-    gfc_option.flag_dec_intrinsic_ints = value;
-    gfc_option.flag_dec_static = value;
-    gfc_option.flag_feed = value;
-    gfc_option.flag_type_print = value;
+  if (value)
+    {
+      /* Allow legacy code without warnings.  */
+      gfc_option.allow_std |= GFC_STD_F95_OBS | GFC_STD_F95_DEL
+        | GFC_STD_GNU | GFC_STD_LEGACY;
+      gfc_option.warn_std &= ~(GFC_STD_LEGACY | GFC_STD_F95_DEL);
+
+      gfc_option.flag_dollar_ok = 1;
+      gfc_option.flag_d_lines = 0; /* -fd-lines-as-comments */
+      gfc_option.flag_loc_rval = 1;
+      gfc_option.warn_format_tab = 0;
+      set_missing_include_dirs (0);
+    }
+
+  /* Set other DEC compatibility extensions.  */
+  gfc_option.flag_dec_extended_int = value;
+  gfc_option.flag_dec_structure  = value;
+  gfc_option.flag_dec_member_dot = value;
+  gfc_option.flag_dec_math = value;
+  gfc_option.flag_dec_logical_xor = value;
+  gfc_option.flag_lazy_logicals = value;
+  gfc_option.flag_dec_bitwise_ops = value;
+  gfc_option.flag_dec_io = value;
+  gfc_option.flag_dec_intrinsic_ints = value;
+  gfc_option.flag_dec_static = value;
+  gfc_option.flag_feed = value;
+  gfc_option.flag_type_print = value;
 }
 
 /* Return language mask for Fortran options.  */
